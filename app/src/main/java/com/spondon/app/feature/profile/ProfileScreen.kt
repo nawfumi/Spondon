@@ -49,6 +49,7 @@ fun ProfileScreen(
                         Icon(Icons.Outlined.Edit, s.editProfile)
                     }
                 },
+                windowInsets = WindowInsets(0.dp),
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),

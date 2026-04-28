@@ -53,6 +53,7 @@ fun NotificationScreen(
                         Icon(Icons.Filled.ArrowBack, contentDescription = s.back)
                     }
                 },
+                windowInsets = WindowInsets(0.dp),
                 actions = {
                     val hasUnread = state.notifications.any { !it.isRead }
                     if (hasUnread) {

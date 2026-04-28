@@ -55,6 +55,7 @@ fun RequestDetailScreen(
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                windowInsets = WindowInsets(0.dp),
                 actions = {
                     if (state.request != null) {
                         IconButton(onClick = {
