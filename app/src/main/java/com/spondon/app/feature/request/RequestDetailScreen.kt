@@ -432,6 +432,37 @@ fun RequestDetailScreen(
                                     }
                                 }
                             }
+
+                            // Blood group mismatch
+                            !state.bloodGroupMatch && !state.isCurrentUserRequester -> {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = UnavailableGrey.copy(alpha = 0.1f),
+                                    ),
+                                    shape = RoundedCornerShape(16.dp),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(Icons.Outlined.Bloodtype, null, tint = UnavailableGrey)
+                                        Spacer(Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                "Blood group doesn't match",
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onBackground,
+                                            )
+                                            Text(
+                                                "Only ${request.bloodGroup} donors can respond to this request",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = UnavailableGrey,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

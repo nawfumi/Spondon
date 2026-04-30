@@ -67,7 +67,7 @@ fun SupportScreen(navController: NavController) {
             // ─── Logo ─────────────────────────────────
             Box(
                 modifier = Modifier
-                    .size(140.dp)
+                    .size(180.dp)
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
@@ -83,7 +83,7 @@ fun SupportScreen(navController: NavController) {
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = "Spondon Logo",
-                    modifier = Modifier.size(100.dp),
+                    modifier = Modifier.size(160.dp),
                 )
             }
 

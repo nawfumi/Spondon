@@ -27,6 +27,7 @@ sealed class AuthNavigationEvent {
     data object NavigateToLogin : AuthNavigationEvent()
     data object NavigateToOnboarding : AuthNavigationEvent()
     data object PasswordResetSuccess : AuthNavigationEvent()
+    data class NavigateToBanned(val reason: String?) : AuthNavigationEvent()
 }
 
 data class AuthState(
@@ -87,6 +88,10 @@ data class AuthState(
 
     // ── Splash navigation decision (consumed once) ───
     val splashDestination: String? = null,
+
+    // ── Ban state ───
+    val isBanned: Boolean = false,
+    val banReason: String? = null,
 )
 
 @HiltViewModel
@@ -120,6 +125,23 @@ class AuthViewModel @Inject constructor(
                     when (val result = userRepository.getUser(uid)) {
                         is Resource.Success -> {
                             val userData = result.data
+
+                            // ── Ban check ──
+                            if (userData.isBanned) {
+                                authRepository.signOut()
+                                _state.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isBanned = true,
+                                        banReason = userData.banReason,
+                                    )
+                                }
+                                _navigationEvent.send(
+                                    AuthNavigationEvent.NavigateToBanned(userData.banReason),
+                                )
+                                return@launch
+                            }
+
                             val needsSetup = userData.bloodGroup.isEmpty()
                             _state.update {
                                 it.copy(
@@ -199,6 +221,8 @@ class AuthViewModel @Inject constructor(
                 val isLoggedIn = authRepository.isLoggedIn()
                 var needsSetup = false
                 var userData: User? = null
+                var isBanned = false
+                var banReason: String? = null
 
                 if (isLoggedIn) {
                     val uid = authRepository.getCurrentUserId()
@@ -206,6 +230,12 @@ class AuthViewModel @Inject constructor(
                         when (val result = userRepository.getUser(uid)) {
                             is Resource.Success -> {
                                 userData = result.data
+                                // Ban check at splash
+                                if (userData.isBanned) {
+                                    isBanned = true
+                                    banReason = userData.banReason
+                                    authRepository.signOut()
+                                }
                                 needsSetup = userData.bloodGroup.isEmpty()
                             }
                             else -> {
@@ -228,9 +258,11 @@ class AuthViewModel @Inject constructor(
                         selectedUpazila = userData?.upazila ?: it.selectedUpazila,
                         wantsToBeDonor = userData?.isDonor ?: it.wantsToBeDonor,
                         isOnboardingComplete = isOnboarded,
-                        isLoggedIn = isLoggedIn,
+                        isLoggedIn = isLoggedIn && !isBanned,
                         needsProfileSetup = needsSetup,
                         isInitialized = true,
+                        isBanned = isBanned,
+                        banReason = banReason,
                     )
                 }
             } catch (e: Exception) {

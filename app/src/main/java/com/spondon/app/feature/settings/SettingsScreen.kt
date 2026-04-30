@@ -139,12 +139,8 @@ fun SettingsScreen(
                 // ─── Security ────────────────────
                 item { SectionHeader(s.security) }
                 item {
-                    if (biometricAvailable) {
-                        SettingsToggleItem(Icons.Outlined.Fingerprint, s.biometricLogin, s.biometricDesc, state.isBiometricEnabled) {
-                            viewModel.toggleBiometric()
-                        }
-                    } else {
-                        SettingsDisabledItem(Icons.Outlined.Fingerprint, s.biometricLogin, s.biometricNotAvailable)
+                    SettingsClickItem(Icons.Outlined.Fingerprint, s.security, s.biometricDesc, BloodRed) {
+                        navController.navigate(Routes.SecuritySettings.route)
                     }
                 }
 

@@ -227,6 +227,73 @@ fun AdminDashboardScreen(
                         }
                     }
 
+                    // ─── Broadcast Notification ────────
+                    item {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Broadcast Notification",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            ),
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    "Send a notification to all community members",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = state.broadcastMessage,
+                                    onValueChange = { viewModel.updateBroadcastMessage(it) },
+                                    label = { Text("Message") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    minLines = 2,
+                                    maxLines = 4,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = BloodRed,
+                                        cursorColor = BloodRed,
+                                    ),
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Button(
+                                    onClick = { viewModel.sendBroadcastNotification(communityId) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    enabled = state.broadcastMessage.isNotBlank() && !state.isBroadcasting,
+                                    colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
+                                ) {
+                                    if (state.isBroadcasting) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp,
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                    } else {
+                                        Icon(
+                                            Icons.Default.Send,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                    Text(if (state.isBroadcasting) "Sending..." else "Send to All Members")
+                                }
+                            }
+                        }
+                    }
+
                     // ─── Edit Community Info ─────────
                     item {
                         Spacer(Modifier.height(8.dp))

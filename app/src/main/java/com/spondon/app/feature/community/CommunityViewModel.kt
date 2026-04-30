@@ -8,6 +8,7 @@ import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.common.daysSince
 import com.spondon.app.core.data.repository.CommunityRepositoryImpl
+import com.spondon.app.core.data.repository.NotificationRepository
 import com.spondon.app.core.domain.model.*
 import com.spondon.app.core.domain.usecase.community.CreateCommunityUseCase
 import com.spondon.app.core.domain.usecase.community.GetCommunitiesUseCase
@@ -72,6 +73,9 @@ data class AdminDashboardState(
     val pendingCount: Int = 0,
     val activeMembers: Int = 0,
     val monthlyDonations: Int = 0,
+    val broadcastMessage: String = "",
+    val isBroadcasting: Boolean = false,
+    val broadcastSuccess: Boolean = false,
 )
 
 // ─── Events ────────────────────────────────────────────────────
@@ -89,6 +93,7 @@ class CommunityViewModel @Inject constructor(
     private val createCommunityUseCase: CreateCommunityUseCase,
     private val manageMembersUseCase: ManageMembersUseCase,
     private val communityRepository: CommunityRepositoryImpl,
+    private val notificationRepository: NotificationRepository,
 ) : ViewModel() {
 
     private val currentUserId: String
@@ -587,6 +592,67 @@ class CommunityViewModel @Inject constructor(
                 is Resource.Loading -> {}
             }
         }
+    }
+
+    // ─── Admin Broadcast Notifications ────────────────────────
+
+    fun updateBroadcastMessage(message: String) {
+        _adminState.update { it.copy(broadcastMessage = message) }
+    }
+
+    fun sendBroadcastNotification(communityId: String) {
+        viewModelScope.launch {
+            val state = _adminState.value
+            val community = state.community ?: return@launch
+            val message = state.broadcastMessage.trim()
+            if (message.isBlank()) {
+                _events.emit(CommunityEvent.ShowSnackbar("Please enter a message"))
+                return@launch
+            }
+
+            _adminState.update { it.copy(isBroadcasting = true) }
+
+            // Collect all unique member IDs
+            val allMemberIds = mutableSetOf<String>()
+            allMemberIds.addAll(community.memberIds)
+            allMemberIds.addAll(community.adminIds)
+            allMemberIds.addAll(community.moderatorIds)
+            allMemberIds.remove(currentUserId) // Don't notify self
+
+            if (allMemberIds.isEmpty()) {
+                _adminState.update { it.copy(isBroadcasting = false) }
+                _events.emit(CommunityEvent.ShowSnackbar("No members to notify"))
+                return@launch
+            }
+
+            when (notificationRepository.sendNotificationToUsers(
+                userIds = allMemberIds.toList(),
+                type = NotificationType.ADMIN,
+                title = "📢 ${community.name}",
+                body = message,
+                deepLink = "community_detail/$communityId",
+            )) {
+                is Resource.Success -> {
+                    _adminState.update {
+                        it.copy(
+                            isBroadcasting = false,
+                            broadcastMessage = "",
+                            broadcastSuccess = true,
+                        )
+                    }
+                    _events.emit(CommunityEvent.ShowSnackbar("Notification sent to ${allMemberIds.size} members"))
+                }
+                is Resource.Error -> {
+                    _adminState.update { it.copy(isBroadcasting = false) }
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to send notifications"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun resetBroadcastSuccess() {
+        _adminState.update { it.copy(broadcastSuccess = false) }
     }
 
     // ─── Helpers ─────────────────────────────────────────────

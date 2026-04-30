@@ -2,6 +2,7 @@ package com.spondon.app.core.data.repository
 
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.domain.model.AppNotification
+import com.spondon.app.core.domain.model.NotificationType
 import kotlinx.coroutines.flow.Flow
 
 interface NotificationRepository {
@@ -10,4 +11,11 @@ interface NotificationRepository {
     suspend fun markAllAsRead(userId: String): Resource<Unit>
     suspend fun deleteNotification(notificationId: String): Resource<Unit>
     fun observeUnreadCount(userId: String): Flow<Int>
+    suspend fun sendNotificationToUsers(
+        userIds: List<String>,
+        type: NotificationType,
+        title: String,
+        body: String,
+        deepLink: String = "",
+    ): Resource<Unit>
 }

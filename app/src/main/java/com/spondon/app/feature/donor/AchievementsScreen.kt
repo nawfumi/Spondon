@@ -334,9 +334,8 @@ private fun BadgeCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = bgColor),
-//        elevation = CardDefaults.cardElevation(
-//            defaultElevation = if (isEarned) 2.dp else 0.dp,
-//        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = null,
     ) {
         Column(
             modifier = Modifier

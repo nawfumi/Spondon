@@ -91,6 +91,34 @@ class NotificationRepositoryImpl @Inject constructor(
     }
 
 
+    /**
+     * Send notification to a list of specific users.
+     * Used for blood group targeted requests and admin broadcasts.
+     */
+    override suspend fun sendNotificationToUsers(
+        userIds: List<String>,
+        type: NotificationType,
+        title: String,
+        body: String,
+        deepLink: String,
+    ): Resource<Unit> {
+        return try {
+            userIds.forEach { userId ->
+                createNotification(
+                    userId = userId,
+                    type = type,
+                    title = title,
+                    body = body,
+                    deepLink = deepLink,
+                )
+            }
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to send notifications", e)
+        }
+    }
+
+
     private fun Map<String, Any>.toAppNotification(): AppNotification {
         return AppNotification(
             id = this["id"] as? String ?: "",

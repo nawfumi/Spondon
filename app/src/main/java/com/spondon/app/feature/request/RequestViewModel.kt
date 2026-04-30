@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.repository.CommunityRepository
+import com.spondon.app.core.data.repository.NotificationRepository
 import com.spondon.app.core.data.repository.RequestRepository
 import com.spondon.app.core.data.repository.UserRepository
 import com.spondon.app.core.domain.model.*
@@ -42,6 +43,7 @@ data class CreateRequestState(
     val unitsNeeded: Int = 1,
     val patientName: String = "",
     val hospital: String = "",
+    val address: String = "",
     val donationDate: Date? = null,
     val contactNumber: String = "",
     val selectedCommunityIds: List<String> = emptyList(),
@@ -57,6 +59,7 @@ data class RequestDetailState(
     val requesterPhone: String = "",
     val isCurrentUserRequester: Boolean = false,
     val canDonate: Boolean = false,
+    val bloodGroupMatch: Boolean = true,
     val cooldownDaysRemaining: Int = 0,
     val hasResponded: Boolean = false,
     val isLoading: Boolean = true,
@@ -77,6 +80,7 @@ class RequestViewModel @Inject constructor(
     private val requestRepository: RequestRepository,
     private val communityRepository: CommunityRepository,
     private val userRepository: UserRepository,
+    private val notificationRepository: NotificationRepository,
     private val auth: FirebaseAuth,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -208,6 +212,7 @@ class RequestViewModel @Inject constructor(
     fun updateUnits(n: Int) = _createState.update { it.copy(unitsNeeded = n.coerceIn(1, 20)) }
     fun updatePatientName(n: String) = _createState.update { it.copy(patientName = n) }
     fun updateHospital(h: String) = _createState.update { it.copy(hospital = h) }
+    fun updateAddress(a: String) = _createState.update { it.copy(address = a) }
     fun updateDonationDate(d: Date?) = _createState.update { it.copy(donationDate = d) }
     fun updateContactNumber(n: String) = _createState.update { it.copy(contactNumber = n) }
 
@@ -221,8 +226,24 @@ class RequestViewModel @Inject constructor(
 
     fun submitRequest() {
         val state = _createState.value
-        if (state.bloodGroup.isBlank() || state.hospital.isBlank() || state.selectedCommunityIds.isEmpty()) {
-            _createState.update { it.copy(error = "Please fill all required fields") }
+        if (state.bloodGroup.isBlank()) {
+            _createState.update { it.copy(error = "Please select a blood group") }
+            return
+        }
+        if (state.patientName.isBlank()) {
+            _createState.update { it.copy(error = "Patient name is required") }
+            return
+        }
+        if (state.hospital.isBlank()) {
+            _createState.update { it.copy(error = "Hospital name is required") }
+            return
+        }
+        if (state.address.isBlank()) {
+            _createState.update { it.copy(error = "Address is required") }
+            return
+        }
+        if (state.selectedCommunityIds.isEmpty()) {
+            _createState.update { it.copy(error = "Please select at least one community") }
             return
         }
 
@@ -247,7 +268,8 @@ class RequestViewModel @Inject constructor(
                 bloodGroup = state.bloodGroup,
                 urgency = state.urgency,
                 unitsNeeded = state.unitsNeeded,
-                patientName = state.patientName.ifBlank { null },
+                patientName = state.patientName,
+                address = state.address,
                 hospital = state.hospital,
                 donationDateTime = state.donationDate,
                 contactNumber = state.contactNumber,
@@ -258,6 +280,13 @@ class RequestViewModel @Inject constructor(
             when (val result = requestRepository.createRequest(request)) {
                 is Resource.Success -> {
                     _createState.update { it.copy(isSubmitting = false, isSuccess = true) }
+                    // Send notifications to matching blood group users in selected communities
+                    sendBloodGroupNotifications(
+                        bloodGroup = state.bloodGroup,
+                        communityIds = state.selectedCommunityIds,
+                        hospital = state.hospital,
+                        requestId = result.data,
+                    )
                 }
                 is Resource.Error -> {
                     _createState.update { it.copy(isSubmitting = false, error = result.message) }
@@ -294,13 +323,19 @@ class RequestViewModel @Inject constructor(
 
                     val (canDonate, cooldownDays) = checkEligibility(currentUser)
 
+                    // Check if user's blood group matches the request's blood group
+                    val userBloodGroup = currentUser?.bloodGroup ?: ""
+                    val requestBloodGroup = request.bloodGroup
+                    val bloodGroupMatches = canBloodGroupDonate(userBloodGroup, requestBloodGroup)
+
                     _detailState.update {
                         it.copy(
                             request = request,
                             requesterName = requester?.name ?: "Unknown",
                             requesterPhone = requester?.phone ?: "",
                             isCurrentUserRequester = request.requesterId == currentUserId,
-                            canDonate = canDonate,
+                            canDonate = canDonate && bloodGroupMatches,
+                            bloodGroupMatch = bloodGroupMatches,
                             cooldownDaysRemaining = cooldownDays,
                             hasResponded = request.respondents.contains(currentUserId),
                             isLoading = false,
@@ -415,6 +450,66 @@ class RequestViewModel @Inject constructor(
             true to 0
         } else {
             false to (requiredDays - daysSince)
+        }
+    }
+
+    /** Check if a donor blood group can donate to a recipient blood group */
+    private fun canBloodGroupDonate(donorGroup: String, recipientGroup: String): Boolean {
+        if (donorGroup.isBlank() || recipientGroup.isBlank()) return false
+        // Only matching blood groups can donate
+        return donorGroup.equals(recipientGroup, ignoreCase = true)
+    }
+
+    /** Send notifications to users with matching blood group in the communities */
+    private fun sendBloodGroupNotifications(
+        bloodGroup: String,
+        communityIds: List<String>,
+        hospital: String,
+        requestId: String,
+    ) {
+        viewModelScope.launch {
+            try {
+                val currentUserId = auth.currentUser?.uid ?: return@launch
+                // Gather all unique member IDs from selected communities
+                val allMemberIds = mutableSetOf<String>()
+                communityIds.forEach { communityId ->
+                    when (val result = communityRepository.getCommunity(communityId)) {
+                        is Resource.Success -> {
+                            allMemberIds.addAll(result.data.memberIds)
+                            allMemberIds.addAll(result.data.adminIds)
+                            allMemberIds.addAll(result.data.moderatorIds)
+                        }
+                        else -> {}
+                    }
+                }
+                // Remove the requester from notifications
+                allMemberIds.remove(currentUserId)
+
+                // Filter to only users with matching blood group
+                val matchingUserIds = mutableListOf<String>()
+                allMemberIds.forEach { memberId ->
+                    when (val userResult = userRepository.getUser(memberId)) {
+                        is Resource.Success -> {
+                            if (userResult.data.bloodGroup.equals(bloodGroup, ignoreCase = true)) {
+                                matchingUserIds.add(memberId)
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+
+                if (matchingUserIds.isNotEmpty()) {
+                    notificationRepository.sendNotificationToUsers(
+                        userIds = matchingUserIds,
+                        type = NotificationType.REQUEST,
+                        title = "🩸 $bloodGroup Blood Needed!",
+                        body = "A $bloodGroup blood request has been posted at $hospital. Your blood group matches!",
+                        deepLink = "request_detail/$requestId",
+                    )
+                }
+            } catch (_: Exception) {
+                // Silently fail notification sending — don't block request creation
+            }
         }
     }
 

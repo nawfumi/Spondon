@@ -75,15 +75,16 @@ fun SplashScreen(
 
         val currentState = viewModel.state.value
         val destination = when {
+            currentState.isBanned -> "banned/${java.net.URLEncoder.encode(currentState.banReason ?: "none", "UTF-8")}"
             !currentState.isOnboardingComplete -> Routes.Onboarding.route
             currentState.isLoggedIn && !currentState.needsProfileSetup -> Routes.Home.route
             currentState.isLoggedIn && currentState.needsProfileSetup -> Routes.DonorProfileSetup.route
             else -> Routes.Login.route
         }
 
-        // Home is OUTSIDE auth_flow → pop the entire auth graph.
+        // Home & Banned are OUTSIDE auth_flow → pop the entire auth graph.
         // All other destinations are INSIDE auth_flow → just pop the splash screen.
-        if (destination == Routes.Home.route) {
+        if (destination == Routes.Home.route || destination.startsWith("banned/")) {
             navController.navigate(destination) {
                 popUpTo("auth_flow") { inclusive = true }
             }

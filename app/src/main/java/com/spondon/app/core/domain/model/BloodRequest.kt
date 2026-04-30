@@ -11,6 +11,7 @@ data class BloodRequest(
     val unitsNeeded: Int = 1,
     val patientName: String? = null,
     val hospital: String = "",
+    val address: String = "",
     val donationDateTime: Date? = null,
     val contactNumber: String = "",
     val respondents: List<String> = emptyList(),

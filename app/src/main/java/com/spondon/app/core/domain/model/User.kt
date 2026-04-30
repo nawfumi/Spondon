@@ -24,4 +24,7 @@ data class User(
     val fcmToken: String = "",
     val role: UserRole = UserRole.USER,
     val createdAt: Date? = null,
+    val isBanned: Boolean = false,
+    val banReason: String? = null,
+    val bannedAt: Date? = null,
 )

@@ -39,6 +39,7 @@ sealed class Routes(val route: String) {
 
     // Settings & Notifications
     data object Settings : Routes("settings")
+    data object SecuritySettings : Routes("security_settings")
     data object Notifications : Routes("notifications")
     data object About : Routes("about")
     data object Support : Routes("support")

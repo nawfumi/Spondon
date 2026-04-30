@@ -76,6 +76,11 @@ class UserRepositoryImpl @Inject constructor(
             is Date -> d
             else -> null
         }
+        val bannedAt = when (val d = data["bannedAt"]) {
+            is com.google.firebase.Timestamp -> d.toDate()
+            is Date -> d
+            else -> null
+        }
         return User(
             uid = uid,
             name = data["name"] as? String ?: "",
@@ -102,6 +107,9 @@ class UserRepositoryImpl @Inject constructor(
             } catch (_: Exception) {
                 com.spondon.app.core.domain.model.UserRole.USER
             },
+            isBanned = data["isBanned"] as? Boolean ?: false,
+            banReason = data["banReason"] as? String,
+            bannedAt = bannedAt,
         )
     }
 }

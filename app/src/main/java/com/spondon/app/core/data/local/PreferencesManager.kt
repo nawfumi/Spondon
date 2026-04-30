@@ -27,6 +27,9 @@ class PreferencesManager @Inject constructor(
         val DARK_MODE = booleanPreferencesKey("dark_mode")
         val LANGUAGE = stringPreferencesKey("language")
         val BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
+        val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
+        val HIDE_NOTIFICATION_CONTENT = booleanPreferencesKey("hide_notification_content")
+        val SECURE_SCREEN = stringPreferencesKey("secure_screen")
     }
 
     val isOnboardingComplete: Flow<Boolean> = dataStore.data
@@ -53,6 +56,18 @@ class PreferencesManager @Inject constructor(
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[BIOMETRIC_ENABLED] ?: false }
 
+    val autoLockTimeout: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[AUTO_LOCK_TIMEOUT] ?: "always" }
+
+    val hideNotificationContent: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[HIDE_NOTIFICATION_CONTENT] ?: false }
+
+    val secureScreen: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[SECURE_SCREEN] ?: "off" }
+
     suspend fun setOnboardingComplete(complete: Boolean) {
         dataStore.edit { it[ONBOARDING_COMPLETE] = complete }
     }
@@ -75,6 +90,18 @@ class PreferencesManager @Inject constructor(
 
     suspend fun setBiometricEnabled(enabled: Boolean) {
         dataStore.edit { it[BIOMETRIC_ENABLED] = enabled }
+    }
+
+    suspend fun setAutoLockTimeout(timeout: String) {
+        dataStore.edit { it[AUTO_LOCK_TIMEOUT] = timeout }
+    }
+
+    suspend fun setHideNotificationContent(hide: Boolean) {
+        dataStore.edit { it[HIDE_NOTIFICATION_CONTENT] = hide }
+    }
+
+    suspend fun setSecureScreen(mode: String) {
+        dataStore.edit { it[SECURE_SCREEN] = mode }
     }
 
     suspend fun clearAll() {

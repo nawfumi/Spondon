@@ -142,6 +142,12 @@ fun LoginScreen(
                         popUpTo(Routes.Login.route) { inclusive = true }
                     }
                 }
+                is AuthNavigationEvent.NavigateToBanned -> {
+                    val reason = java.net.URLEncoder.encode(event.reason ?: "none", "UTF-8")
+                    navController.navigate("banned/$reason") {
+                        popUpTo("auth_flow") { inclusive = true }
+                    }
+                }
                 else -> {} // Other events handled by other screens
             }
         }

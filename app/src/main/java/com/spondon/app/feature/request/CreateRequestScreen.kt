@@ -106,7 +106,7 @@ fun CreateRequestScreen(
                                     urgency.name,
                                     modifier = Modifier.fillMaxWidth(),
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 12.sp,
+                                    fontSize = 10.sp,
                                     textAlign = TextAlign.Center,
                                 )
                             },
@@ -171,7 +171,7 @@ fun CreateRequestScreen(
                 OutlinedTextField(
                     value = state.patientName,
                     onValueChange = viewModel::updatePatientName,
-                    label = { Text("Patient Name (optional)") },
+                    label = { Text("Patient Name *") },
                     leadingIcon = { Icon(Icons.Outlined.Person, null) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
@@ -189,6 +189,20 @@ fun CreateRequestScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
                     singleLine = true,
+                )
+            }
+
+            // ─── Address ────────────────────────────────────
+            item {
+                OutlinedTextField(
+                    value = state.address,
+                    onValueChange = viewModel::updateAddress,
+                    label = { Text("Address *") },
+                    leadingIcon = { Icon(Icons.Outlined.LocationOn, null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    singleLine = false,
+                    maxLines = 2,
                 )
             }
 

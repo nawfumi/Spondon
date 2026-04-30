@@ -13,6 +13,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.google.firebase.firestore.FirebaseFirestore
 import com.spondon.app.core.ui.components.SpondonBottomNav
 import com.spondon.app.core.ui.components.bottomNavItems
 import com.spondon.app.feature.auth.*
@@ -21,8 +22,12 @@ import com.spondon.app.feature.donor.*
 import com.spondon.app.feature.notification.NotificationScreen
 import com.spondon.app.feature.profile.*
 import com.spondon.app.feature.request.*
+import com.spondon.app.feature.settings.SecuritySettingsScreen
 import com.spondon.app.feature.settings.SettingsScreen
+import com.spondon.app.feature.superadmin.auth.BannedScreen
+import com.spondon.app.feature.superadmin.superAdminGraph
 import com.spondon.app.feature.support.SupportScreen
+import kotlinx.coroutines.tasks.await
 
 private val safeEnter: EnterTransition =
     fadeIn(animationSpec = tween(300, easing = LinearEasing))
@@ -39,6 +44,18 @@ fun SpondonNavGraph(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // ─── SuperAdmin registration status (checked once) ─────
+    var isSARegistered by remember { mutableStateOf(true) } // default true = hide registration
+    LaunchedEffect(Unit) {
+        try {
+            val doc = FirebaseFirestore.getInstance()
+                .document("config/superadmin").get().await()
+            isSARegistered = doc.exists() && doc.getBoolean("registered") == true
+        } catch (_: Exception) {
+            isSARegistered = true // fail-safe: don't expose registration
+        }
+    }
 
     val bottomNavRoutes = bottomNavItems.map { it.route }.toSet()
     val showBottomBar = currentRoute in bottomNavRoutes
@@ -186,8 +203,26 @@ fun SpondonNavGraph(
 
             // ─── Settings & Notifications ────────────────────
             composable(Routes.Settings.route) { SettingsScreen(navController) }
+            composable(Routes.SecuritySettings.route) { SecuritySettingsScreen(navController) }
             composable(Routes.Notifications.route) { NotificationScreen(navController) }
             composable(Routes.Support.route) { SupportScreen(navController) }
+
+            // ─── Ban Gate ─────────────────────────────────────
+            composable("banned/{reason}") { entry ->
+                val reason = entry.arguments?.getString("reason")
+                BannedScreen(
+                    banReason = if (reason == "none") null else reason,
+                    onSignOut = {
+                        authViewModel.signOut()
+                        navController.navigate(Routes.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                )
+            }
+
+            // ─── SuperAdmin (gitignored in production) ───────
+            superAdminGraph(navController, isSARegistered)
         }
     }
 }

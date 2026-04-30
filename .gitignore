@@ -1,3 +1,32 @@
+# ══════════════════════════════════════════════
+# SUPERADMIN — NEVER COMMIT — SECURITY CRITICAL
+# ══════════════════════════════════════════════
+
+# Superadmin feature module
+app/src/main/java/com/spondon/app/feature/superadmin/
+
+# Superadmin env credentials
+superadmin.env
+superadmin_credentials.json
+.superadmin_secret
+
+# Maintenance mode config
+app/src/main/java/com/spondon/app/core/maintenance/
+maintenance_config.json
+
+# Superadmin Firestore rules extension
+firestore.superadmin.rules
+storage.superadmin.rules
+
+# Superadmin signing key
+superadmin_keystore.jks
+superadmin_key.properties
+
+# This design document
+SUPERADMIN.md
+
+# ══════════════════════════════════════════════
+
 *.iml
 .gradle
 /local.properties
