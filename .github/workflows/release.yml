@@ -33,6 +33,10 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "ERROR: GOOGLE_SERVICES_JSON secret is empty or missing! Please add it to your GitHub Repository Secrets."
+            exit 1
+          fi
           echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
 
       - name: Build signed release APK
