@@ -3,7 +3,7 @@
 # ══════════════════════════════════════════════
 
 # Superadmin feature module
-app/src/main/java/com/spondon/app/feature/superadmin/
+# (Removed to allow CI builds to compile SpondonNavGraph)
 
 # Superadmin env credentials
 superadmin.env
@@ -11,7 +11,7 @@ superadmin_credentials.json
 .superadmin_secret
 
 # Maintenance mode config
-app/src/main/java/com/spondon/app/core/maintenance/
+# (Removed to allow CI builds to compile)
 maintenance_config.json
 
 # Superadmin Firestore rules extension

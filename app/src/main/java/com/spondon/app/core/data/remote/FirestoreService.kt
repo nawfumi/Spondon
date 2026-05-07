@@ -181,18 +181,42 @@ class FirestoreService @Inject constructor(
     }
 
     /**
-     * Fetches communities that the user is a member of.
+     * Fetches communities that the user is a member, admin, or moderator of.
+     * Firestore `whereArrayContains` only supports a single field per query,
+     * so we run three queries and merge + deduplicate the results.
      */
     suspend fun getMyCommunities(userId: String): Resource<List<Map<String, Any>>> {
         return try {
-            val docs = firestore.collection(Constants.COMMUNITIES_COLLECTION)
+            val results = mutableMapOf<String, Map<String, Any>>()
+
+            // Query 1: memberIds
+            val memberDocs = firestore.collection(Constants.COMMUNITIES_COLLECTION)
                 .whereArrayContains("memberIds", userId)
                 .get()
                 .await()
-            val list = docs.documents.mapNotNull { doc ->
-                if (doc.exists()) (doc.data ?: emptyMap()) + ("id" to doc.id) else null
+            memberDocs.documents.forEach { doc ->
+                if (doc.exists()) results[doc.id] = (doc.data ?: emptyMap()) + ("id" to doc.id)
             }
-            Resource.Success(list)
+
+            // Query 2: adminIds
+            val adminDocs = firestore.collection(Constants.COMMUNITIES_COLLECTION)
+                .whereArrayContains("adminIds", userId)
+                .get()
+                .await()
+            adminDocs.documents.forEach { doc ->
+                if (doc.exists()) results[doc.id] = (doc.data ?: emptyMap()) + ("id" to doc.id)
+            }
+
+            // Query 3: moderatorIds
+            val modDocs = firestore.collection(Constants.COMMUNITIES_COLLECTION)
+                .whereArrayContains("moderatorIds", userId)
+                .get()
+                .await()
+            modDocs.documents.forEach { doc ->
+                if (doc.exists()) results[doc.id] = (doc.data ?: emptyMap()) + ("id" to doc.id)
+            }
+
+            Resource.Success(results.values.toList())
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to get user communities", e)
         }

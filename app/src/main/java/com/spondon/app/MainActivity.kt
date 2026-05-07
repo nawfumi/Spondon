@@ -64,6 +64,7 @@ import javax.inject.Inject
 import androidx.compose.material3.AlertDialog
 import com.spondon.app.feature.update.UpdateManager
 import com.spondon.app.feature.update.UpdateViewModel
+import com.spondon.app.feature.notification.NotificationObserver
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
@@ -77,6 +78,7 @@ class MainActivity : FragmentActivity() {
     private val updateViewModel: UpdateViewModel by viewModels()
 
     private lateinit var updateManager: UpdateManager
+    private lateinit var notificationObserver: NotificationObserver
 
     // ── Credential Manager (modern Google Sign-In replacement) ─
     private lateinit var credentialManager: CredentialManager
@@ -87,6 +89,7 @@ class MainActivity : FragmentActivity() {
 
         credentialManager = CredentialManager.create(this)
         updateManager = UpdateManager(this)
+        notificationObserver = NotificationObserver(this)
 
         val currentVersion = "v" + BuildConfig.VERSION_NAME
         updateViewModel.checkForUpdates(currentVersion)
@@ -234,6 +237,16 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        notificationObserver.startObserving()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        notificationObserver.stopObserving()
     }
 
     // ── Google Sign-In via Credential Manager ──────────────────

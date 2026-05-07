@@ -1,6 +1,8 @@
 package com.spondon.app.feature.request
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -457,112 +459,265 @@ private fun QuickActionCard(
     }
 }
 
-/** Blood request card shared across Home and Feed screens. */
+/** Blood request card shared across Home and Feed screens.
+ *  Material 3 redesign with urgency-based visual states:
+ *  - NORMAL: Clean, muted card
+ *  - MODERATE: Amber-accented border
+ *  - CRITICAL: Red glow + animated pulse
+ */
 @Composable
 fun RequestCard(
     request: BloodRequest,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val urgencyColor = when (request.urgency) {
+        Urgency.CRITICAL -> UrgencyCritical
+        Urgency.MODERATE -> UrgencyModerate
+        Urgency.NORMAL -> UrgencyNormal
+    }
+    val urgencyBg = when (request.urgency) {
+        Urgency.CRITICAL -> UrgencyCritical.copy(alpha = 0.06f)
+        Urgency.MODERATE -> UrgencyModerate.copy(alpha = 0.04f)
+        Urgency.NORMAL -> MaterialTheme.colorScheme.surface
+    }
+
+    // Animated pulse for critical requests
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.08f,
+        targetValue = if (request.urgency == Urgency.CRITICAL) 0.20f else 0.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pulseAlpha",
+    )
+
+    val borderColor = when (request.urgency) {
+        Urgency.CRITICAL -> UrgencyCritical.copy(alpha = pulseAlpha)
+        Urgency.MODERATE -> UrgencyModerate.copy(alpha = 0.3f)
+        Urgency.NORMAL -> Color.Transparent
+    }
+
+    val borderWidth = when (request.urgency) {
+        Urgency.CRITICAL -> 1.5.dp
+        Urgency.MODERATE -> 1.dp
+        Urgency.NORMAL -> 0.dp
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            .clickable(onClick = onClick)
+            .then(
+                if (request.urgency != Urgency.NORMAL) {
+                    Modifier.border(borderWidth, borderColor, RoundedCornerShape(20.dp))
+                } else Modifier
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = urgencyBg),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = when (request.urgency) {
+                Urgency.CRITICAL -> 4.dp
+                Urgency.MODERATE -> 2.dp
+                Urgency.NORMAL -> 1.dp
+            },
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Blood group badge
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(
-                        when (request.urgency) {
-                            Urgency.CRITICAL -> UrgencyCritical.copy(alpha = 0.12f)
-                            Urgency.MODERATE -> UrgencyModerate.copy(alpha = 0.12f)
-                            Urgency.NORMAL -> UrgencyNormal.copy(alpha = 0.12f)
-                        },
-                    ),
-                contentAlignment = Alignment.Center,
+        Column(modifier = Modifier.padding(16.dp)) {
+            // ── Row 1: Blood Group Badge + Info + Arrow ──
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = request.bloodGroup.ifBlank { "?" },
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                    ),
-                    color = when (request.urgency) {
-                        Urgency.CRITICAL -> UrgencyCritical
-                        Urgency.MODERATE -> UrgencyModerate
-                        Urgency.NORMAL -> UrgencyNormal
-                    },
-                )
-            }
-
-            Spacer(Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    UrgencyTag(request.urgency)
-                    Spacer(Modifier.width(8.dp))
+                // Blood Group Badge — large, prominent
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    urgencyColor.copy(alpha = 0.15f),
+                                    urgencyColor.copy(alpha = 0.08f),
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Text(
-                        text = "${request.unitsNeeded} unit${if (request.unitsNeeded > 1) "s" else ""}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                        text = request.bloodGroup.ifBlank { "?" },
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                        ),
+                        color = urgencyColor,
                     )
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = request.hospital.ifBlank { "Hospital not specified" },
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = RequestViewModel.getRelativeTime(request.createdAt) +
-                            " · ${request.respondents.size} responded",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+
+                Spacer(Modifier.width(14.dp))
+
+                // Info Column
+                Column(modifier = Modifier.weight(1f)) {
+                    // Hospital name — primary text
+                    Text(
+                        text = request.hospital.ifBlank { "Hospital not specified" },
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    // Urgency + Units row
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        UrgencyTag(request.urgency)
+                        Text(
+                            text = "·",
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "${request.unitsNeeded} unit${if (request.unitsNeeded > 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        )
+                    }
+                }
+
+                // Navigate chevron
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.25f),
+                    modifier = Modifier.size(20.dp),
                 )
             }
 
-            Icon(
-                Icons.Filled.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-            )
+            Spacer(Modifier.height(12.dp))
+
+            // ── Row 2: Data Grid — Location · Time · Respondents ──
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                // Location
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(
+                        Icons.Outlined.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = request.address.ifBlank { request.hospital.take(15) },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                // Divider dot
+                Text(
+                    "·",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+
+                // Time ago
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.AccessTime,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = RequestViewModel.getRelativeTime(request.createdAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    )
+                }
+
+                // Divider dot
+                Text(
+                    "·",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+
+                // Respondents
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.People,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (request.respondents.isNotEmpty()) AvailableGreen.copy(alpha = 0.8f)
+                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "${request.respondents.size}",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = if (request.respondents.isNotEmpty()) FontWeight.Bold else FontWeight.Normal,
+                        ),
+                        color = if (request.respondents.isNotEmpty()) AvailableGreen
+                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 fun UrgencyTag(urgency: Urgency) {
-    val (color, text) = when (urgency) {
-        Urgency.CRITICAL -> UrgencyCritical to "CRITICAL"
-        Urgency.MODERATE -> UrgencyModerate to "MODERATE"
-        Urgency.NORMAL -> UrgencyNormal to "NORMAL"
+    val (color, text, icon) = when (urgency) {
+        Urgency.CRITICAL -> Triple(UrgencyCritical, "CRITICAL", Icons.Filled.Warning)
+        Urgency.MODERATE -> Triple(UrgencyModerate, "URGENT", Icons.Filled.Schedule)
+        Urgency.NORMAL -> Triple(UrgencyNormal, "NORMAL", Icons.Outlined.CheckCircle)
     }
     Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = color.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(8.dp),
+        color = color.copy(alpha = 0.12f),
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 9.sp,
-                letterSpacing = 0.5.sp,
-            ),
-            color = color,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(10.dp),
+                tint = color,
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 9.sp,
+                    letterSpacing = 0.8.sp,
+                ),
+                color = color,
+            )
+        }
     }
 }

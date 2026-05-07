@@ -62,7 +62,17 @@ class CommunityRepositoryImpl @Inject constructor(
             "isVerified" to community.isVerified,
             "createdAt" to Timestamp.now(),
         )
-        return firestoreService.createCommunity(data)
+        val result = firestoreService.createCommunity(data)
+        // Add the new community ID to the creator's communityIds in user doc
+        if (result is Resource.Success) {
+            val communityId = result.data
+            community.adminIds.forEach { adminId ->
+                firestoreService.updateUser(adminId, mapOf(
+                    "communityIds" to com.google.firebase.firestore.FieldValue.arrayUnion(communityId)
+                ))
+            }
+        }
+        return result
     }
 
     override suspend fun updateCommunity(community: Community): Resource<Unit> {

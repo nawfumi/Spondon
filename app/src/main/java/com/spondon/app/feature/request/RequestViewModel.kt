@@ -119,16 +119,13 @@ class RequestViewModel @Inject constructor(
             val userResult = userRepository.getUser(currentUserId)
             val user = (userResult as? Resource.Success)?.data
 
-            // Load communities
-            val communityIds = user?.communityIds ?: emptyList()
-            val commResult = if (communityIds.isNotEmpty()) {
-                communityRepository.getMyCommunities(currentUserId)
-            } else {
-                Resource.Success(emptyList())
-            }
+            // Load communities (includes admin/moderator communities)
+            val commResult = communityRepository.getMyCommunities(currentUserId)
             val communities = (commResult as? Resource.Success)?.data ?: emptyList()
+            // Use community IDs from the actual query result, not user.communityIds
+            val communityIds = communities.map { it.id }
 
-            // Load requests for joined communities
+            // Load requests for all communities the user belongs to
             val reqResult = if (communityIds.isNotEmpty()) {
                 requestRepository.getRequestsForCommunities(communityIds)
             } else {
@@ -453,11 +450,16 @@ class RequestViewModel @Inject constructor(
         viewModelScope.launch {
             _feedState.update { it.copy(isLoading = true, error = null) }
 
-            val userResult = userRepository.getUser(currentUserId)
-            val user = (userResult as? Resource.Success)?.data
-            val communityIds = user?.communityIds ?: emptyList()
+            // Get community IDs from the actual query (includes admin/moderator)
+            val commResult = communityRepository.getMyCommunities(currentUserId)
+            val communities = (commResult as? Resource.Success)?.data ?: emptyList()
+            val communityIds = communities.map { it.id }
 
-            val feedResult = requestRepository.getRequestsForCommunities(communityIds)
+            val feedResult = if (communityIds.isNotEmpty()) {
+                requestRepository.getRequestsForCommunities(communityIds)
+            } else {
+                Resource.Success(emptyList())
+            }
             val feedRequests = (feedResult as? Resource.Success)?.data ?: emptyList()
 
             val myResult = requestRepository.getMyRequests(currentUserId)
@@ -510,11 +512,22 @@ class RequestViewModel @Inject constructor(
         }
     }
 
-    /** Check if a donor blood group can donate to a recipient blood group */
+    /** Check if a donor blood group can donate to a recipient blood group.
+     *  Normalizes both strings (trim, whitespace removal) before comparing. */
     private fun canBloodGroupDonate(donorGroup: String, recipientGroup: String): Boolean {
         if (donorGroup.isBlank() || recipientGroup.isBlank()) return false
-        // Only matching blood groups can donate
-        return donorGroup.equals(recipientGroup, ignoreCase = true)
+        // Normalize: trim, remove all whitespace, replace special chars
+        val normalize = { s: String ->
+            s.trim()
+                .replace("\u00A0", "") // non-breaking space
+                .replace("\u200B", "") // zero-width space
+                .replace(" ", "")
+                .replace("＋", "+") // fullwidth plus
+                .replace("−", "-") // minus sign (U+2212)
+                .replace("–", "-") // en dash
+                .uppercase()
+        }
+        return normalize(donorGroup) == normalize(recipientGroup)
     }
 
     /** Send notifications to users with matching blood group in the communities */
