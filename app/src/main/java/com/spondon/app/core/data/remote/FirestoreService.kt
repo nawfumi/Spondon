@@ -790,6 +790,34 @@ class FirestoreService @Inject constructor(
         }
     }
 
+    fun observeNotifications(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
+        if (userId.isBlank()) {
+            trySend(emptyList())
+            awaitClose()
+            return@callbackFlow
+        }
+        val listener = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
+            .whereEqualTo("userId", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    if (doc.exists()) (doc.data ?: emptyMap()) + ("id" to doc.id) else null
+                } ?: emptyList()
+                val sorted = list.sortedByDescending { data ->
+                    when (val d = data["createdAt"]) {
+                        is com.google.firebase.Timestamp -> d.toDate().time
+                        is java.util.Date -> d.time
+                        else -> 0L
+                    }
+                }
+                trySend(sorted)
+            }
+        awaitClose { listener.remove() }
+    }
+
     suspend fun markNotificationRead(notificationId: String): Resource<Unit> {
         return try {
             firestore.collection(Constants.NOTIFICATIONS_COLLECTION)

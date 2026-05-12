@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.repository.CommunityRepository
+import com.spondon.app.core.data.repository.DonorRepository
 import com.spondon.app.core.data.repository.NotificationRepository
 import com.spondon.app.core.data.repository.RequestRepository
 import com.spondon.app.core.data.repository.UserRepository
@@ -62,6 +63,7 @@ data class RequestDetailState(
     val bloodGroupMatch: Boolean = true,
     val cooldownDaysRemaining: Int = 0,
     val hasResponded: Boolean = false,
+    val respondentProfiles: Map<String, User> = emptyMap(),
     val isLoading: Boolean = true,
     val isResponding: Boolean = false,
     val error: String? = null,
@@ -80,6 +82,7 @@ class RequestViewModel @Inject constructor(
     private val requestRepository: RequestRepository,
     private val communityRepository: CommunityRepository,
     private val userRepository: UserRepository,
+    private val donorRepository: DonorRepository,
     private val notificationRepository: NotificationRepository,
     private val auth: FirebaseAuth,
     private val savedStateHandle: SavedStateHandle,
@@ -334,6 +337,15 @@ class RequestViewModel @Inject constructor(
                     val requestBloodGroup = request.bloodGroup
                     val bloodGroupMatches = canBloodGroupDonate(userBloodGroup, requestBloodGroup)
 
+                    // Load respondent profiles
+                    val respondentProfiles = mutableMapOf<String, User>()
+                    request.respondents.forEach { respondentId ->
+                        val profileResult = userRepository.getUser(respondentId)
+                        if (profileResult is Resource.Success) {
+                            respondentProfiles[respondentId] = profileResult.data
+                        }
+                    }
+
                     _detailState.update {
                         it.copy(
                             request = request,
@@ -344,6 +356,7 @@ class RequestViewModel @Inject constructor(
                             bloodGroupMatch = bloodGroupMatches,
                             cooldownDaysRemaining = cooldownDays,
                             hasResponded = request.respondents.contains(currentUserId),
+                            respondentProfiles = respondentProfiles,
                             isLoading = false,
                         )
                     }
@@ -422,22 +435,36 @@ class RequestViewModel @Inject constructor(
         val request = _detailState.value.request ?: return
         viewModelScope.launch {
             try {
-                // 1. Update donor's profile
+                // 1. Update donor's profile (increment totalDonations, set lastDonationDate, reset override)
                 val donorResult = userRepository.getUser(donorUserId)
                 val donor = (donorResult as? Resource.Success)?.data ?: return@launch
                 val updatedDonor = donor.copy(
                     totalDonations = donor.totalDonations + 1,
                     lastDonationDate = Date(),
+                    availabilityOverride = false,
                 )
                 userRepository.updateUser(updatedDonor)
 
-                // 2. Mark request as fulfilled
+                // 2. Create a donation record in the donations collection
+                donorRepository.recordDonation(
+                    Donation(
+                        requestId = request.id,
+                        donorId = donorUserId,
+                        hospital = request.hospital,
+                        bloodGroup = request.bloodGroup,
+                        date = Date(),
+                        status = DonationStatus.CONFIRMED,
+                        confirmedBy = currentUserId,
+                    )
+                )
+
+                // 3. Mark request as fulfilled
                 requestRepository.updateRequestStatus(request.id, RequestStatus.FULFILLED)
                 _detailState.update {
                     it.copy(request = it.request?.copy(status = RequestStatus.FULFILLED))
                 }
 
-                // 3. Notify the donor
+                // 4. Notify the donor
                 notificationRepository.sendNotificationToUsers(
                     userIds = listOf(donorUserId),
                     type = NotificationType.DONATION,

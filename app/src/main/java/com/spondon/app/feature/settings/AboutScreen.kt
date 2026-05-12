@@ -52,7 +52,7 @@ fun AboutScreen(
     LaunchedEffect(isUpToDate) {
         if (isUpToDate == true) {
             snackbarHostState.showSnackbar(
-                if (isBn) "অ্যাপটি সর্বশেষ সংস্করণে আছে ✓" else "App is up to date ✓"
+                if (isBn) "অ্যাপটি সর্বশেষ সংস্করণে আছে" else "App is up to date"
             )
             onClearUpToDate()
         }
@@ -83,16 +83,6 @@ fun AboutScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.height(32.dp))
-
-            // App Logo
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "Spondon Logo",
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-            )
-            Spacer(Modifier.height(16.dp))
 
             // App Name
             Text(
@@ -239,7 +229,7 @@ fun AboutScreen(
                                     strokeWidth = 2.dp,
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text(if (isBn) "পরীক্ষা করা হচ্ছে..." else "Checking...")
+                                Text(if (isBn) "চেক করা হচ্ছে..." else "Checking...")
                             } else {
                                 Icon(
                                     Icons.Filled.SystemUpdate,
@@ -247,7 +237,7 @@ fun AboutScreen(
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text(if (isBn) "আপডেট পরীক্ষা করুন" else "Check for Update")
+                                Text(if (isBn) "আপডেট চেক করুন" else "Check for Update")
                             }
                         }
                     }

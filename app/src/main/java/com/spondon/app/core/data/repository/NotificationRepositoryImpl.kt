@@ -10,6 +10,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 import javax.inject.Inject
@@ -58,6 +59,12 @@ class NotificationRepositoryImpl @Inject constructor(
                 trySend(snapshot?.size() ?: 0)
             }
         awaitClose { listener.remove() }
+    }
+
+    override fun observeNotifications(userId: String): Flow<List<AppNotification>> {
+        return firestoreService.observeNotifications(userId).map { list ->
+            list.map { it.toAppNotification() }
+        }
     }
 
     /**

@@ -11,6 +11,7 @@ interface NotificationRepository {
     suspend fun markAllAsRead(userId: String): Resource<Unit>
     suspend fun deleteNotification(notificationId: String): Resource<Unit>
     fun observeUnreadCount(userId: String): Flow<Int>
+    fun observeNotifications(userId: String): Flow<List<AppNotification>>
     suspend fun sendNotificationToUsers(
         userIds: List<String>,
         type: NotificationType,

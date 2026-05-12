@@ -36,6 +36,8 @@ class UserRepositoryImpl @Inject constructor(
             "isDonor" to user.isDonor,
             "lastDonationDate" to user.lastDonationDate,
             "donationInterval" to user.donationInterval,
+            "totalDonations" to user.totalDonations,
+            "availabilityOverride" to user.availabilityOverride,
             "district" to user.district,
             "upazila" to user.upazila,
             "isPhoneVisible" to user.isPhoneVisible,

@@ -34,6 +34,7 @@ class NotificationViewModel @Inject constructor(
 
     init {
         observeUnread()
+        observeNotificationsList()
     }
 
     private fun observeUnread() {
@@ -45,21 +46,17 @@ class NotificationViewModel @Inject constructor(
         }
     }
 
-    fun loadNotifications() {
+    private fun observeNotificationsList() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-
-            when (val result = notificationRepository.getNotifications(currentUserId)) {
-                is Resource.Success -> {
-                    _state.update { it.copy(notifications = result.data, isLoading = false) }
+            _state.update { it.copy(isLoading = true) }
+            notificationRepository.observeNotifications(currentUserId)
+                .collect { notifications ->
+                    _state.update { it.copy(notifications = notifications, isLoading = false, error = null) }
                 }
-                is Resource.Error -> {
-                    _state.update { it.copy(isLoading = false, error = result.message) }
-                }
-                is Resource.Loading -> {}
-            }
         }
     }
+
+    fun loadNotifications() { /* real-time observer via observeNotificationsList handles updates */ }
 
     fun markAsRead(notificationId: String) {
         viewModelScope.launch {

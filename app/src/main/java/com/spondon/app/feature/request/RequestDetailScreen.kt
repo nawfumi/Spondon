@@ -270,40 +270,59 @@ fun RequestDetailScreen(
                                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                                 )
                             } else {
-                                Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-                                    request.respondents.take(8).forEachIndexed { i, _ ->
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(BloodRed.copy(alpha = 0.15f))
-                                                .then(
-                                                    Modifier.padding(1.dp)
-                                                ),
-                                            contentAlignment = Alignment.Center,
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    request.respondents.forEach { respondentId ->
+                                        val profile = state.respondentProfiles[respondentId]
+                                        val donorName = profile?.name?.takeIf { it.isNotBlank() } ?: "Donor"
+                                        val donorPhone = if (profile?.isPhoneVisible == true) profile.phone else ""
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth(),
                                         ) {
-                                            Icon(
-                                                Icons.Filled.Person,
-                                                null,
-                                                tint = BloodRed,
-                                                modifier = Modifier.size(18.dp),
-                                            )
-                                        }
-                                    }
-                                    if (request.respondents.size > 8) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(BloodRed.copy(alpha = 0.1f)),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(
-                                                "+${request.respondents.size - 8}",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = BloodRed,
-                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(CircleShape)
+                                                    .background(BloodRed.copy(alpha = 0.15f)),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.Person,
+                                                    null,
+                                                    tint = BloodRed,
+                                                    modifier = Modifier.size(18.dp),
+                                                )
+                                            }
+                                            Spacer(Modifier.width(10.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    donorName,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                )
+                                                if (donorPhone.isNotBlank()) {
+                                                    Text(
+                                                        donorPhone,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                                    )
+                                                }
+                                            }
+                                            if (donorPhone.isNotBlank()) {
+                                                FilledIconButton(
+                                                    onClick = {
+                                                        val intent = Intent(Intent.ACTION_DIAL).apply {
+                                                            data = Uri.parse("tel:$donorPhone")
+                                                        }
+                                                        context.startActivity(intent)
+                                                    },
+                                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                                        containerColor = AvailableGreen,
+                                                    ),
+                                                    modifier = Modifier.size(32.dp),
+                                                ) {
+                                                    Icon(Icons.Filled.Phone, "Call", tint = Color.White, modifier = Modifier.size(16.dp))
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -354,6 +373,9 @@ fun RequestDetailScreen(
                                         )
                                         Spacer(Modifier.height(6.dp))
                                         request.respondents.forEach { donorId ->
+                                            val donorProfile = state.respondentProfiles[donorId]
+                                            val donorName = donorProfile?.name?.takeIf { it.isNotBlank() } ?: "this donor"
+                                            val donorPhone = if (donorProfile?.isPhoneVisible == true) donorProfile.phone else ""
                                             var showConfirmDialog by remember { mutableStateOf(false) }
 
                                             FilledTonalButton(
@@ -368,7 +390,7 @@ fun RequestDetailScreen(
                                                 Icon(Icons.Filled.VolunteerActivism, null, Modifier.size(18.dp))
                                                 Spacer(Modifier.width(8.dp))
                                                 Text(
-                                                    "Confirm Donation",
+                                                    "Confirm: $donorName",
                                                     fontWeight = FontWeight.SemiBold,
                                                 )
                                             }
@@ -393,8 +415,16 @@ fun RequestDetailScreen(
                                                             Text("Cancel")
                                                         }
                                                     },
-                                                    title = { Text("Confirm Donation") },
-                                                    text = { Text("Are you sure this donor has successfully donated? This will update their donation count and mark this request as fulfilled.") },
+                                                    title = { Text("Confirm $donorName's Donation") },
+                                                    text = {
+                                                        Column {
+                                                            Text("Are you sure $donorName has successfully donated? This will update their donation count and mark this request as fulfilled.")
+                                                            if (donorPhone.isNotBlank()) {
+                                                                Spacer(Modifier.height(8.dp))
+                                                                Text("📞 $donorPhone", style = MaterialTheme.typography.bodySmall, color = AvailableGreen)
+                                                            }
+                                                        }
+                                                    },
                                                     icon = { Icon(Icons.Filled.VolunteerActivism, null, tint = AvailableGreen) },
                                                 )
                                             }
