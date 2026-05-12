@@ -9,6 +9,7 @@ import com.spondon.app.core.common.Resource
 import com.spondon.app.core.common.daysSince
 import com.spondon.app.core.data.repository.CommunityRepositoryImpl
 import com.spondon.app.core.data.repository.NotificationRepository
+import com.spondon.app.core.data.repository.RequestRepository
 import com.spondon.app.core.domain.model.*
 import com.spondon.app.core.domain.usecase.community.CreateCommunityUseCase
 import com.spondon.app.core.domain.usecase.community.GetCommunitiesUseCase
@@ -38,6 +39,8 @@ data class CommunityDetailState(
     val membershipStatus: MembershipStatus = MembershipStatus.NONE,
     val currentUserRole: CommunityRole? = null,
     val selectedTab: Int = 0, // 0 = Feed, 1 = Members, 2 = About
+    val requests: List<BloodRequest> = emptyList(),
+    val isRequestsLoading: Boolean = false,
 )
 
 data class CreateCommunityState(
@@ -94,6 +97,7 @@ class CommunityViewModel @Inject constructor(
     private val manageMembersUseCase: ManageMembersUseCase,
     private val communityRepository: CommunityRepositoryImpl,
     private val notificationRepository: NotificationRepository,
+    private val requestRepository: RequestRepository,
 ) : ViewModel() {
 
     private val currentUserId: String
@@ -230,10 +234,39 @@ class CommunityViewModel @Inject constructor(
                     if (community.memberIds.isNotEmpty()) {
                         loadMembers(community.memberIds)
                     }
+
+                    // Load blood requests for this community
+                    loadCommunityRequests(communityId)
                 }
                 is Resource.Error -> {
                     _detailState.update { it.copy(error = result.message, isLoading = false) }
                 }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    private fun loadCommunityRequests(communityId: String) {
+        viewModelScope.launch {
+            _detailState.update { it.copy(isRequestsLoading = true) }
+            when (val result = requestRepository.getRequestsForCommunities(listOf(communityId))) {
+                is Resource.Success -> {
+                    _detailState.update {
+                        it.copy(
+                            requests = result.data.sortedWith(
+                                compareByDescending<BloodRequest> { r ->
+                                    when (r.urgency) {
+                                        com.spondon.app.core.domain.model.Urgency.CRITICAL -> 2
+                                        com.spondon.app.core.domain.model.Urgency.MODERATE -> 1
+                                        com.spondon.app.core.domain.model.Urgency.NORMAL   -> 0
+                                    }
+                                }.thenByDescending { r -> r.createdAt }
+                            ),
+                            isRequestsLoading = false,
+                        )
+                    }
+                }
+                is Resource.Error -> _detailState.update { it.copy(isRequestsLoading = false) }
                 is Resource.Loading -> {}
             }
         }

@@ -1,7 +1,13 @@
 package com.spondon.app.feature.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -11,11 +17,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.spondon.app.core.ui.components.SpondonButton
 import com.spondon.app.core.ui.i18n.S
 import com.spondon.app.core.ui.theme.*
@@ -41,6 +51,12 @@ fun EditProfileScreen(
 
     LaunchedEffect(state.saveSuccess) {
         if (state.saveSuccess) navController.popBackStack()
+    }
+
+    val avatarPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri: Uri? ->
+        uri?.let { viewModel.uploadAvatar(it) }
     }
 
     Scaffold(
@@ -72,6 +88,82 @@ fun EditProfileScreen(
                         modifier = Modifier.weight(1f).verticalScroll(scrollState).padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
+                        // ─── Avatar Picker ───────────────
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.BottomEnd,
+                            ) {
+                                // Avatar circle
+                                Box(
+                                    modifier = Modifier
+                                        .size(90.dp)
+                                        .clip(CircleShape)
+                                        .background(BloodRed.copy(alpha = 0.08f)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (state.avatarUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = state.avatarUrl,
+                                            contentDescription = "Profile picture",
+                                            modifier = Modifier
+                                                .size(90.dp)
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Filled.Person,
+                                            contentDescription = null,
+                                            tint = BloodRed.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(44.dp),
+                                        )
+                                    }
+                                    // Dim overlay + spinner while uploading
+                                    if (state.isUploadingAvatar) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(90.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.Black.copy(alpha = 0.4f)),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(28.dp),
+                                                color = Color.White,
+                                                strokeWidth = 2.5.dp,
+                                            )
+                                        }
+                                    }
+                                }
+                                // Camera badge button
+                                FilledIconButton(
+                                    onClick = {
+                                        if (!state.isUploadingAvatar) {
+                                            avatarPickerLauncher.launch(
+                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier.size(28.dp),
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = BloodRed,
+                                    ),
+                                ) {
+                                    Icon(
+                                        Icons.Filled.CameraAlt,
+                                        contentDescription = "Change photo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
+                            }
+                        }
+
                         // ─── Personal Info ────────────────
                         Text(s.personalInfo, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))

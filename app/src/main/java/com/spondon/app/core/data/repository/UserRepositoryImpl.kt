@@ -24,6 +24,17 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getUsers(userIds: List<String>): Resource<List<User>> {
+        if (userIds.isEmpty()) return Resource.Success(emptyList())
+        return when (val result = firestoreService.getUsers(userIds)) {
+            is Resource.Success -> Resource.Success(
+                result.data.map { data -> mapToUser(data["uid"] as? String ?: "", data) }
+            )
+            is Resource.Error -> Resource.Error(result.message)
+            is Resource.Loading -> Resource.Loading
+        }
+    }
+
     override suspend fun updateUser(user: User): Resource<Unit> {
         val data = mapOf(
             "name" to user.name,

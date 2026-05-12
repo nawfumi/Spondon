@@ -38,7 +38,7 @@ fun DonorProfileSetupScreen(
     val state by viewModel.state.collectAsState()
     val scrollState = rememberScrollState()
 
-    val bloodGroups = listOf("A+", "A−", "B+", "B−", "O+", "O−", "AB+", "AB−")
+    val bloodGroups = listOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
 
     var showDobPicker by remember { mutableStateOf(false) }
     var showLastDonationPicker by remember { mutableStateOf(false) }

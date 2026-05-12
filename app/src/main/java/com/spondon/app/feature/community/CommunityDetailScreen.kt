@@ -338,33 +338,57 @@ fun CommunityDetailScreen(
                     // ─── Tab Content ─────────────────────
                     when (state.selectedTab) {
                         0 -> {
-                            // Feed tab — placeholder until Phase 4
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.Feed,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(48.dp),
-                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                                        )
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(
-                                            "No blood requests yet",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                        )
-                                        Text(
-                                            "Requests will appear here",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                        )
+                            // Loading state
+                            if (state.isRequestsLoading) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(32.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        ContainedLoadingIndicator()
                                     }
+                                }
+                            } else if (state.requests.isEmpty()) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(40.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.Feed,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(48.dp),
+                                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                                            )
+                                            Spacer(Modifier.height(12.dp))
+                                            Text(
+                                                "No blood requests yet",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                "Requests posted to this community will appear here",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                items(state.requests, key = { it.id }) { request ->
+                                    com.spondon.app.feature.request.RequestCard(
+                                        request = request,
+                                        onClick = { navController.navigate("request_detail/${request.id}") },
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                    )
                                 }
                             }
                         }

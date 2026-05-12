@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -109,26 +111,37 @@ fun DonorProfileScreen(
                         ) {
                             // Avatar with blood group badge
                             Box {
-                                Box(
-                                    modifier = Modifier
-                                        .size(96.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            Brush.linearGradient(
-                                                colors = listOf(
-                                                    BloodRed.copy(alpha = 0.15f),
-                                                    SoftRose.copy(alpha = 0.1f),
+                                if (donor.avatarUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = donor.avatarUrl,
+                                        contentDescription = "Profile picture",
+                                        modifier = Modifier
+                                            .size(96.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop,
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(96.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.linearGradient(
+                                                    colors = listOf(
+                                                        BloodRed.copy(alpha = 0.15f),
+                                                        SoftRose.copy(alpha = 0.1f),
+                                                    ),
                                                 ),
                                             ),
-                                        ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Person,
-                                        null,
-                                        tint = BloodRed.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(52.dp),
-                                    )
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Person,
+                                            null,
+                                            tint = BloodRed.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(52.dp),
+                                        )
+                                    }
                                 }
                                 // Blood group badge
                                 Surface(

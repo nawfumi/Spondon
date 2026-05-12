@@ -20,6 +20,7 @@ import com.spondon.app.feature.auth.*
 import com.spondon.app.feature.auth.PermissionsScreen
 import com.spondon.app.feature.community.*
 import com.spondon.app.feature.donor.*
+import com.spondon.app.feature.notification.NotificationDetailScreen
 import com.spondon.app.feature.notification.NotificationScreen
 import com.spondon.app.feature.profile.*
 import com.spondon.app.feature.request.*
@@ -219,6 +220,12 @@ fun SpondonNavGraph(
             composable(Routes.Settings.route) { SettingsScreen(navController) }
             composable(Routes.SecuritySettings.route) { SecuritySettingsScreen(navController) }
             composable(Routes.Notifications.route) { NotificationScreen(navController) }
+            composable(
+                route = Routes.NotificationDetail.route,
+                arguments = listOf(navArgument("notificationId") { type = NavType.StringType }),
+            ) {
+                NotificationDetailScreen(navController)
+            }
             composable(Routes.Support.route) { SupportScreen(navController) }
             composable(Routes.About.route) {
                 AboutScreen(

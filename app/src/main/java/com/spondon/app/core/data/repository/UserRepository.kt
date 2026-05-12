@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface UserRepository {
     suspend fun getUser(userId: String): Resource<User>
+    /** Batch-fetches multiple users in a single Firestore operation. */
+    suspend fun getUsers(userIds: List<String>): Resource<List<User>>
     suspend fun updateUser(user: User): Resource<Unit>
     suspend fun updateFcmToken(token: String): Resource<Unit>
     suspend fun deleteAccount(): Resource<Unit>

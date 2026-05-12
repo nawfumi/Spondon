@@ -549,24 +549,38 @@ class RequestViewModel @Inject constructor(
     }
 
     /** Check if a donor blood group can donate to a recipient blood group.
-     *  Normalizes both strings (trim, whitespace removal) before comparing. */
+     *  Delegates to the shared normalizer so all comparisons are consistent. */
     private fun canBloodGroupDonate(donorGroup: String, recipientGroup: String): Boolean {
         if (donorGroup.isBlank() || recipientGroup.isBlank()) return false
-        // Normalize: trim, remove all whitespace, replace special chars
-        val normalize = { s: String ->
-            s.trim()
-                .replace("\u00A0", "") // non-breaking space
-                .replace("\u200B", "") // zero-width space
-                .replace(" ", "")
-                .replace("＋", "+") // fullwidth plus
-                .replace("−", "-") // minus sign (U+2212)
-                .replace("–", "-") // en dash
-                .uppercase()
-        }
-        return normalize(donorGroup) == normalize(recipientGroup)
+        return normalizeBloodGroup(donorGroup) == normalizeBloodGroup(recipientGroup)
     }
 
-    /** Send notifications to users with matching blood group in the communities */
+    /**
+     * Normalizes a blood group string so that different representations of the
+     * same group compare equal:
+     *   "A−" (U+2212 MINUS SIGN)  ==  "A-" (U+002D HYPHEN-MINUS)
+     *   "A+" (ASCII)              ==  "A＋" (fullwidth plus)
+     *   leading / trailing spaces, non-breaking spaces, zero-width spaces
+     */
+    private fun normalizeBloodGroup(bg: String): String = bg
+        .trim()
+        .replace("\u00A0", "")   // non-breaking space
+        .replace("\u200B", "")   // zero-width space
+        .replace(" ", "")
+        .replace("\uFF0B", "+")  // fullwidth plus  ＋
+        .replace("\u2212", "-")  // minus sign      −  (U+2212) — THE KEY FIX
+        .replace("\u2013", "-")  // en dash         –
+        .replace("\u2014", "-")  // em dash         —
+        .uppercase()
+
+    /**
+     * Sends notifications to every community member whose stored blood group
+     * matches the requested blood group.
+     *
+     * Uses a single batch Firestore read (getUsers) instead of one read per
+     * member, and applies normalizeBloodGroup() so that Unicode minus variants
+     * stored by older app versions are still matched correctly.
+     */
     private fun sendBloodGroupNotifications(
         bloodGroup: String,
         communityIds: List<String>,
@@ -575,46 +589,49 @@ class RequestViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
-                val currentUserId = auth.currentUser?.uid ?: return@launch
-                // Gather all unique member IDs from selected communities
+                val uid = auth.currentUser?.uid ?: return@launch
+                val normalizedTarget = normalizeBloodGroup(bloodGroup)
+
+                // ── Step 1: collect every unique member ID across all selected communities ──
                 val allMemberIds = mutableSetOf<String>()
                 communityIds.forEach { communityId ->
-                    when (val result = communityRepository.getCommunity(communityId)) {
+                    when (val res = communityRepository.getCommunity(communityId)) {
                         is Resource.Success -> {
-                            allMemberIds.addAll(result.data.memberIds)
-                            allMemberIds.addAll(result.data.adminIds)
-                            allMemberIds.addAll(result.data.moderatorIds)
+                            allMemberIds.addAll(res.data.memberIds)
+                            allMemberIds.addAll(res.data.adminIds)
+                            allMemberIds.addAll(res.data.moderatorIds)
                         }
                         else -> {}
                     }
                 }
-                // Remove the requester from notifications
-                allMemberIds.remove(currentUserId)
+                allMemberIds.remove(uid) // requester never notifies themselves
+                if (allMemberIds.isEmpty()) return@launch
 
-                // Filter to only users with matching blood group
-                val matchingUserIds = mutableListOf<String>()
-                allMemberIds.forEach { memberId ->
-                    when (val userResult = userRepository.getUser(memberId)) {
-                        is Resource.Success -> {
-                            if (userResult.data.bloodGroup.equals(bloodGroup, ignoreCase = true)) {
-                                matchingUserIds.add(memberId)
-                            }
-                        }
-                        else -> {}
+                // ── Step 2: batch-fetch all profiles in one Firestore call ──────────────
+                val usersResult = userRepository.getUsers(allMemberIds.toList())
+                val members = (usersResult as? Resource.Success)?.data ?: return@launch
+
+                // ── Step 3: keep only users whose blood group matches (normalized) ──────
+                val matchingIds = members
+                    .filter { user ->
+                        user.uid.isNotBlank() &&
+                        normalizeBloodGroup(user.bloodGroup) == normalizedTarget
                     }
-                }
+                    .map { it.uid }
 
-                if (matchingUserIds.isNotEmpty()) {
-                    notificationRepository.sendNotificationToUsers(
-                        userIds = matchingUserIds,
-                        type = NotificationType.REQUEST,
-                        title = "🩸 $bloodGroup Blood Needed!",
-                        body = "A $bloodGroup blood request has been posted at $hospital. Your blood group matches!",
-                        deepLink = "request_detail/$requestId",
-                    )
-                }
+                if (matchingIds.isEmpty()) return@launch
+
+                // ── Step 4: write notification docs for each matched user ───────────────
+                notificationRepository.sendNotificationToUsers(
+                    userIds = matchingIds,
+                    type = NotificationType.REQUEST,
+                    title = "\uD83E\uDE78 $bloodGroup Blood Needed!",
+                    body = "A $bloodGroup blood request has been posted at $hospital. Your blood group matches — tap to respond!",
+                    deepLink = "request_detail/$requestId",
+                )
             } catch (_: Exception) {
-                // Silently fail notification sending — don't block request creation
+                // Silently fail — request creation must never be blocked by a
+                // notification dispatch error.
             }
         }
     }

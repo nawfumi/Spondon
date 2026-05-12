@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -84,18 +86,29 @@ fun ProfileScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box {
-                                Box(
-                                    modifier = Modifier
-                                        .size(96.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            Brush.linearGradient(
-                                                listOf(BloodRed.copy(alpha = 0.15f), SoftRose.copy(alpha = 0.1f)),
+                                if (user.avatarUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = user.avatarUrl,
+                                        contentDescription = "Profile picture",
+                                        modifier = Modifier
+                                            .size(96.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop,
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(96.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.linearGradient(
+                                                    listOf(BloodRed.copy(alpha = 0.15f), SoftRose.copy(alpha = 0.1f)),
+                                                ),
                                             ),
-                                        ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(Icons.Filled.Person, null, tint = BloodRed.copy(alpha = 0.6f), modifier = Modifier.size(52.dp))
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(Icons.Filled.Person, null, tint = BloodRed.copy(alpha = 0.6f), modifier = Modifier.size(52.dp))
+                                    }
                                 }
                                 Surface(
                                     modifier = Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp),

@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -49,14 +50,14 @@ fun AdminDashboardScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
-            if (event is CommunityEvent.ShowSnackbar) {
-                snackbarHostState.showSnackbar(event.message)
-            }
+            if (event is CommunityEvent.ShowSnackbar) snackbarHostState.showSnackbar(event.message)
         }
     }
+
+    // Tab state (0 = Join Requests, 1 = Members, 2 = Broadcast)
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -74,6 +75,8 @@ fun AdminDashboardScreen(
                                 it.name,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
@@ -83,228 +86,374 @@ fun AdminDashboardScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = BloodRed.copy(alpha = 0.12f),
+                        modifier = Modifier.padding(end = 12.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.AdminPanelSettings,
+                                contentDescription = null,
+                                tint = BloodRed,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                "ADMIN",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.sp,
+                                ),
+                                color = BloodRed,
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),
+                windowInsets = WindowInsets(0.dp),
             )
         },
     ) { padding ->
         when {
             state.isLoading -> {
-                Box(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     ContainedLoadingIndicator()
                 }
             }
             state.error != null -> {
-                Box(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Text(state.error ?: "Error", color = MaterialTheme.colorScheme.error)
                 }
             }
             else -> {
-                LazyColumn(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    // ─── Quick Stats ─────────────────
-                    item {
+                    // ── Stats Banner ──────────────────────────────
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(BloodRed, DarkRose, BloodRed.copy(alpha = 0.85f)),
+                                ),
+                            )
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
                         ) {
-                            DashboardStatCard(
+                            StatBannerItem(
                                 icon = Icons.Default.HourglassTop,
-                                label = "Pending",
                                 value = "${state.pendingCount}",
-                                color = PendingAmber,
-                                modifier = Modifier.weight(1f),
+                                label = "Pending",
                             )
-                            DashboardStatCard(
+                            VerticalDivider(
+                                modifier = Modifier.height(40.dp),
+                                color = Color.White.copy(alpha = 0.3f),
+                            )
+                            StatBannerItem(
                                 icon = Icons.Default.People,
-                                label = "Members",
                                 value = "${state.activeMembers}",
-                                color = AvailableGreen,
-                                modifier = Modifier.weight(1f),
+                                label = "Members",
                             )
-                            DashboardStatCard(
+                            VerticalDivider(
+                                modifier = Modifier.height(40.dp),
+                                color = Color.White.copy(alpha = 0.3f),
+                            )
+                            StatBannerItem(
                                 icon = Icons.Default.Favorite,
-                                label = "Donations",
                                 value = "${state.monthlyDonations}",
-                                color = SoftRose,
-                                modifier = Modifier.weight(1f),
+                                label = "Donations",
                             )
                         }
                     }
 
-                    // ─── Pending Join Requests ───────
-                    item {
-                        Text(
-                            "Pending Join Requests",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-
-                    if (state.pendingRequests.isEmpty()) {
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                ),
+                    // ── Tab Row ───────────────────────────────────
+                    PrimaryTabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = MaterialTheme.colorScheme.background,
+                        contentColor = BloodRed,
+                        divider = {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            )
+                        },
+                    ) {
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            selectedContentColor = BloodRed,
+                            unselectedContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(32.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(
-                                            Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(36.dp),
-                                            tint = AvailableGreen.copy(alpha = 0.5f),
-                                        )
-                                        Spacer(Modifier.height(8.dp))
+                                Icon(Icons.Default.HourglassTop, null, modifier = Modifier.size(16.dp))
+                                Text("Requests", style = MaterialTheme.typography.labelLarge)
+                                if (state.pendingCount > 0) {
+                                    Badge(containerColor = BloodRed) {
+                                        Text("${state.pendingCount}", color = Color.White, fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        }
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            selectedContentColor = BloodRed,
+                            unselectedContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(Icons.Default.People, null, modifier = Modifier.size(16.dp))
+                                Text("Members", style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                        Tab(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            selectedContentColor = BloodRed,
+                            unselectedContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(Icons.Default.Campaign, null, modifier = Modifier.size(16.dp))
+                                Text("Broadcast", style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                    }
+
+                    // ── Tab Content ───────────────────────────────
+                    when (selectedTab) {
+
+                        // ══ Tab 0: Join Requests ══════════════════
+                        0 -> {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                if (state.pendingRequests.isEmpty()) {
+                                    item {
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = AvailableGreen.copy(alpha = 0.06f),
+                                            ),
+                                            elevation = CardDefaults.cardElevation(0.dp),
+                                        ) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(36.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.CheckCircle,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(44.dp),
+                                                    tint = AvailableGreen.copy(alpha = 0.6f),
+                                                )
+                                                Spacer(Modifier.height(10.dp))
+                                                Text(
+                                                    "All caught up!",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = AvailableGreen,
+                                                )
+                                                Text(
+                                                    "No pending join requests",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    item {
                                         Text(
-                                            "No pending requests",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                            "${state.pendingRequests.size} pending request${if (state.pendingRequests.size != 1) "s" else ""}",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                                        )
+                                    }
+                                    items(state.pendingRequests, key = { it.id }) { request ->
+                                        JoinRequestCard(
+                                            request = request,
+                                            onApprove = {
+                                                viewModel.approveJoinRequest(
+                                                    communityId, request.id, request.userId,
+                                                )
+                                            },
+                                            onReject = {
+                                                viewModel.rejectJoinRequest(
+                                                    communityId, request.id, request.userId, null,
+                                                )
+                                            },
                                         )
                                     }
                                 }
                             }
                         }
-                    } else {
-                        items(state.pendingRequests, key = { it.id }) { request ->
-                            JoinRequestCard(
-                                request = request,
-                                onApprove = {
-                                    viewModel.approveJoinRequest(communityId, request.id, request.userId)
-                                },
-                                onReject = {
-                                    viewModel.rejectJoinRequest(communityId, request.id, request.userId, null)
-                                },
-                            )
-                        }
-                    }
 
-                    // ─── Member Management ──────────
-                    item {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Member Management",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-
-                    if (state.members.isEmpty()) {
-                        item {
-                            Text(
-                                "No members yet",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                            )
-                        }
-                    } else {
-                        items(state.members, key = { it.uid }) { member ->
-                            AdminMemberCard(
-                                user = member,
-                                community = state.community!!,
-                                viewModel = viewModel,
-                                communityId = communityId,
-                            )
-                        }
-                    }
-
-                    // ─── Broadcast Notification ────────
-                    item {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Broadcast Notification",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            ),
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "Send a notification to all community members",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                )
-                                Spacer(Modifier.height(12.dp))
-                                OutlinedTextField(
-                                    value = state.broadcastMessage,
-                                    onValueChange = { viewModel.updateBroadcastMessage(it) },
-                                    label = { Text("Message") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    minLines = 2,
-                                    maxLines = 4,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = BloodRed,
-                                        cursorColor = BloodRed,
-                                    ),
-                                )
-                                Spacer(Modifier.height(12.dp))
-                                Button(
-                                    onClick = { viewModel.sendBroadcastNotification(communityId) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    enabled = state.broadcastMessage.isNotBlank() && !state.isBroadcasting,
-                                    colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
-                                ) {
-                                    if (state.isBroadcasting) {
-                                        LoadingIndicator(
-                                            color = Color.White,
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                    } else {
-                                        Icon(
-                                            Icons.Default.Send,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                        Spacer(Modifier.width(8.dp))
+                        // ══ Tab 1: Members ════════════════════════
+                        1 -> {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                if (state.members.isEmpty()) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(40.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Text(
+                                                "No members yet",
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                            )
+                                        }
                                     }
-                                    Text(if (state.isBroadcasting) "Sending..." else "Send to All Members")
+                                } else {
+                                    item {
+                                        Text(
+                                            "${state.members.size} member${if (state.members.size != 1) "s" else ""}",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                                        )
+                                    }
+                                    items(state.members, key = { it.uid }) { member ->
+                                        AdminMemberCard(
+                                            user = member,
+                                            community = state.community!!,
+                                            viewModel = viewModel,
+                                            communityId = communityId,
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // ─── Edit Community Info ─────────
-                    item {
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { /* TODO: Navigate to edit community screen */ },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Edit Community Info")
+                        // ══ Tab 2: Broadcast ══════════════════════
+                        2 -> {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                item {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(20.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surface,
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                                    ) {
+                                        Column(modifier = Modifier.padding(20.dp)) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(40.dp)
+                                                        .clip(CircleShape)
+                                                        .background(BloodRed.copy(alpha = 0.1f)),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Campaign,
+                                                        contentDescription = null,
+                                                        tint = BloodRed,
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                }
+                                                Column {
+                                                    Text(
+                                                        "Send Broadcast",
+                                                        style = MaterialTheme.typography.titleSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+                                                    Text(
+                                                        "Notify all ${state.activeMembers} members",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(Modifier.height(16.dp))
+
+                                            OutlinedTextField(
+                                                value = state.broadcastMessage,
+                                                onValueChange = { viewModel.updateBroadcastMessage(it) },
+                                                label = { Text("Message") },
+                                                placeholder = { Text("Write your announcement\u2026") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(14.dp),
+                                                minLines = 3,
+                                                maxLines = 6,
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = BloodRed,
+                                                    cursorColor = BloodRed,
+                                                    focusedLabelColor = BloodRed,
+                                                ),
+                                            )
+
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                "${state.broadcastMessage.length} characters",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                                modifier = Modifier.align(Alignment.End),
+                                            )
+
+                                            Spacer(Modifier.height(12.dp))
+
+                                            Button(
+                                                onClick = { viewModel.sendBroadcastNotification(communityId) },
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(50.dp),
+                                                shape = RoundedCornerShape(14.dp),
+                                                enabled = state.broadcastMessage.isNotBlank() && !state.isBroadcasting,
+                                                colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
+                                            ) {
+                                                if (state.isBroadcasting) {
+                                                    LoadingIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text("Sending\u2026")
+                                                } else {
+                                                    Icon(Icons.Default.Send, null, modifier = Modifier.size(18.dp))
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text("Send to All Members", fontWeight = FontWeight.SemiBold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -313,39 +462,29 @@ fun AdminDashboardScreen(
     }
 }
 
+// ── Private composables ───────────────────────────────────────────────────────
+
 @Composable
-private fun DashboardStatCard(
+private fun StatBannerItem(
     icon: ImageVector,
-    label: String,
     value: String,
-    color: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier,
+    label: String,
 ) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f),
-        ),
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = color)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                value,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = color,
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-            )
-        }
+        Icon(icon, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
+        Text(
+            value,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+            color = Color.White,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.7f),
+        )
     }
 }
 
@@ -357,106 +496,119 @@ private fun JoinRequestCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Avatar
+                // Avatar / initial
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(46.dp)
                         .clip(CircleShape)
-                        .background(BloodRed.copy(alpha = 0.15f)),
+                        .background(
+                            Brush.linearGradient(
+                                listOf(BloodRed.copy(alpha = 0.2f), SoftRose.copy(alpha = 0.15f)),
+                            ),
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = request.userName.firstOrNull()?.uppercase() ?: "?",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = BloodRed,
                     )
                 }
-
                 Spacer(Modifier.width(12.dp))
-
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         request.userName.ifEmpty { "Unknown User" },
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 2.dp),
                     ) {
                         if (request.userBloodGroup.isNotEmpty()) {
                             BloodGroupBadge(bloodGroup = request.userBloodGroup)
                         }
                         if (request.userDistrict.isNotEmpty()) {
-                            Text(
-                                request.userDistrict,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.LocationOn, null,
+                                    modifier = Modifier.size(11.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                )
+                                Text(
+                                    request.userDistrict,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Message
             if (request.message.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Card(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
-                    ),
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                 ) {
                     Text(
-                        text = "\"${request.message}\"",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "\u201c${request.message}\u201d",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        ),
                         modifier = Modifier.padding(10.dp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
             Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(Modifier.height(12.dp))
 
-            // Action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 OutlinedButton(
                     onClick = onReject,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
+                    ),
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Reject")
+                    Icon(Icons.Default.Close, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Reject", fontWeight = FontWeight.SemiBold)
                 }
                 Button(
                     onClick = onApprove,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AvailableGreen,
-                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AvailableGreen),
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Approve")
+                    Icon(Icons.Default.Check, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Approve", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -485,10 +637,11 @@ private fun AdminMemberCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
             modifier = Modifier
@@ -499,9 +652,9 @@ private fun AdminMemberCard(
             // Avatar
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(46.dp)
                     .clip(CircleShape)
-                    .background(BloodRed.copy(alpha = 0.15f)),
+                    .background(BloodRed.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center,
             ) {
                 if (user.avatarUrl.isNotEmpty()) {
@@ -524,7 +677,10 @@ private fun AdminMemberCard(
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
                         user.name.ifEmpty { "Unknown" },
                         style = MaterialTheme.typography.titleSmall,
@@ -534,33 +690,24 @@ private fun AdminMemberCard(
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     if (role != CommunityRole.MEMBER) {
-                        Spacer(Modifier.width(6.dp))
                         RoleBadge(role = role)
                     }
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 3.dp),
                 ) {
-                    if (user.bloodGroup.isNotEmpty()) {
-                        BloodGroupBadge(bloodGroup = user.bloodGroup)
-                    }
-                    AvailabilityIndicator(
-                        isAvailable = isAvailable,
-                        daysRemaining = daysRemaining,
-                    )
+                    if (user.bloodGroup.isNotEmpty()) BloodGroupBadge(bloodGroup = user.bloodGroup)
+                    AvailabilityIndicator(isAvailable = isAvailable, daysRemaining = daysRemaining)
                 }
             }
 
-            // Actions menu
             Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Actions")
                 }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                ) {
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                     if (role == CommunityRole.MEMBER) {
                         DropdownMenuItem(
                             text = { Text("Promote to Moderator") },
@@ -568,7 +715,7 @@ private fun AdminMemberCard(
                                 viewModel.promoteMember(communityId, user.uid, CommunityRole.MODERATOR)
                                 showMenu = false
                             },
-                            leadingIcon = { Icon(Icons.Default.Star, contentDescription = null, Modifier.size(18.dp)) },
+                            leadingIcon = { Icon(Icons.Default.Star, null, Modifier.size(18.dp)) },
                         )
                     }
                     if (role == CommunityRole.MODERATOR) {
@@ -578,38 +725,28 @@ private fun AdminMemberCard(
                                 viewModel.promoteMember(communityId, user.uid, CommunityRole.ADMIN)
                                 showMenu = false
                             },
-                            leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, Modifier.size(18.dp)) },
+                            leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null, Modifier.size(18.dp)) },
                         )
                     }
                     DropdownMenuItem(
                         text = { Text("Mark Donation") },
-                        onClick = {
-                            showDonationDialog = true
-                            showMenu = false
-                        },
-                        leadingIcon = { Icon(Icons.Default.Bloodtype, contentDescription = null, Modifier.size(18.dp)) },
+                        onClick = { showDonationDialog = true; showMenu = false },
+                        leadingIcon = { Icon(Icons.Default.Bloodtype, null, Modifier.size(18.dp)) },
                     )
                     if (canOverride) {
                         DropdownMenuItem(
                             text = { Text("Override Availability") },
-                            onClick = {
-                                showOverrideDialog = true
-                                showMenu = false
-                            },
-                            leadingIcon = { Icon(Icons.Default.LockOpen, contentDescription = null, Modifier.size(18.dp)) },
+                            onClick = { showOverrideDialog = true; showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.LockOpen, null, Modifier.size(18.dp)) },
                         )
                     }
                     if (role != CommunityRole.ADMIN) {
                         DropdownMenuItem(
                             text = { Text("Remove Member", color = MaterialTheme.colorScheme.error) },
-                            onClick = {
-                                viewModel.removeMember(communityId, user.uid)
-                                showMenu = false
-                            },
+                            onClick = { viewModel.removeMember(communityId, user.uid); showMenu = false },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.PersonRemove,
-                                    contentDescription = null,
+                                    Icons.Default.PersonRemove, null,
                                     Modifier.size(18.dp),
                                     tint = MaterialTheme.colorScheme.error,
                                 )
@@ -621,88 +758,44 @@ private fun AdminMemberCard(
         }
     }
 
-    // ─── Mark Donation Dialog ────────────────────
+    // ─── Mark Donation Dialog ─────────────────────────────────────────
     if (showDonationDialog) {
         AlertDialog(
             onDismissRequest = { showDonationDialog = false },
             title = { Text("Mark Donation", fontWeight = FontWeight.Bold) },
             text = {
-                Text(
-                    "Mark ${user.name} as having donated today? This will update their last donation date and increment their donation count.",
-                )
+                Text("Mark ${user.name} as having donated today? This will update their last donation date and increment their donation count.")
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.updateMemberDonationStatus(
-                            user.uid,
-                            java.util.Date(),
-                            user.totalDonations + 1,
-                        )
-                        showDonationDialog = false
-                    },
-                ) {
-                    Text("Confirm", color = BloodRed)
-                }
+                TextButton(onClick = {
+                    viewModel.updateMemberDonationStatus(user.uid, java.util.Date(), user.totalDonations + 1)
+                    showDonationDialog = false
+                }) { Text("Confirm", color = BloodRed) }
             },
             dismissButton = {
-                TextButton(onClick = { showDonationDialog = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showDonationDialog = false }) { Text("Cancel") }
             },
         )
     }
 
-    // ─── Override Availability Dialog ────────────
+    // ─── Override Availability Dialog ─────────────────────────────────
     if (showOverrideDialog) {
-        val daysSinceLast = user.lastDonationDate?.daysSince()?.toInt() ?: 0
         AlertDialog(
             onDismissRequest = { showOverrideDialog = false },
             title = { Text("Override Availability", fontWeight = FontWeight.Bold) },
             text = {
-                Column {
-                    Text(
-                        "${user.name}'s last donation was $daysSinceLast days ago " +
-                        "(minimum ${Constants.MIN_OVERRIDE_DAYS} days required).",
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = PendingAmber.copy(alpha = 0.15f),
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                    ) {
-                        Row(modifier = Modifier.padding(10.dp)) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = PendingAmber,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "This is an early override. Use with caution. " +
-                                "The standard cooldown is ${user.donationInterval} days.",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                }
+                Text(
+                    "Allow ${user.name} to donate again? They last donated ${user.lastDonationDate?.let { d -> "${d.daysSince()} days ago" } ?: "N/A"}. Minimum override requires ${Constants.MIN_OVERRIDE_DAYS} days since last donation.",
+                )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.overrideMemberAvailability(user.uid)
-                        showOverrideDialog = false
-                    },
-                ) {
-                    Text("Override", color = BloodRed)
-                }
+                TextButton(onClick = {
+                    viewModel.overrideMemberAvailability(user.uid)
+                    showOverrideDialog = false
+                }) { Text("Override", color = PendingAmber) }
             },
             dismissButton = {
-                TextButton(onClick = { showOverrideDialog = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showOverrideDialog = false }) { Text("Cancel") }
             },
         )
     }

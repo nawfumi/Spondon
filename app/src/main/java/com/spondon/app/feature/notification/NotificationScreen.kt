@@ -1,6 +1,5 @@
 package com.spondon.app.feature.notification
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -126,9 +125,7 @@ fun NotificationScreen(
                                 notification = notification,
                                 onClick = {
                                     if (!notification.isRead) viewModel.markAsRead(notification.id)
-                                    if (notification.deepLink.isNotBlank()) {
-                                        try { navController.navigate(notification.deepLink) } catch (_: Exception) {}
-                                    }
+                                    navController.navigate("notification_detail/${notification.id}")
                                 },
                             )
                         }
@@ -147,9 +144,9 @@ private fun NotificationItem(notification: AppNotification, onClick: () -> Unit)
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead) MaterialTheme.colorScheme.surface else BloodRed.copy(alpha = 0.04f),
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (notification.isRead) 0.5.dp else 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
             // Unread dot
@@ -202,7 +199,7 @@ private fun NotificationItem(notification: AppNotification, onClick: () -> Unit)
     }
 }
 
-private fun getNotificationStyle(type: NotificationType): Pair<ImageVector, Color> {
+internal fun getNotificationStyle(type: NotificationType): Pair<ImageVector, Color> {
     return when (type) {
         NotificationType.REQUEST -> Icons.Outlined.Bloodtype to UrgencyCritical
         NotificationType.JOIN -> Icons.Outlined.GroupAdd to PendingAmber
@@ -212,7 +209,7 @@ private fun getNotificationStyle(type: NotificationType): Pair<ImageVector, Colo
     }
 }
 
-private fun formatRelativeTime(date: Date): String {
+internal fun formatRelativeTime(date: Date): String {
     val diff = System.currentTimeMillis() - date.time
     val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
     val hours = TimeUnit.MILLISECONDS.toHours(diff)

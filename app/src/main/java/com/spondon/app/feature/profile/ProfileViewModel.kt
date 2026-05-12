@@ -2,9 +2,11 @@ package com.spondon.app.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
+import com.spondon.app.core.data.remote.StorageService
 import com.spondon.app.core.data.repository.CommunityRepository
 import com.spondon.app.core.data.repository.UserRepository
 import com.spondon.app.core.domain.model.Community
@@ -34,12 +36,14 @@ data class EditProfileState(
     val name: String = "",
     val phone: String = "",
     val email: String = "",
+    val avatarUrl: String = "",
     val bloodGroup: String = "",
     val weight: String = "",
     val district: String = "",
     val upazila: String = "",
     val isDonor: Boolean = true,
     val isPhoneVisible: Boolean = true,
+    val isUploadingAvatar: Boolean = false,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val error: String? = null,
@@ -50,6 +54,7 @@ data class EditProfileState(
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val communityRepository: CommunityRepository,
+    private val storageService: StorageService,
     private val auth: FirebaseAuth,
 ) : ViewModel() {
 
@@ -112,6 +117,7 @@ class ProfileViewModel @Inject constructor(
                     name = user.name,
                     phone = user.phone,
                     email = user.email,
+                    avatarUrl = user.avatarUrl,
                     bloodGroup = user.bloodGroup,
                     weight = if (user.weight > 0) user.weight.toString() else "",
                     district = user.district,
@@ -134,6 +140,31 @@ class ProfileViewModel @Inject constructor(
     fun toggleDonor() = _editState.update { it.copy(isDonor = !it.isDonor) }
     fun togglePhoneVisible() = _editState.update { it.copy(isPhoneVisible = !it.isPhoneVisible) }
 
+    fun uploadAvatar(uri: Uri) {
+        viewModelScope.launch {
+            _editState.update { it.copy(isUploadingAvatar = true, error = null) }
+            when (val result = storageService.uploadAvatar(currentUserId, uri)) {
+                is Resource.Success -> {
+                    val url = result.data
+                    // Update local state immediately
+                    _editState.update { it.copy(avatarUrl = url, isUploadingAvatar = false) }
+                    // Persist to Firestore right away (independent of the Save button)
+                    val userResult = userRepository.getUser(currentUserId)
+                    val existing = (userResult as? Resource.Success)?.data ?: User(uid = currentUserId)
+                    userRepository.updateUser(existing.copy(avatarUrl = url))
+                    // Also refresh the profile screen state
+                    _profileState.update { s ->
+                        s.copy(user = s.user?.copy(avatarUrl = url))
+                    }
+                }
+                is Resource.Error -> {
+                    _editState.update { it.copy(isUploadingAvatar = false, error = "Avatar upload failed: ${result.message}") }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
     fun saveProfile() {
         viewModelScope.launch {
             _editState.update { it.copy(isSaving = true, error = null) }
@@ -146,6 +177,7 @@ class ProfileViewModel @Inject constructor(
                 name = s.name,
                 phone = s.phone,
                 email = s.email,
+                avatarUrl = s.avatarUrl,
                 weight = s.weight.toFloatOrNull() ?: existing.weight,
                 district = s.district,
                 upazila = s.upazila,
