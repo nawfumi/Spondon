@@ -1,5 +1,8 @@
 package com.spondon.app.feature.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -74,6 +77,13 @@ fun ProfileScreen(
 
             state.user != null -> {
                 val user = state.user!!
+
+                val avatarPickerLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.PickVisualMedia(),
+                ) { uri: android.net.Uri? ->
+                    uri?.let { viewModel.uploadAvatar(it) }
+                }
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentPadding = PaddingValues(bottom = 24.dp),
@@ -86,28 +96,51 @@ fun ProfileScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box {
-                                if (user.avatarUrl.isNotBlank()) {
-                                    AsyncImage(
-                                        model = user.avatarUrl,
-                                        contentDescription = "Profile picture",
-                                        modifier = Modifier
-                                            .size(96.dp)
-                                            .clip(CircleShape),
-                                        contentScale = ContentScale.Crop,
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(96.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                Brush.linearGradient(
-                                                    listOf(BloodRed.copy(alpha = 0.15f), SoftRose.copy(alpha = 0.1f)),
+                                Box {
+                                    if (user.avatarUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = user.avatarUrl,
+                                            contentDescription = "Profile picture",
+                                            modifier = Modifier
+                                                .size(96.dp)
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(96.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    Brush.linearGradient(
+                                                        listOf(BloodRed.copy(alpha = 0.15f), SoftRose.copy(alpha = 0.1f)),
+                                                    ),
                                                 ),
-                                            ),
-                                        contentAlignment = Alignment.Center,
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(Icons.Filled.Person, null, tint = BloodRed.copy(alpha = 0.6f), modifier = Modifier.size(52.dp))
+                                        }
+                                    }
+                                    // Camera button for uploading profile picture
+                                    FilledIconButton(
+                                        onClick = {
+                                            avatarPickerLauncher.launch(
+                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                            )
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .size(28.dp),
+                                        colors = IconButtonDefaults.filledIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        ),
                                     ) {
-                                        Icon(Icons.Filled.Person, null, tint = BloodRed.copy(alpha = 0.6f), modifier = Modifier.size(52.dp))
+                                        Icon(
+                                            Icons.Filled.CameraAlt,
+                                            contentDescription = "Change photo",
+                                            tint = BloodRed,
+                                            modifier = Modifier.size(14.dp),
+                                        )
                                     }
                                 }
                                 Surface(
@@ -159,7 +192,7 @@ fun ProfileScreen(
                         }
                     }
 
-                    // ─── Availability Toggle ──────────────
+                    // ─── Availability Status (read-only, admin-controlled) ──────────────
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -172,6 +205,14 @@ fun ProfileScreen(
                                 modifier = Modifier.padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                // Status icon
+                                Icon(
+                                    if (state.isAvailable) Icons.Filled.CheckCircle else Icons.Filled.Lock,
+                                    contentDescription = null,
+                                    tint = if (state.isAvailable) AvailableGreen else UnavailableGrey,
+                                    modifier = Modifier.size(28.dp),
+                                )
+                                Spacer(Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         if (state.isAvailable) s.availableToDonate else s.unavailable,
@@ -179,10 +220,23 @@ fun ProfileScreen(
                                         color = if (state.isAvailable) AvailableGreen else UnavailableGrey,
                                     )
                                     if (!state.isAvailable && state.cooldownDaysRemaining > 0) {
+                                        Spacer(Modifier.height(2.dp))
                                         Text(
                                             s.availableIn.replace("%d", state.cooldownDaysRemaining.toString()),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = UnavailableGrey.copy(alpha = 0.7f),
+                                        )
+                                        Text(
+                                            "Cooldown resets automatically after 120 days",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = UnavailableGrey.copy(alpha = 0.5f),
+                                        )
+                                    }
+                                    if (state.isAvailable && !user.isDonor.not()) {
+                                        Text(
+                                            "Ready to help others",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = AvailableGreen.copy(alpha = 0.7f),
                                         )
                                     }
                                     if (user.availabilityOverride) {
@@ -191,17 +245,11 @@ fun ProfileScreen(
                                             color = PendingAmber.copy(alpha = 0.15f),
                                             modifier = Modifier.padding(top = 4.dp),
                                         ) {
-                                            Text("Admin override", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            Text("Admin override (available at 90 days)", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp), color = PendingAmber)
                                         }
                                     }
                                 }
-                                Switch(
-                                    checked = state.isAvailable,
-                                    onCheckedChange = null,
-                                    enabled = false,
-                                    colors = SwitchDefaults.colors(checkedTrackColor = AvailableGreen, checkedThumbColor = Color.White),
-                                )
                             }
                         }
                     }

@@ -21,13 +21,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Groups
@@ -50,7 +53,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -63,7 +66,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,7 +78,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.spondon.app.core.domain.model.Community
 import com.spondon.app.core.domain.model.CommunityType
-import com.spondon.app.core.ui.components.BloodGroupBadge
+
 import com.spondon.app.core.ui.i18n.S
 import com.spondon.app.core.ui.theme.AvailableGreen
 import com.spondon.app.core.ui.theme.BloodRed
@@ -298,18 +303,26 @@ private fun CommunityCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Column {
-            // Cover image / gradient header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // ── Circle community picture ──────────────────
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp),
+                    .size(56.dp)
+                    .clip(CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
                 if (community.coverUrl.isNotEmpty()) {
                     AsyncImage(
                         model = community.coverUrl,
                         contentDescription = community.name,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
                         contentScale = ContentScale.Crop,
                     )
                 } else {
@@ -319,199 +332,157 @@ private fun CommunityCard(
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(BloodRed, DarkRose),
-                                )
-                            ),
-                    )
-                }
-                // Gradient overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0f),
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
                                 ),
-                                startY = 40f,
-                            )
-                        ),
-                )
-
-                // Community type badge
-                if (community.type == CommunityType.PRIVATE) {
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                shape = CircleShape,
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Default.Lock,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = PendingAmber,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "Private",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = PendingAmber,
-                            )
-                        }
+                        Icon(
+                            Icons.Default.Groups,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(28.dp),
+                        )
                     }
                 }
-
-                // Verified badge
+                // Verified badge overlay
                 if (community.isVerified) {
                     Icon(
                         Icons.Default.Verified,
                         contentDescription = "Verified",
                         modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(8.dp)
-                            .size(20.dp),
+                            .align(Alignment.BottomEnd)
+                            .size(18.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            .padding(1.dp),
                         tint = AvailableGreen,
                     )
                 }
             }
 
-            // Content
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = community.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (community.district.isNotEmpty()) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 2.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = buildString {
-                                        append(community.district)
-                                        if (community.upazila.isNotEmpty()) {
-                                            append(" · ${community.upazila}")
-                                        }
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                )
-                            }
-                        }
-                    }
+            Spacer(Modifier.width(14.dp))
 
-                    // Join button (Discover tab)
-                    if (isDiscover) {
-                        Spacer(Modifier.width(8.dp))
-                        if (isJoined) {
-                            OutlinedButton(
-                                onClick = {},
-                                shape = RoundedCornerShape(20.dp),
-                                enabled = false,
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                            ) {
-                                Text(
-                                    "Joined",
-                                    style = MaterialTheme.typography.labelLarge,
-                                )
-                            }
-                        } else {
-                            Button(
-                                onClick = onJoin,
-                                shape = RoundedCornerShape(20.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                            ) {
-                                Text(
-                                    if (community.type == CommunityType.PUBLIC) "Join"
-                                    else "Request",
-                                    style = MaterialTheme.typography.labelLarge,
-                                )
-                            }
-                        }
+            // ── Info column: name, members, location ──────
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = community.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (community.type == CommunityType.PRIVATE) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = "Private",
+                            modifier = Modifier.size(14.dp),
+                            tint = PendingAmber,
+                        )
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
-                // Stats row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                // Members count
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.People,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "${community.memberCount} members",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                    if (community.donationCount > 0) {
+                        Spacer(Modifier.width(10.dp))
                         Icon(
-                            Icons.Default.People,
+                            Icons.Default.Favorite,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            modifier = Modifier.size(14.dp),
+                            tint = SoftRose,
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(3.dp))
                         Text(
-                            "${community.memberCount} members",
+                            "${community.donationCount}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         )
                     }
-                    if (community.donationCount > 0) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Favorite,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = SoftRose,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "${community.donationCount} donations",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            )
-                        }
-                    }
                 }
 
-                // Blood group chips
-                if (community.bloodGroups.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        community.bloodGroups.take(4).forEach { group ->
-                            BloodGroupBadge(bloodGroup = group)
-                        }
-                        if (community.bloodGroups.size > 4) {
-                            Text(
-                                "+${community.bloodGroups.size - 4}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                modifier = Modifier.align(Alignment.CenterVertically),
-                            )
-                        }
+                // Location
+                if (community.district.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = buildString {
+                                append(community.district)
+                                if (community.upazila.isNotEmpty()) {
+                                    append(" · ${community.upazila}")
+                                }
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
+            }
+
+            // ── Join button ────────────────────────────────
+            if (isDiscover) {
+                Spacer(Modifier.width(10.dp))
+                if (isJoined) {
+                    OutlinedButton(
+                        onClick = {},
+                        shape = RoundedCornerShape(20.dp),
+                        enabled = false,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 34.dp),
+                    ) {
+                        Text(
+                            "Joined",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = onJoin,
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 34.dp),
+                    ) {
+                        Text(
+                            if (community.type == CommunityType.PUBLIC) "Join"
+                            else "Request",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
+            } else {
+                // My Communities tab: show chevron
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
     }

@@ -238,7 +238,7 @@ fun SADashboardScreen(
                             icon = Icons.Outlined.Groups,
                             label = "Communities",
                             modifier = Modifier.weight(1f),
-                            onClick = { /* Phase 3 */ },
+                            onClick = { navController.navigate("sa_communities") },
                         )
                     }
                 }
@@ -252,7 +252,7 @@ fun SADashboardScreen(
                             icon = Icons.Outlined.Campaign,
                             label = "Broadcast",
                             modifier = Modifier.weight(1f),
-                            onClick = { /* Phase 3 */ },
+                            onClick = { navController.navigate("sa_broadcast") },
                         )
                         SAQuickAction(
                             icon = Icons.Outlined.Feedback,

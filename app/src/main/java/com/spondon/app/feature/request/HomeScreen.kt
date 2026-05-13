@@ -533,23 +533,32 @@ fun RequestCard(
                     Column(modifier = Modifier.weight(1f)) {
                         // Community name label
                         if (request.communityName.isNotBlank()) {
-                            Text(
-                                text = request.communityName.uppercase(),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.6.sp,
-                                    fontSize = 9.sp,
-                                ),
-                                color = urgencyColor.copy(alpha = 0.8f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.Groups,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(10.dp),
+                                    tint = urgencyColor.copy(alpha = 0.7f),
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    text = request.communityName,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.4.sp,
+                                        fontSize = 9.sp,
+                                    ),
+                                    color = urgencyColor.copy(alpha = 0.8f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                             Spacer(Modifier.height(2.dp))
                         }
-                        // Patient / requester name
+                        // Patient name (primary)
                         Text(
-                            text = (request.patientName?.takeIf { it.isNotBlank() }
-                                ?: request.requesterName.ifBlank { "Unknown" }),
+                            text = request.patientName?.takeIf { it.isNotBlank() }
+                                ?: "Patient",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
                             ),
@@ -557,6 +566,16 @@ fun RequestCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        // Requester name
+                        if (request.requesterName.isNotBlank()) {
+                            Text(
+                                text = "Requested by: ${request.requesterName}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                         Spacer(Modifier.height(4.dp))
                         // Hospital row
                         Row(verticalAlignment = Alignment.CenterVertically) {

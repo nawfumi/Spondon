@@ -5,6 +5,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.spondon.app.core.common.Resource
+import com.spondon.app.feature.superadmin.broadcast.*
+import com.spondon.app.feature.superadmin.community.*
 import com.spondon.app.feature.superadmin.users.*
 import kotlinx.coroutines.tasks.await
 import java.security.MessageDigest
@@ -407,6 +409,233 @@ class SARepository @Inject constructor(
     }
 
     // ════════════════════════════════════════════════════════════
+    // Community Management (Phase 3)
+    // ════════════════════════════════════════════════════════════
+
+    /** Fetch all communities from Firestore. */
+    suspend fun getAllCommunities(): Resource<List<SACommunityItem>> {
+        return try {
+            val snapshot = firestore.collection("communities").get().await()
+            val communities = snapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                mapToSACommunityItem(doc.id, data)
+            }
+            Resource.Success(communities)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to load communities", e)
+        }
+    }
+
+    /** Fetch full detail for one community: info + members + requests. */
+    suspend fun getCommunityDetail(communityId: String): Resource<SACommunityDetail> {
+        return try {
+            val cDoc = firestore.collection("communities").document(communityId).get().await()
+            val cData = cDoc.data ?: return Resource.Error("Community not found")
+            val community = mapToSACommunityItem(communityId, cData)
+
+            // Fetch members
+            val memberIds = (cData["memberIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+            val adminIds = (cData["adminIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+            val members = mutableListOf<SACommunityMember>()
+            for (mid in memberIds) {
+                try {
+                    val uDoc = firestore.collection("users").document(mid).get().await()
+                    val uData = uDoc.data ?: continue
+                    members.add(
+                        SACommunityMember(
+                            uid = mid,
+                            name = uData["name"] as? String ?: "",
+                            bloodGroup = uData["bloodGroup"] as? String ?: "",
+                            isAdmin = mid in adminIds,
+                            avatarUrl = uData["avatarUrl"] as? String ?: "",
+                        ),
+                    )
+                } catch (_: Exception) { /* skip */ }
+            }
+
+            // Fetch requests in this community
+            val reqSnapshot = firestore.collection("requests")
+                .whereEqualTo("communityId", communityId)
+                .get().await()
+            val requests = reqSnapshot.documents.mapNotNull { rDoc ->
+                val rData = rDoc.data ?: return@mapNotNull null
+                val createdAt = when (val d = rData["createdAt"]) {
+                    is Timestamp -> d.toDate()
+                    is Date -> d
+                    else -> null
+                }
+                SACommunityRequest(
+                    id = rDoc.id,
+                    bloodGroup = rData["bloodGroup"] as? String ?: "",
+                    urgency = rData["urgency"] as? String ?: "NORMAL",
+                    hospital = rData["hospital"] as? String ?: "",
+                    status = rData["status"] as? String ?: "ACTIVE",
+                    requesterName = rData["requesterName"] as? String ?: "",
+                    createdAt = createdAt,
+                )
+            }
+
+            Resource.Success(
+                SACommunityDetail(community = community, members = members, requests = requests),
+            )
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to load community detail", e)
+        }
+    }
+
+    /** Verify a community. */
+    suspend fun verifyCommunity(communityId: String): Resource<Unit> {
+        return try {
+            firestore.collection("communities").document(communityId)
+                .update("status", "VERIFIED").await()
+            auditLogger.log(SAAction.VERIFY_COMMUNITY, targetId = communityId)
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Verification failed", e)
+        }
+    }
+
+    /** Suspend a community. */
+    suspend fun suspendCommunity(communityId: String): Resource<Unit> {
+        return try {
+            firestore.collection("communities").document(communityId)
+                .update("status", "SUSPENDED").await()
+            auditLogger.log(SAAction.BAN_COMMUNITY, targetId = communityId)
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Suspension failed", e)
+        }
+    }
+
+    /** Reactivate a suspended community. */
+    suspend fun unsuspendCommunity(communityId: String): Resource<Unit> {
+        return try {
+            firestore.collection("communities").document(communityId)
+                .update("status", "ACTIVE").await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Reactivation failed", e)
+        }
+    }
+
+    /** Delete a community — removes doc and cleans up user refs. */
+    suspend fun deleteCommunity(communityId: String): Resource<Unit> {
+        return try {
+            val communityName = try {
+                val doc = firestore.collection("communities").document(communityId).get().await()
+                doc.getString("name") ?: "Unknown"
+            } catch (_: Exception) { "Unknown" }
+
+            // Remove community from all users' communityIds
+            val usersSnapshot = firestore.collection("users")
+                .whereArrayContains("communityIds", communityId)
+                .get().await()
+            for (doc in usersSnapshot.documents) {
+                doc.reference.update("communityIds", FieldValue.arrayRemove(communityId)).await()
+            }
+
+            // Delete requests in this community
+            val reqSnapshot = firestore.collection("requests")
+                .whereEqualTo("communityId", communityId)
+                .get().await()
+            for (doc in reqSnapshot.documents) {
+                doc.reference.delete().await()
+            }
+
+            // Delete the community itself
+            firestore.collection("communities").document(communityId).delete().await()
+
+            auditLogger.log(SAAction.DELETE_COMMUNITY, targetId = communityId, targetName = communityName)
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Delete failed", e)
+        }
+    }
+
+    /** Force-remove a member from a community (override community admin). */
+    suspend fun forceRemoveMember(communityId: String, uid: String): Resource<Unit> {
+        return try {
+            val cRef = firestore.collection("communities").document(communityId)
+            cRef.update("memberIds", FieldValue.arrayRemove(uid)).await()
+            cRef.update("adminIds", FieldValue.arrayRemove(uid)).await()
+
+            // Also remove from user's communityIds
+            firestore.collection("users").document(uid)
+                .update("communityIds", FieldValue.arrayRemove(communityId)).await()
+
+            auditLogger.log(
+                SAAction.DELETE_USER, // reuse for member removal
+                targetId = uid,
+                metadata = mapOf("communityId" to communityId, "action" to "FORCE_REMOVE_MEMBER"),
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Remove failed", e)
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // Broadcast (Phase 3)
+    // ════════════════════════════════════════════════════════════
+
+    /** Send a broadcast notification via Firestore (to be picked up by Cloud Function). */
+    suspend fun sendBroadcast(
+        title: String,
+        body: String,
+        type: String,
+        target: String,
+    ): Resource<Unit> {
+        return try {
+            val broadcast = hashMapOf(
+                "title" to title,
+                "body" to body,
+                "type" to type,
+                "target" to target,
+                "sentBy" to (auth.currentUser?.uid ?: ""),
+                "sentAt" to FieldValue.serverTimestamp(),
+                "status" to "SENT",
+            )
+            firestore.collection("broadcasts").add(broadcast).await()
+            auditLogger.log(
+                SAAction.BROADCAST,
+                metadata = mapOf("title" to title, "target" to target, "type" to type),
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Broadcast failed", e)
+        }
+    }
+
+    /** Fetch broadcast history. */
+    suspend fun getBroadcastHistory(): Resource<List<SABroadcastItem>> {
+        return try {
+            val snapshot = firestore.collection("broadcasts")
+                .orderBy("sentAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get().await()
+            val items = snapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                val sentAt = when (val d = data["sentAt"]) {
+                    is Timestamp -> d.toDate()
+                    is Date -> d
+                    else -> null
+                }
+                SABroadcastItem(
+                    id = doc.id,
+                    title = data["title"] as? String ?: "",
+                    body = data["body"] as? String ?: "",
+                    type = data["type"] as? String ?: "",
+                    target = data["target"] as? String ?: "",
+                    sentAt = sentAt,
+                    status = data["status"] as? String ?: "SENT",
+                )
+            }
+            Resource.Success(items)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to load history", e)
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
     // Utility
     // ════════════════════════════════════════════════════════════
 
@@ -445,6 +674,30 @@ class SARepository @Inject constructor(
             fcmToken = data["fcmToken"] as? String ?: "",
             lastDonationDate = lastDonation,
             role = data["role"] as? String ?: "USER",
+        )
+    }
+
+    private fun mapToSACommunityItem(id: String, data: Map<String, Any?>): SACommunityItem {
+        val createdAt = when (val d = data["createdAt"]) {
+            is Timestamp -> d.toDate()
+            is Date -> d
+            else -> null
+        }
+        val memberIds = (data["memberIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        val adminIds = (data["adminIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        return SACommunityItem(
+            id = id,
+            name = data["name"] as? String ?: "",
+            description = data["description"] as? String ?: "",
+            district = data["district"] as? String ?: "",
+            type = data["type"] as? String ?: "PUBLIC",
+            status = data["status"] as? String ?: "ACTIVE",
+            memberCount = memberIds.size,
+            adminIds = adminIds,
+            createdAt = createdAt,
+            createdBy = data["createdBy"] as? String ?: "",
+            totalDonations = (data["totalDonations"] as? Number)?.toInt() ?: 0,
+            avatarUrl = data["avatarUrl"] as? String ?: "",
         )
     }
 }

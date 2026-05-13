@@ -2,6 +2,7 @@ package com.spondon.app.feature.settings
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -82,6 +83,16 @@ fun AboutScreen(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // ─── Hidden SA Login: tap Build 7 times ─────
+            var saTapCount by remember { mutableIntStateOf(0) }
+            var saToastMsg by remember { mutableStateOf<String?>(null) }
+            LaunchedEffect(saToastMsg) {
+                saToastMsg?.let {
+                    snackbarHostState.showSnackbar(it)
+                    saToastMsg = null
+                }
+            }
+
             Spacer(Modifier.height(32.dp))
 
             // App Name
@@ -271,11 +282,41 @@ fun AboutScreen(
                         value = BuildConfig.VERSION_NAME,
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f))
-                    InfoRow(
-                        icon = Icons.Outlined.Code,
-                        label = if (isBn) "বিল্ড" else "Build",
-                        value = "${BuildConfig.VERSION_CODE}",
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                saTapCount++
+                                when {
+                                    saTapCount >= 7 -> {
+                                        saTapCount = 0
+                                        navController.navigate("sa_login")
+                                    }
+                                    saTapCount >= 4 -> {
+                                        saToastMsg = "${7 - saTapCount} taps remaining"
+                                    }
+                                }
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Code,
+                            contentDescription = null,
+                            tint = BloodRed.copy(alpha = 0.6f),
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = if (isBn) "বিল্ড" else "Build",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = "${BuildConfig.VERSION_CODE}",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                    }
                 }
             }
 

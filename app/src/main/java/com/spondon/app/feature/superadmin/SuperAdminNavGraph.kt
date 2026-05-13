@@ -7,6 +7,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.spondon.app.feature.superadmin.auth.SuperAdminLoginScreen
 import com.spondon.app.feature.superadmin.auth.SuperAdminRegisterScreen
+import com.spondon.app.feature.superadmin.broadcast.SABroadcastScreen
+import com.spondon.app.feature.superadmin.community.SACommunityDetailScreen
+import com.spondon.app.feature.superadmin.community.SACommunityListScreen
 import com.spondon.app.feature.superadmin.dashboard.SADashboardScreen
 import com.spondon.app.feature.superadmin.users.SAUserDetailScreen
 import com.spondon.app.feature.superadmin.users.SAUserListScreen
@@ -52,9 +55,25 @@ fun NavGraphBuilder.superAdminGraph(
         SAUserDetailScreen(navController = navController, uid = uid)
     }
 
-    // ─── Phase 3+: Additional screens will be registered here ──
-    // composable("sa_communities") { SACommunityScreen(navController) }
-    // composable("sa_broadcast")   { SABroadcastScreen(navController) }
+    // ─── Phase 3: Community Management ───────────────────────
+    composable("sa_communities") {
+        SACommunityListScreen(navController)
+    }
+
+    composable(
+        route = "sa_community_detail/{communityId}",
+        arguments = listOf(navArgument("communityId") { type = NavType.StringType }),
+    ) { backStackEntry ->
+        val communityId = backStackEntry.arguments?.getString("communityId") ?: return@composable
+        SACommunityDetailScreen(navController = navController, communityId = communityId)
+    }
+
+    // ─── Phase 3: Broadcast ──────────────────────────────────
+    composable("sa_broadcast") {
+        SABroadcastScreen(navController)
+    }
+
+    // ─── Phase 4+: Additional screens will be registered here ──
     // composable("sa_feedback")    { SAFeedbackScreen(navController) }
     // composable("sa_analytics")   { SAAnalyticsScreen(navController) }
     // composable("sa_maintenance") { SAMaintenanceScreen(navController) }
