@@ -237,23 +237,24 @@ fun CommunityDetailScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(16.dp)
+                                .height(IntrinsicSize.Max),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             StatCard(
                                 label = "Members",
                                 value = "${community.memberCount}",
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                             StatCard(
                                 label = "Donations",
                                 value = "${community.donationCount}",
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                             StatCard(
                                 label = "Active Requests",
-                                value = "0", // Will be populated in Phase 4
-                                modifier = Modifier.weight(1f),
+                                value = "${state.requests.count { it.status == com.spondon.app.core.domain.model.RequestStatus.ACTIVE }}",
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                         }
                     }

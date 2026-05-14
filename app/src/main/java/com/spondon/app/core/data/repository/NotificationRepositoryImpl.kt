@@ -148,4 +148,35 @@ class NotificationRepositoryImpl @Inject constructor(
             },
         )
     }
+
+    /**
+     * Deletes all notifications older than 30 days from Firestore.
+     * This is a server-side cleanup — notifications are removed from the database,
+     * not just hidden in the app. Runs silently; errors are swallowed.
+     */
+    suspend fun deleteOldNotifications(userId: String) {
+        try {
+            val thirtyDaysAgo = Date(System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000)
+            val cutoff = Timestamp(thirtyDaysAgo)
+
+            val docs = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
+                .whereEqualTo("userId", userId)
+                .whereLessThan("createdAt", cutoff)
+                .get()
+                .await()
+
+            if (docs.isEmpty) return
+
+            // Firestore batch supports max 500 writes at a time
+            docs.documents.chunked(500).forEach { chunk ->
+                val batch = firestore.batch()
+                chunk.forEach { doc ->
+                    batch.delete(doc.reference)
+                }
+                batch.commit().await()
+            }
+        } catch (_: Exception) {
+            // Silently fail — cleanup is best-effort
+        }
+    }
 }

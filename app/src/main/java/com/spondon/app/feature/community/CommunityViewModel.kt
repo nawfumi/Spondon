@@ -292,6 +292,24 @@ class CommunityViewModel @Inject constructor(
 
     fun joinPublicCommunity(communityId: String) {
         viewModelScope.launch {
+            // Check blood group eligibility before joining
+            val community = _detailState.value.community
+            if (community != null && community.bloodGroups.isNotEmpty()) {
+                val userResult = com.spondon.app.core.common.Resource.Success(
+                    _detailState.value.members
+                )
+                // Fetch current user's blood group
+                val currentUserBloodGroup = getCurrentUserBloodGroup()
+                if (currentUserBloodGroup.isNotBlank() &&
+                    !community.bloodGroups.any { normalizeBloodGroup(it) == normalizeBloodGroup(currentUserBloodGroup) }
+                ) {
+                    _events.emit(CommunityEvent.ShowSnackbar(
+                        "Your blood group ($currentUserBloodGroup) is not supported by this community. Supported: ${community.bloodGroups.joinToString(", ")}"
+                    ))
+                    return@launch
+                }
+            }
+
             when (val result = manageMembersUseCase.joinCommunity(communityId, currentUserId)) {
                 is Resource.Success -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Joined successfully!"))
@@ -436,6 +454,24 @@ class CommunityViewModel @Inject constructor(
     fun submitJoinRequest(communityId: String) {
         viewModelScope.launch {
             _joinState.update { it.copy(isLoading = true, error = null) }
+
+            // Check blood group eligibility before submitting join request
+            val community = _joinState.value.community
+            if (community != null && community.bloodGroups.isNotEmpty()) {
+                val currentUserBloodGroup = getCurrentUserBloodGroup()
+                if (currentUserBloodGroup.isNotBlank() &&
+                    !community.bloodGroups.any { normalizeBloodGroup(it) == normalizeBloodGroup(currentUserBloodGroup) }
+                ) {
+                    _joinState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Your blood group ($currentUserBloodGroup) is not supported by this community. Supported: ${community.bloodGroups.joinToString(", ")}"
+                        )
+                    }
+                    return@launch
+                }
+            }
+
             val result = manageMembersUseCase.requestToJoin(
                 communityId, currentUserId, _joinState.value.message,
             )
@@ -716,4 +752,29 @@ class CommunityViewModel @Inject constructor(
         val daysSince = lastDonation.daysSince().toInt()
         return daysSince >= Constants.MIN_OVERRIDE_DAYS && daysSince < user.donationInterval
     }
+
+    /** Fetches the current user's blood group from Firestore. */
+    private suspend fun getCurrentUserBloodGroup(): String {
+        return try {
+            val result = communityRepository.getCommunityMembers(listOf(currentUserId))
+            (result as? Resource.Success)?.data?.firstOrNull()?.bloodGroup ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    /**
+     * Normalizes a blood group string so that different representations of the
+     * same group compare equal.
+     */
+    private fun normalizeBloodGroup(bg: String): String = bg
+        .trim()
+        .replace("\u00A0", "")
+        .replace("\u200B", "")
+        .replace(" ", "")
+        .replace("\uFF0B", "+")
+        .replace("\u2212", "-")
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .uppercase()
 }

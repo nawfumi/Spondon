@@ -36,22 +36,23 @@ class UserRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateUser(user: User): Resource<Unit> {
-        val data = mapOf(
+        val data = mapOf<String, Any?>(
             "name" to user.name,
             "phone" to user.phone,
             "email" to user.email,
             "avatarUrl" to user.avatarUrl,
             "bloodGroup" to user.bloodGroup,
-            "dob" to user.dob,
+            "dob" to user.dob?.let { com.google.firebase.Timestamp(it) },
             "weight" to user.weight,
             "isDonor" to user.isDonor,
-            "lastDonationDate" to user.lastDonationDate,
+            "lastDonationDate" to user.lastDonationDate?.let { com.google.firebase.Timestamp(it) },
             "donationInterval" to user.donationInterval,
             "totalDonations" to user.totalDonations,
             "availabilityOverride" to user.availabilityOverride,
             "district" to user.district,
             "upazila" to user.upazila,
             "isPhoneVisible" to user.isPhoneVisible,
+            "badges" to user.badges,
         )
         return firestoreService.updateUser(user.uid, data)
     }

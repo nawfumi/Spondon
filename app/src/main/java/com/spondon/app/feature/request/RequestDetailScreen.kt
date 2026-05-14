@@ -122,6 +122,7 @@ fun RequestDetailScreen(
                     // ─── Header: Blood Group + Urgency ───────
                     item {
                         Card(
+                            modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = when (request.urgency) {
@@ -565,6 +566,7 @@ private fun DetailSection(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,

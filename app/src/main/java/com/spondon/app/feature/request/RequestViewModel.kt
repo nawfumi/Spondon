@@ -442,6 +442,7 @@ class RequestViewModel @Inject constructor(
                     totalDonations = donor.totalDonations + 1,
                     lastDonationDate = Date(),
                     availabilityOverride = false,
+                    donationInterval = 120, // 120-day cooldown
                 )
                 userRepository.updateUser(updatedDonor)
 
@@ -472,6 +473,9 @@ class RequestViewModel @Inject constructor(
                     body = "Your blood donation for ${request.bloodGroup} at ${request.hospital} has been confirmed. Thank you for saving a life!",
                     deepLink = "request_detail/${request.id}",
                 )
+
+                // 5. Reload the detail so the UI reflects the new status
+                loadRequestDetail(request.id)
             } catch (_: Exception) {
                 // silently fail — don't block UI
             }
@@ -497,13 +501,17 @@ class RequestViewModel @Inject constructor(
                 Resource.Success(emptyList())
             }
             val feedRequests = (feedResult as? Resource.Success)?.data ?: emptyList()
+            // Filter out fulfilled/cancelled requests from the feed
+            val activeFeedRequests = feedRequests.filter {
+                it.status == RequestStatus.ACTIVE
+            }
 
             val myResult = requestRepository.getMyRequests(currentUserId)
             val myRequests = (myResult as? Resource.Success)?.data ?: emptyList()
 
             _feedState.update {
                 it.copy(
-                    feedRequests = feedRequests.sortedWith(
+                    feedRequests = activeFeedRequests.sortedWith(
                         compareByDescending<BloodRequest> { r ->
                             when (r.urgency) {
                                 Urgency.CRITICAL -> 2

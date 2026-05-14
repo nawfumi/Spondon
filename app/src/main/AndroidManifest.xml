@@ -49,5 +49,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
+        <receiver
+            android:name=".feature.update.UpdateManager$UpdateInstallReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".feature.update.UpdateManager$UpdateCancelReceiver"
+            android:exported="false" />
     </application>
 </manifest>

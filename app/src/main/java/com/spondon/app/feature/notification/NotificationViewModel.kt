@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.repository.NotificationRepository
+import com.spondon.app.core.data.repository.NotificationRepositoryImpl
 import com.spondon.app.core.domain.model.AppNotification
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ data class NotificationState(
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
     private val notificationRepository: NotificationRepository,
+    private val notificationRepositoryImpl: NotificationRepositoryImpl,
     private val auth: FirebaseAuth,
 ) : ViewModel() {
 
@@ -35,6 +37,15 @@ class NotificationViewModel @Inject constructor(
     init {
         observeUnread()
         observeNotificationsList()
+        // Clean up notifications older than 30 days from Firestore
+        cleanupOldNotifications()
+    }
+
+    private fun cleanupOldNotifications() {
+        if (currentUserId.isBlank()) return
+        viewModelScope.launch {
+            notificationRepositoryImpl.deleteOldNotifications(currentUserId)
+        }
     }
 
     private fun observeUnread() {
