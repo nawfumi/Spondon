@@ -2,6 +2,7 @@ package com.spondon.app.feature.superadmin.broadcast
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -268,9 +269,12 @@ fun SABroadcastScreen(
                     Text("TYPE", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp), color = SAGold.copy(alpha = 0.4f))
                 }
                 item {
-                    Row(
+                    // Use a wrapping layout for type chips
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         broadcastTypes.forEach { type ->
                             FilterChip(

@@ -386,7 +386,7 @@ class SARepository @Inject constructor(
         uid: String,
         title: String,
         body: String,
-        type: String = "INFO",
+        type: String = "ADMIN",
     ): Resource<Unit> {
         return try {
             val notification = hashMapOf(

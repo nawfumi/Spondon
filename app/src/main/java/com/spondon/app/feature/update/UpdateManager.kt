@@ -147,6 +147,7 @@ class UpdateManager(private val context: Context) {
             .setContentText("Tap Install to apply the update")
             .setAutoCancel(true)
             .setOngoing(false)
+            .setContentIntent(installPendingIntent)
             .addAction(R.mipmap.ic_launcher, "Install", installPendingIntent)
             .addAction(R.mipmap.ic_launcher, "Cancel", cancelPendingIntent)
             .build()
@@ -267,6 +268,9 @@ class UpdateManager(private val context: Context) {
 
                 _isDownloading.value = false
                 _progress.value = 100
+
+                // Allow any pending 100% progress notifications to flush, then show complete
+                Thread.sleep(200)
 
                 // Show complete notification with Install / Cancel
                 notificationManager.notify(NOTIFICATION_ID, buildCompleteNotification())

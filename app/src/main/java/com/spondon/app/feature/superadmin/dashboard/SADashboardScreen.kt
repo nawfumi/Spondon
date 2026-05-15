@@ -1,5 +1,6 @@
 package com.spondon.app.feature.superadmin.dashboard
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.spondon.app.feature.superadmin.auth.SuperAdminAuthViewModel
 
 private val SAGold = Color(0xFFFFD700)
 private val SADark = Color(0xFF0D0D0D)
@@ -32,8 +34,13 @@ private val SAPurple = Color(0xFFAB47BC)
 fun SADashboardScreen(
     navController: NavController,
     viewModel: SADashboardViewModel = hiltViewModel(),
+    authViewModel: SuperAdminAuthViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    // Block system back — must logout explicitly
+    BackHandler { showLogoutDialog = true }
 
     Scaffold(
         topBar = {
@@ -54,10 +61,9 @@ fun SADashboardScreen(
                         )
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        @Suppress("DEPRECATION")
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                actions = {
+                    IconButton(onClick = { showLogoutDialog = true }) {
+                        Icon(Icons.Outlined.Logout, contentDescription = "Logout", tint = SARed)
                     }
                 },
                 windowInsets = WindowInsets(0.dp),
@@ -347,6 +353,45 @@ fun SADashboardScreen(
                 item { Spacer(Modifier.height(24.dp)) }
             }
         }
+    }
+
+    // ─── Logout confirmation dialog ──────────────────
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            containerColor = SADarkCard,
+            title = {
+                Text("Logout from SuperAdmin?", fontWeight = FontWeight.Bold, color = Color.White)
+            },
+            text = {
+                Text(
+                    "You will be signed out of the admin panel and returned to the normal user experience.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.6f),
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        authViewModel.logout()
+                        // Navigate back to about screen, clear SA backstack
+                        navController.navigate("about") {
+                            popUpTo("sa_dashboard") { inclusive = true }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SARed),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Text("Logout", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel", color = Color.White.copy(alpha = 0.5f))
+                }
+            },
+        )
     }
 }
 

@@ -355,9 +355,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun handleGoogleSignInResult(result: GetCredentialResponse) {
-        val credential = result.credential
-
-        when (credential) {
+        when (val credential = result.credential) {
             is CustomCredential -> {
                 if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                     try {
