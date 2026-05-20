@@ -95,6 +95,9 @@ class DonorViewModel @Inject constructor(
 
     private val currentUserId get() = auth.currentUser?.uid ?: ""
 
+    /** Tracks badge IDs last written to Firestore to avoid re-triggering the snapshot listener. */
+    private var lastWrittenBadgeIds: Set<String> = emptySet()
+
     // ─── Find Donor State ────────────────────────────────────
     private val _findState = MutableStateFlow(FindDonorState())
     val findState: StateFlow<FindDonorState> = _findState.asStateFlow()
@@ -158,15 +161,26 @@ class DonorViewModel @Inject constructor(
                         _historyState.value.donations
                     }
 
-                    _historyState.update {
-                        it.copy(
-                            user = user,
-                            donations = donations,
-                            totalDonations = user.totalDonations,
-                            nextEligibleDays = cooldownDays,
-                            isEligibleNow = isEligible,
-                            isLoading = false,
-                        )
+                    // Only update state if something actually changed to avoid
+                    // redundant recompositions that cause flickering.
+                    val currentHistory = _historyState.value
+                    if (currentHistory.totalDonations != user.totalDonations ||
+                        currentHistory.isEligibleNow != isEligible ||
+                        currentHistory.nextEligibleDays != cooldownDays ||
+                        currentHistory.donations !== donations ||
+                        currentHistory.user?.badges != user.badges ||
+                        currentHistory.isLoading
+                    ) {
+                        _historyState.update {
+                            it.copy(
+                                user = user,
+                                donations = donations,
+                                totalDonations = user.totalDonations,
+                                nextEligibleDays = cooldownDays,
+                                isEligibleNow = isEligible,
+                                isLoading = false,
+                            )
+                        }
                     }
 
                     // ── Update achievements state ─────────────────────────────
@@ -202,25 +216,40 @@ class DonorViewModel @Inject constructor(
         // Persist newly earned badges using a targeted field-level update
         // instead of a full-document write to avoid re-triggering the snapshot
         // listener with all user fields (which caused infinite flickering).
-        val newBadgeIds = allBadges.filter { it.earnedDate != null }.map { it.id }
-        if (newBadgeIds.toSet() != earnedBadges.toSet()) {
+        //
+        // We additionally track `lastWrittenBadgeIds` in memory so that the
+        // Firestore write only fires for *genuinely new* badges, not on the
+        // second observer emission caused by the write itself.
+        val newBadgeIdSet = allBadges.filter { it.earnedDate != null }.map { it.id }.toSet()
+        if (newBadgeIdSet != earnedBadges.toSet() && newBadgeIdSet != lastWrittenBadgeIds) {
+            lastWrittenBadgeIds = newBadgeIdSet
             viewModelScope.launch {
                 try {
                     val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                     firestore.collection(com.spondon.app.core.common.Constants.USERS_COLLECTION)
                         .document(user.uid)
-                        .update("badges", newBadgeIds)
+                        .update("badges", newBadgeIdSet.toList())
                         .await()
                 } catch (_: Exception) { }
             }
         }
 
-        _achievementsState.update {
-            it.copy(
-                badges = allBadges,
-                totalDonations = totalDonations,
-                isLoading = false,
-            )
+        // Only update achievements state if something actually changed to
+        // avoid redundant recompositions that cause flickering.
+        val currentAchievements = _achievementsState.value
+        val earnedIds = allBadges.filter { it.earnedDate != null }.map { it.id }.toSet()
+        val currentEarnedIds = currentAchievements.badges.filter { it.earnedDate != null }.map { it.id }.toSet()
+        if (currentAchievements.totalDonations != totalDonations ||
+            currentEarnedIds != earnedIds ||
+            currentAchievements.isLoading
+        ) {
+            _achievementsState.update {
+                it.copy(
+                    badges = allBadges,
+                    totalDonations = totalDonations,
+                    isLoading = false,
+                )
+            }
         }
     }
 
