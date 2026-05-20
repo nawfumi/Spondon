@@ -822,6 +822,185 @@ class SARepository @Inject constructor(
     }
 
     // ════════════════════════════════════════════════════════════
+    // Analytics (Phase 5)
+    // ════════════════════════════════════════════════════════════
+
+    /** Get new user signups grouped by day for the last N days. Returns map of "MMM dd" → count. */
+    suspend fun getSignupsPerDay(days: Int = 7): Map<String, Int> {
+        return try {
+            val cal = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, -days)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startDate = cal.time
+            val snapshot = firestore.collection("users")
+                .whereGreaterThanOrEqualTo("createdAt", Timestamp(startDate))
+                .get().await()
+
+            val dateFormat = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault())
+            val result = linkedMapOf<String, Int>()
+
+            // Pre-fill all days with 0
+            val dayCal = Calendar.getInstance()
+            for (i in (days - 1) downTo 0) {
+                dayCal.timeInMillis = System.currentTimeMillis()
+                dayCal.add(Calendar.DAY_OF_YEAR, -i)
+                result[dateFormat.format(dayCal.time)] = 0
+            }
+
+            for (doc in snapshot.documents) {
+                val createdAt = when (val d = doc.data?.get("createdAt")) {
+                    is Timestamp -> d.toDate()
+                    is Date -> d
+                    else -> continue
+                }
+                val key = dateFormat.format(createdAt)
+                result[key] = (result[key] ?: 0) + 1
+            }
+            result
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    /** Get requests count grouped by urgency (NORMAL, URGENT, CRITICAL). */
+    suspend fun getRequestsByUrgency(): Map<String, Int> {
+        return try {
+            val snapshot = firestore.collection("requests").get().await()
+            val result = mutableMapOf("NORMAL" to 0, "URGENT" to 0, "CRITICAL" to 0)
+            for (doc in snapshot.documents) {
+                val urgency = doc.getString("urgency") ?: "NORMAL"
+                result[urgency] = (result[urgency] ?: 0) + 1
+            }
+            result
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    /** Get requests count grouped by blood group. */
+    suspend fun getRequestsByBloodGroup(): Map<String, Int> {
+        return try {
+            val snapshot = firestore.collection("requests").get().await()
+            val result = mutableMapOf<String, Int>()
+            for (doc in snapshot.documents) {
+                val bg = doc.getString("bloodGroup") ?: "Unknown"
+                result[bg] = (result[bg] ?: 0) + 1
+            }
+            result.toSortedMap()
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    /** Get donation fulfillment rate: fulfilled / total requests as a percentage. */
+    suspend fun getDonationFulfillmentRate(): Pair<Int, Int> {
+        return try {
+            val snapshot = firestore.collection("requests").get().await()
+            val total = snapshot.size()
+            val fulfilled = snapshot.documents.count {
+                it.getString("status") == "FULFILLED"
+            }
+            Pair(fulfilled, total)
+        } catch (_: Exception) {
+            Pair(0, 0)
+        }
+    }
+
+    /** Get top districts by activity (requests + users). Returns list of (district, count). */
+    suspend fun getTopDistricts(limit: Int = 5): List<Pair<String, Int>> {
+        return try {
+            val userSnapshot = firestore.collection("users").get().await()
+            val districtCounts = mutableMapOf<String, Int>()
+            for (doc in userSnapshot.documents) {
+                val district = doc.getString("district")
+                if (!district.isNullOrBlank()) {
+                    districtCounts[district] = (districtCounts[district] ?: 0) + 1
+                }
+            }
+            districtCounts.entries
+                .sortedByDescending { it.value }
+                .take(limit)
+                .map { it.key to it.value }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Get top donors this month by totalDonations. */
+    suspend fun getTopDonorsThisMonth(limit: Int = 5): List<Pair<String, Int>> {
+        return try {
+            val snapshot = firestore.collection("users")
+                .whereGreaterThan("totalDonations", 0)
+                .get().await()
+            snapshot.documents
+                .mapNotNull { doc ->
+                    val name = doc.getString("name") ?: return@mapNotNull null
+                    val donations = (doc.get("totalDonations") as? Number)?.toInt() ?: 0
+                    name to donations
+                }
+                .sortedByDescending { it.second }
+                .take(limit)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Get CRITICAL requests that are still ACTIVE and older than 12 hours. */
+    suspend fun getCriticalUnfulfilledRequests(): List<Map<String, String>> {
+        return try {
+            val cutoff = Date(System.currentTimeMillis() - 12 * 60 * 60 * 1000L)
+            val snapshot = firestore.collection("requests")
+                .whereEqualTo("status", "ACTIVE")
+                .whereEqualTo("urgency", "CRITICAL")
+                .get().await()
+            snapshot.documents.mapNotNull { doc ->
+                val createdAt = when (val d = doc.data?.get("createdAt")) {
+                    is Timestamp -> d.toDate()
+                    is Date -> d
+                    else -> null
+                }
+                if (createdAt != null && createdAt.before(cutoff)) {
+                    mapOf(
+                        "id" to doc.id,
+                        "bloodGroup" to (doc.getString("bloodGroup") ?: ""),
+                        "hospital" to (doc.getString("hospital") ?: ""),
+                        "requesterName" to (doc.getString("requesterName") ?: ""),
+                    )
+                } else null
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Get community growth stats: total, avg members, largest. */
+    suspend fun getCommunityGrowthStats(): Triple<Int, Double, String> {
+        return try {
+            val snapshot = firestore.collection("communities").get().await()
+            val total = snapshot.size()
+            if (total == 0) return Triple(0, 0.0, "—")
+            var totalMembers = 0
+            var largest = ""
+            var largestCount = 0
+            for (doc in snapshot.documents) {
+                val members = (doc.data?.get("memberIds") as? List<*>)?.size ?: 0
+                totalMembers += members
+                if (members > largestCount) {
+                    largestCount = members
+                    largest = doc.getString("name") ?: "Unknown"
+                }
+            }
+            Triple(total, totalMembers.toDouble() / total, "$largest ($largestCount)")
+        } catch (_: Exception) {
+            Triple(0, 0.0, "—")
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
     // Utility
     // ════════════════════════════════════════════════════════════
 

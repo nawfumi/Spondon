@@ -30,6 +30,7 @@ import com.spondon.app.feature.settings.SettingsScreen
 import com.spondon.app.feature.superadmin.auth.BannedScreen
 import com.spondon.app.feature.superadmin.superAdminGraph
 import com.spondon.app.feature.support.SupportScreen
+import com.spondon.app.feature.feedback.SendFeedbackScreen
 import com.spondon.app.feature.update.UpdateInfo
 import kotlinx.coroutines.tasks.await
 
@@ -227,6 +228,7 @@ fun SpondonNavGraph(
                 NotificationDetailScreen(navController)
             }
             composable(Routes.Support.route) { SupportScreen(navController) }
+            composable(Routes.SendFeedback.route) { SendFeedbackScreen(navController) }
             composable(Routes.About.route) {
                 AboutScreen(
                     navController = navController,

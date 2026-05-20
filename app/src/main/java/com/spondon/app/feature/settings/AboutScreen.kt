@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material3.*
@@ -32,6 +33,7 @@ import com.spondon.app.R
 import com.spondon.app.core.ui.i18n.LocalAppLanguage
 import com.spondon.app.core.ui.theme.BloodRed
 import com.spondon.app.feature.update.UpdateInfo
+import com.spondon.app.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,140 +117,157 @@ fun AboutScreen(
 
             Spacer(Modifier.height(28.dp))
 
-            // ─── Check for Update Card ────────────────────
-            Card(
+            // ─── Action Cards Row ─────────────────────────
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                // Check for Update
+                Card(
+                    onClick = {
+                        if (!isCheckingUpdate && updateAvailable == null) onCheckForUpdate()
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
                 ) {
-                    Icon(
-                        Icons.Filled.SystemUpdate,
-                        contentDescription = null,
-                        tint = BloodRed.copy(alpha = 0.7f),
-                        modifier = Modifier.size(32.dp),
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = if (isBn) "সফটওয়্যার আপডেট" else "Software Update",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = if (isBn) "নতুন সংস্করণ পরীক্ষা করুন"
-                            else "Check if a newer version is available",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(16.dp))
-
-                    // Update available inline
-                    AnimatedVisibility(
-                        visible = updateAvailable != null,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        updateAvailable?.let { info ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = BloodRed.copy(alpha = 0.08f)
+                        Icon(
+                            Icons.Filled.SystemUpdate,
+                            contentDescription = null,
+                            tint = BloodRed.copy(alpha = 0.7f),
+                            modifier = Modifier.size(28.dp),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        if (isCheckingUpdate) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = BloodRed,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Text(
+                                text = if (isBn) "আপডেট চেক" else "Check Update",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
                                 ),
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            Icons.Outlined.NewReleases,
-                                            contentDescription = null,
-                                            tint = BloodRed,
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            text = if (isBn) "নতুন সংস্করণ ${info.version} পাওয়া গেছে!"
-                                                else "Version ${info.version} available!",
-                                            style = MaterialTheme.typography.bodyMedium.copy(
-                                                fontWeight = FontWeight.SemiBold
-                                            ),
-                                            color = BloodRed,
-                                        )
-                                    }
-                                    if (info.releaseNotes.isNotBlank()) {
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(
-                                            text = info.releaseNotes.take(200),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                                            textAlign = TextAlign.Start,
-                                            modifier = Modifier.fillMaxWidth(),
-                                        )
-                                    }
-                                    Spacer(Modifier.height(12.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceEvenly,
-                                    ) {
-                                        OutlinedButton(
-                                            onClick = { onDismissUpdate() },
-                                            shape = RoundedCornerShape(10.dp),
-                                        ) {
-                                            Text(if (isBn) "পরে" else "Later")
-                                        }
-                                        Button(
-                                            onClick = { onDownloadUpdate(info.downloadUrl) },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.Download,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp),
-                                            )
-                                            Spacer(Modifier.width(6.dp))
-                                            Text(if (isBn) "ডাউনলোড" else "Download")
-                                        }
-                                    }
-                                }
-                            }
+                                textAlign = TextAlign.Center,
+                            )
                         }
                     }
+                }
 
-                    // Check button
-                    if (updateAvailable == null) {
-                        Button(
-                            onClick = onCheckForUpdate,
-                            enabled = !isCheckingUpdate,
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
+                // Send Feedback
+                Card(
+                    onClick = { navController.navigate(Routes.SendFeedback.route) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Feedback,
+                            contentDescription = null,
+                            tint = Color(0xFF7C4DFF).copy(alpha = 0.7f),
+                            modifier = Modifier.size(28.dp),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = if (isBn) "মতামত দিন" else "Feedback",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
+
+            // ─── Update Available Expansion ────────────────
+            AnimatedVisibility(
+                visible = updateAvailable != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                updateAvailable?.let { info ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = BloodRed.copy(alpha = 0.08f)
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            if (isCheckingUpdate) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp,
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(if (isBn) "চেক করা হচ্ছে..." else "Checking...")
-                            } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Filled.SystemUpdate,
+                                    Icons.Outlined.NewReleases,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
+                                    tint = BloodRed,
+                                    modifier = Modifier.size(20.dp),
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text(if (isBn) "আপডেট চেক করুন" else "Check for Update")
+                                Text(
+                                    text = if (isBn) "নতুন সংস্করণ ${info.version} পাওয়া গেছে!"
+                                        else "Version ${info.version} available!",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = BloodRed,
+                                )
+                            }
+                            if (info.releaseNotes.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = info.releaseNotes.take(200),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                                    textAlign = TextAlign.Start,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                            ) {
+                                OutlinedButton(
+                                    onClick = { onDismissUpdate() },
+                                    shape = RoundedCornerShape(10.dp),
+                                ) {
+                                    Text(if (isBn) "পরে" else "Later")
+                                }
+                                Button(
+                                    onClick = { onDownloadUpdate(info.downloadUrl) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Download,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(if (isBn) "ডাউনলোড" else "Download")
+                                }
                             }
                         }
                     }

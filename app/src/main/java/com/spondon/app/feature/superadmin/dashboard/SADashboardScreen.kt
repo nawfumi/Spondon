@@ -298,7 +298,7 @@ fun SADashboardScreen(
                             icon = Icons.Outlined.Analytics,
                             label = "Analytics",
                             modifier = Modifier.weight(1f),
-                            onClick = { /* Phase 5 */ },
+                            onClick = { navController.navigate("sa_analytics") },
                         )
                     }
                 }

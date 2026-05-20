@@ -45,4 +45,5 @@ sealed class Routes(val route: String) {
     data object NotificationDetail : Routes("notification_detail/{notificationId}")
     data object About : Routes("about")
     data object Support : Routes("support")
+    data object SendFeedback : Routes("send_feedback")
 }

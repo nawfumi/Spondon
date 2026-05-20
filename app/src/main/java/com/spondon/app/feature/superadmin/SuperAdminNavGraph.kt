@@ -16,6 +16,7 @@ import com.spondon.app.feature.superadmin.forceupdate.SAForceUpdateScreen
 import com.spondon.app.feature.superadmin.maintenance.SAMaintenanceScreen
 import com.spondon.app.feature.superadmin.users.SAUserDetailScreen
 import com.spondon.app.feature.superadmin.users.SAUserListScreen
+import com.spondon.app.feature.superadmin.analytics.SAAnalyticsScreen
 
 /**
  * SuperAdmin navigation graph. Plugged into SpondonNavGraph conditionally.
@@ -90,6 +91,8 @@ fun NavGraphBuilder.superAdminGraph(
         SAForceUpdateScreen(navController)
     }
 
-    // ─── Phase 5: Analytics (future) ─────────────────────────
-    // composable("sa_analytics")   { SAAnalyticsScreen(navController) }
+    // ─── Phase 5: Analytics ──────────────────────────────────
+    composable("sa_analytics") {
+        SAAnalyticsScreen(navController)
+    }
 }

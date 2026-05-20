@@ -157,6 +157,14 @@ fun SettingsScreen(
                     }
                 }
 
+                // ─── Feedback ─────────────────────
+                item { SectionHeader(s.sendFeedback) }
+                item {
+                    SettingsClickItem(Icons.Outlined.Feedback, s.sendFeedback, s.sendFeedbackDesc, Color(0xFF7C4DFF)) {
+                        navController.navigate(Routes.SendFeedback.route)
+                    }
+                }
+
                 // ─── Support Developer ──────────────
                 item { SectionHeader(s.supportDeveloper) }
                 item {

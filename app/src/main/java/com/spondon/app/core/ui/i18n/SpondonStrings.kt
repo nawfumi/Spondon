@@ -112,6 +112,23 @@ data class SpondonStrings(
     val cancel: String,
     val languageChangeRestart: String,
 
+    // ─── Feedback ────────────────────────
+    val sendFeedback: String,
+    val sendFeedbackDesc: String,
+    val feedbackTypeLabel: String,
+    val feedbackTypeBug: String,
+    val feedbackTypeFeature: String,
+    val feedbackTypeComplaint: String,
+    val feedbackTypeOther: String,
+    val feedbackBodyLabel: String,
+    val feedbackBodyPlaceholder: String,
+    val feedbackSubmit: String,
+    val feedbackSending: String,
+    val feedbackSentTitle: String,
+    val feedbackSentMessage: String,
+    val feedbackInfoText: String,
+    val feedbackAutoInfo: String,
+
     // ─── Support Developer ──────────────
     val supportDeveloper: String,
     val supportDeveloperDesc: String,
@@ -277,6 +294,23 @@ val Bn = SpondonStrings(
     cancel = "বাতিল",
     languageChangeRestart = "ভাষা পরিবর্তন হয়েছে। পরিবর্তন কার্যকর হবে।",
 
+    // Feedback
+    sendFeedback = "মতামত দিন",
+    sendFeedbackDesc = "বাগ রিপোর্ট, ফিচার রিকোয়েস্ট বা মতামত পাঠান",
+    feedbackTypeLabel = "ফিডব্যাকের ধরন",
+    feedbackTypeBug = "বাগ",
+    feedbackTypeFeature = "ফিচার",
+    feedbackTypeComplaint = "অভিযোগ",
+    feedbackTypeOther = "অন্যান্য",
+    feedbackBodyLabel = "বিবরণ",
+    feedbackBodyPlaceholder = "আপনার মতামত বিস্তারিত লিখুন...",
+    feedbackSubmit = "পাঠান",
+    feedbackSending = "পাঠানো হচ্ছে...",
+    feedbackSentTitle = "ধন্যবাদ! \uD83D\uDE4F",
+    feedbackSentMessage = "আপনার মতামত সফলভাবে পাঠানো হয়েছে। আমরা শীঘ্রই পর্যালোচনা করব।",
+    feedbackInfoText = "আপনার মতামত আমাদের অ্যাপটি আরও ভালো করতে সাহায্য করে। বাগ, ফিচার রিকোয়েস্ট বা যেকোনো মতামত জানান।",
+    feedbackAutoInfo = "ডিভাইসের তথ্য ও অ্যাপ ভার্সন স্বয়ংক্রিয়ভাবে সংযুক্ত হবে।",
+
     // Support Developer
     supportDeveloper = "সাপোর্ট করুন",
     supportDeveloperDesc = "এই অ্যাপটি ভালো লাগলে ডেভেলপারকে সাপোর্ট করতে পারেন",
@@ -441,6 +475,23 @@ val En = SpondonStrings(
     delete = "Delete",
     cancel = "Cancel",
     languageChangeRestart = "Language changed. Changes will take effect.",
+
+    // Feedback
+    sendFeedback = "Send Feedback",
+    sendFeedbackDesc = "Report bugs, request features, or share your thoughts",
+    feedbackTypeLabel = "Feedback Type",
+    feedbackTypeBug = "Bug",
+    feedbackTypeFeature = "Feature",
+    feedbackTypeComplaint = "Complaint",
+    feedbackTypeOther = "Other",
+    feedbackBodyLabel = "Description",
+    feedbackBodyPlaceholder = "Describe your feedback in detail...",
+    feedbackSubmit = "Submit",
+    feedbackSending = "Sending...",
+    feedbackSentTitle = "Thank You! \uD83D\uDE4F",
+    feedbackSentMessage = "Your feedback has been submitted successfully. We'll review it soon.",
+    feedbackInfoText = "Your feedback helps us make the app better. Report bugs, request features, or share any thoughts.",
+    feedbackAutoInfo = "Device info and app version will be attached automatically.",
 
     // Support Developer
     supportDeveloper = "Support Us",
