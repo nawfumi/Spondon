@@ -73,6 +73,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -259,10 +260,12 @@ fun CommunityListScreen(
                         ) {
                             items(communities, key = { it.id }) { community ->
                                 val isJoined = state.myCommunities.any { it.id == community.id }
+                                val isEligible = viewModel.isBloodGroupEligible(community)
                                 CommunityCard(
                                     community = community,
                                     isDiscover = state.selectedTab == 1,
                                     isJoined = isJoined,
+                                    isEligible = isEligible,
                                     onClick = {
                                         navController.navigate("community_detail/${community.id}")
                                     },
@@ -290,6 +293,7 @@ private fun CommunityCard(
     community: Community,
     isDiscover: Boolean,
     isJoined: Boolean = false,
+    isEligible: Boolean = true,
     onClick: () -> Unit,
     onJoin: () -> Unit,
 ) {
@@ -458,6 +462,24 @@ private fun CommunityCard(
                         Text(
                             "Joined",
                             style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                } else if (!isEligible) {
+                    OutlinedButton(
+                        onClick = {},
+                        shape = RoundedCornerShape(20.dp),
+                        enabled = false,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 34.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            disabledContentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                        ),
+                    ) {
+                        Text(
+                            "Blood Group\nMismatch",
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            lineHeight = 14.sp,
                         )
                     }
                 } else {

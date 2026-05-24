@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.spondon.app.feature.auth.BangladeshData
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -49,7 +50,7 @@ fun SABroadcastScreen(
     }
 
     val broadcastTypes = listOf("Announcement", "Alert", "Feature", "Maintenance")
-    val targetOptions = listOf("All Users", "Donors Only", "Specific District", "Specific Blood Group")
+    val targetOptions = listOf("All Users", "Donors Only", "Specific District", "Specific Blood Group", "Specific Community")
 
     Scaffold(
         topBar = {
@@ -328,6 +329,151 @@ fun SABroadcastScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = if (state.target == target) SAGold else Color.White.copy(alpha = 0.6f),
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ─── Sub-selector for specific targets ───────
+                item {
+                    AnimatedVisibility(visible = state.target in listOf("Specific District", "Specific Blood Group", "Specific Community")) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = SADarkCard),
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                when (state.target) {
+                                    "Specific District" -> {
+                                        Text(
+                                            "SELECT DISTRICT",
+                                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                                            color = SAGold.copy(alpha = 0.4f),
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        var expanded by remember { mutableStateOf(false) }
+                                        ExposedDropdownMenuBox(
+                                            expanded = expanded,
+                                            onExpandedChange = { expanded = !expanded },
+                                        ) {
+                                            OutlinedTextField(
+                                                value = state.targetDistrict.ifEmpty { "Select district..." },
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedTextColor = Color.White,
+                                                    unfocusedTextColor = Color.White.copy(alpha = 0.8f),
+                                                    focusedBorderColor = SAGold.copy(alpha = 0.4f),
+                                                    unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                                ),
+                                                shape = RoundedCornerShape(10.dp),
+                                            )
+                                            ExposedDropdownMenu(
+                                                expanded = expanded,
+                                                onDismissRequest = { expanded = false },
+                                            ) {
+                                                BangladeshData.districtNames.forEach { district ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(district) },
+                                                        onClick = {
+                                                            viewModel.updateTargetDistrict(district)
+                                                            expanded = false
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    "Specific Blood Group" -> {
+                                        Text(
+                                            "SELECT BLOOD GROUP",
+                                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                                            color = SAGold.copy(alpha = 0.4f),
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        val bloodGroups = listOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
+                                        @OptIn(ExperimentalLayoutApi::class)
+                                        FlowRow(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            bloodGroups.forEach { bg ->
+                                                FilterChip(
+                                                    selected = state.targetBloodGroup == bg,
+                                                    onClick = { viewModel.updateTargetBloodGroup(bg) },
+                                                    label = { Text(bg, style = MaterialTheme.typography.labelSmall) },
+                                                    colors = FilterChipDefaults.filterChipColors(
+                                                        selectedContainerColor = SAGold.copy(alpha = 0.2f),
+                                                        selectedLabelColor = SAGold,
+                                                        containerColor = Color(0xFF252540),
+                                                        labelColor = Color.White.copy(alpha = 0.6f),
+                                                    ),
+                                                    border = FilterChipDefaults.filterChipBorder(
+                                                        borderColor = Color.Transparent,
+                                                        selectedBorderColor = SAGold.copy(alpha = 0.3f),
+                                                        enabled = true,
+                                                        selected = state.targetBloodGroup == bg,
+                                                    ),
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    "Specific Community" -> {
+                                        Text(
+                                            "SELECT COMMUNITY",
+                                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                                            color = SAGold.copy(alpha = 0.4f),
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        if (state.communities.isEmpty()) {
+                                            Text(
+                                                "No communities found",
+                                                color = Color.White.copy(alpha = 0.4f),
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                        } else {
+                                            var expanded by remember { mutableStateOf(false) }
+                                            ExposedDropdownMenuBox(
+                                                expanded = expanded,
+                                                onExpandedChange = { expanded = !expanded },
+                                            ) {
+                                                OutlinedTextField(
+                                                    value = state.targetCommunityName.ifEmpty { "Select community..." },
+                                                    onValueChange = {},
+                                                    readOnly = true,
+                                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                                                    colors = OutlinedTextFieldDefaults.colors(
+                                                        focusedTextColor = Color.White,
+                                                        unfocusedTextColor = Color.White.copy(alpha = 0.8f),
+                                                        focusedBorderColor = SAGold.copy(alpha = 0.4f),
+                                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                                    ),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                )
+                                                ExposedDropdownMenu(
+                                                    expanded = expanded,
+                                                    onDismissRequest = { expanded = false },
+                                                ) {
+                                                    state.communities.forEach { (id, name) ->
+                                                        DropdownMenuItem(
+                                                            text = { Text(name) },
+                                                            onClick = {
+                                                                viewModel.updateTargetCommunity(id, name)
+                                                                expanded = false
+                                                            },
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

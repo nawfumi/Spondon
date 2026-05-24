@@ -587,6 +587,7 @@ class SARepository @Inject constructor(
         body: String,
         type: String,
         target: String,
+        targetValue: String = "",
     ): Resource<Unit> {
         return try {
             val broadcast = hashMapOf(
@@ -594,6 +595,7 @@ class SARepository @Inject constructor(
                 "body" to body,
                 "type" to type,
                 "target" to target,
+                "targetValue" to targetValue,
                 "sentBy" to (auth.currentUser?.uid ?: ""),
                 "sentAt" to FieldValue.serverTimestamp(),
                 "status" to "SENT",
@@ -601,7 +603,7 @@ class SARepository @Inject constructor(
             firestore.collection("broadcasts").add(broadcast).await()
             auditLogger.log(
                 SAAction.BROADCAST,
-                metadata = mapOf("title" to title, "target" to target, "type" to type),
+                metadata = mapOf("title" to title, "target" to target, "targetValue" to targetValue, "type" to type),
             )
             Resource.Success(Unit)
         } catch (e: Exception) {
@@ -622,12 +624,14 @@ class SARepository @Inject constructor(
                     is Date -> d
                     else -> null
                 }
+                val rawTarget = data["target"] as? String ?: ""
+                val targetValue = data["targetValue"] as? String ?: ""
                 SABroadcastItem(
                     id = doc.id,
                     title = data["title"] as? String ?: "",
                     body = data["body"] as? String ?: "",
                     type = data["type"] as? String ?: "",
-                    target = data["target"] as? String ?: "",
+                    target = if (targetValue.isNotEmpty()) "$rawTarget → $targetValue" else rawTarget,
                     sentAt = sentAt,
                     status = data["status"] as? String ?: "SENT",
                 )

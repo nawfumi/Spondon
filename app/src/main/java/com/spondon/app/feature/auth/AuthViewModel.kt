@@ -3,6 +3,7 @@ package com.spondon.app.feature.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.PhoneAuthCredential
+import com.google.firebase.firestore.FirebaseFirestore
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.local.PreferencesManager
 import com.spondon.app.core.data.repository.AuthRepository
@@ -12,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.Date
 import javax.inject.Inject
 
@@ -92,6 +94,11 @@ data class AuthState(
     // ── Ban state ───
     val isBanned: Boolean = false,
     val banReason: String? = null,
+
+    // ── Maintenance gate ───
+    val isMaintenanceMode: Boolean = false,
+    val maintenanceTitle: String = "",
+    val maintenanceMessage: String = "",
 )
 
 @HiltViewModel
@@ -99,6 +106,7 @@ class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val preferencesManager: PreferencesManager,
+    private val firestore: FirebaseFirestore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AuthState())
@@ -217,16 +225,38 @@ class AuthViewModel @Inject constructor(
     private fun checkInitialState() {
         viewModelScope.launch {
             try {
+                // ── Maintenance mode check (before auth) ──
+                var isMaintenanceOn = false
+                var maintenanceTitle = ""
+                var maintenanceMessage = ""
+                try {
+                    val mDoc = firestore.document("config/maintenance").get().await()
+                    isMaintenanceOn = mDoc.getBoolean("isEnabled") ?: false
+                    if (isMaintenanceOn) {
+                        maintenanceTitle = mDoc.getString("title") ?: ""
+                        maintenanceMessage = mDoc.getString("message") ?: ""
+                    }
+                } catch (_: Exception) { /* fail-open: don't block users if Firestore is down */ }
+
                 val isOnboarded = preferencesManager.isOnboardingComplete.first()
                 val isLoggedIn = authRepository.isLoggedIn()
                 var needsSetup = false
                 var userData: User? = null
                 var isBanned = false
                 var banReason: String? = null
+                var isSuperAdmin = false
 
                 if (isLoggedIn) {
                     val uid = authRepository.getCurrentUserId()
                     if (uid != null) {
+                        // Check if this user is the SuperAdmin (exempt from maintenance)
+                        if (isMaintenanceOn) {
+                            try {
+                                val saDoc = firestore.document("config/superadmin").get().await()
+                                isSuperAdmin = saDoc.getString("uid") == uid
+                            } catch (_: Exception) { /* not SA */ }
+                        }
+
                         when (val result = userRepository.getUser(uid)) {
                             is Resource.Success -> {
                                 userData = result.data
@@ -246,6 +276,9 @@ class AuthViewModel @Inject constructor(
                     }
                 }
 
+                // Maintenance blocks everyone except SuperAdmin
+                val showMaintenanceGate = isMaintenanceOn && !isSuperAdmin
+
                 _state.update {
                     it.copy(
                         fullName = userData?.name ?: it.fullName,
@@ -263,6 +296,9 @@ class AuthViewModel @Inject constructor(
                         isInitialized = true,
                         isBanned = isBanned,
                         banReason = banReason,
+                        isMaintenanceMode = showMaintenanceGate,
+                        maintenanceTitle = maintenanceTitle,
+                        maintenanceMessage = maintenanceMessage,
                     )
                 }
             } catch (e: Exception) {

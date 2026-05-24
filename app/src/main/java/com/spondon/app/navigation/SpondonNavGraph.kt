@@ -28,6 +28,7 @@ import com.spondon.app.feature.settings.AboutScreen
 import com.spondon.app.feature.settings.SecuritySettingsScreen
 import com.spondon.app.feature.settings.SettingsScreen
 import com.spondon.app.feature.superadmin.auth.BannedScreen
+import com.spondon.app.feature.superadmin.maintenance.MaintenanceGateScreen
 import com.spondon.app.feature.superadmin.superAdminGraph
 import com.spondon.app.feature.support.SupportScreen
 import com.spondon.app.feature.feedback.SendFeedbackScreen
@@ -239,6 +240,15 @@ fun SpondonNavGraph(
                     onDownloadUpdate = onDownloadUpdate,
                     onDismissUpdate = onDismissUpdate,
                     onClearUpToDate = onClearUpToDate,
+                )
+            }
+
+            // ─── Maintenance Gate ─────────────────────────────
+            composable("maintenance_gate") {
+                val authState by authViewModel.state.collectAsState()
+                MaintenanceGateScreen(
+                    title = authState.maintenanceTitle,
+                    message = authState.maintenanceMessage,
                 )
             }
 

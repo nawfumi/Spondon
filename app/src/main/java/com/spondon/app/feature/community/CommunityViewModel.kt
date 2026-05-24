@@ -29,6 +29,7 @@ data class CommunityListState(
     val error: String? = null,
     val selectedTab: Int = 0, // 0 = My Communities, 1 = Discover
     val searchQuery: String = "",
+    val currentUserBloodGroup: String = "",
 )
 
 data class CommunityDetailState(
@@ -141,6 +142,9 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             _listState.update { it.copy(isLoading = true, error = null) }
 
+            // Load current user's blood group for eligibility checks
+            val userBloodGroup = getCurrentUserBloodGroup()
+
             // Load My Communities
             val myResult = getCommunitiesUseCase.getMyCommunities(currentUserId)
             val myCommunities = when (myResult) {
@@ -171,6 +175,7 @@ class CommunityViewModel @Inject constructor(
                     myCommunities = myCommunities,
                     discoverCommunities = discover,
                     isLoading = false,
+                    currentUserBloodGroup = userBloodGroup,
                 )
             }
         }
@@ -206,6 +211,11 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             _detailState.update { it.copy(isLoading = true, error = null) }
 
+            // Ensure the user's blood group is loaded for eligibility checks
+            if (_listState.value.currentUserBloodGroup.isBlank()) {
+                val bg = getCurrentUserBloodGroup()
+                _listState.update { it.copy(currentUserBloodGroup = bg) }
+            }
             when (val result = getCommunitiesUseCase.getCommunity(communityId)) {
                 is Resource.Success -> {
                     val community = result.data
@@ -292,14 +302,12 @@ class CommunityViewModel @Inject constructor(
 
     fun joinPublicCommunity(communityId: String) {
         viewModelScope.launch {
-            // Check blood group eligibility before joining
-            val community = _detailState.value.community
+            // Look up community from listState first, then detailState
+            val community = _listState.value.discoverCommunities.find { it.id == communityId }
+                ?: _detailState.value.community
+
             if (community != null && community.bloodGroups.isNotEmpty()) {
-                val userResult = com.spondon.app.core.common.Resource.Success(
-                    _detailState.value.members
-                )
-                // Fetch current user's blood group
-                val currentUserBloodGroup = getCurrentUserBloodGroup()
+                val currentUserBloodGroup = _listState.value.currentUserBloodGroup.ifBlank { getCurrentUserBloodGroup() }
                 if (currentUserBloodGroup.isNotBlank() &&
                     !community.bloodGroups.any { normalizeBloodGroup(it) == normalizeBloodGroup(currentUserBloodGroup) }
                 ) {
@@ -777,4 +785,15 @@ class CommunityViewModel @Inject constructor(
         .replace("\u2013", "-")
         .replace("\u2014", "-")
         .uppercase()
+
+    /**
+     * Check if the current user's blood group is eligible to join a community.
+     * Returns true if the community has no blood group restriction, or the user's group matches.
+     */
+    fun isBloodGroupEligible(community: Community): Boolean {
+        if (community.bloodGroups.isEmpty()) return true
+        val userBg = _listState.value.currentUserBloodGroup
+        if (userBg.isBlank()) return true // can't determine, allow
+        return community.bloodGroups.any { normalizeBloodGroup(it) == normalizeBloodGroup(userBg) }
+    }
 }

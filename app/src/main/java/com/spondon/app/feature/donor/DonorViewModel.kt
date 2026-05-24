@@ -98,6 +98,9 @@ class DonorViewModel @Inject constructor(
     /** Tracks badge IDs last written to Firestore to avoid re-triggering the snapshot listener. */
     private var lastWrittenBadgeIds: Set<String> = emptySet()
 
+    /** True once the real-time observer has delivered at least one emission. */
+    private var observerHasEmitted = false
+
     // ─── Find Donor State ────────────────────────────────────
     private val _findState = MutableStateFlow(FindDonorState())
     val findState: StateFlow<FindDonorState> = _findState.asStateFlow()
@@ -146,6 +149,7 @@ class DonorViewModel @Inject constructor(
                             old.donationInterval == new.donationInterval
                 }
                 .collect { user ->
+                    observerHasEmitted = true
                     val (isEligible, cooldownDays) = checkAvailability(user)
 
                     // ── Update history state ─────────────────────────────────
@@ -203,9 +207,11 @@ class DonorViewModel @Inject constructor(
             Badge("century", "Century Donor", "Complete 100 blood donations", "💯", 100),
         ).map { badge ->
             when {
+                // Badge already persisted in Firestore
                 totalDonations >= badge.criteria && earnedBadges.contains(badge.id) ->
-                    badge.copy(earnedDate = user.createdAt)
+                    badge.copy(earnedDate = user.createdAt ?: Date())
 
+                // Badge newly earned (not yet persisted)
                 totalDonations >= badge.criteria ->
                     badge.copy(earnedDate = Date())
 
@@ -221,8 +227,20 @@ class DonorViewModel @Inject constructor(
         // Firestore write only fires for *genuinely new* badges, not on the
         // second observer emission caused by the write itself.
         val newBadgeIdSet = allBadges.filter { it.earnedDate != null }.map { it.id }.toSet()
-        if (newBadgeIdSet != earnedBadges.toSet() && newBadgeIdSet != lastWrittenBadgeIds) {
+        val needsPersist = newBadgeIdSet != earnedBadges.toSet() && newBadgeIdSet != lastWrittenBadgeIds
+        if (needsPersist) {
             lastWrittenBadgeIds = newBadgeIdSet
+            // Update the achievements state FIRST (before Firestore write) so
+            // the UI shows the correct badges immediately. The Firestore write
+            // will trigger another observer emission, but since the state will
+            // already match, the change-detection guard below will skip it.
+            _achievementsState.update {
+                it.copy(
+                    badges = allBadges,
+                    totalDonations = totalDonations,
+                    isLoading = false,
+                )
+            }
             viewModelScope.launch {
                 try {
                     val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
@@ -232,23 +250,23 @@ class DonorViewModel @Inject constructor(
                         .await()
                 } catch (_: Exception) { }
             }
-        }
-
-        // Only update achievements state if something actually changed to
-        // avoid redundant recompositions that cause flickering.
-        val currentAchievements = _achievementsState.value
-        val earnedIds = allBadges.filter { it.earnedDate != null }.map { it.id }.toSet()
-        val currentEarnedIds = currentAchievements.badges.filter { it.earnedDate != null }.map { it.id }.toSet()
-        if (currentAchievements.totalDonations != totalDonations ||
-            currentEarnedIds != earnedIds ||
-            currentAchievements.isLoading
-        ) {
-            _achievementsState.update {
-                it.copy(
-                    badges = allBadges,
-                    totalDonations = totalDonations,
-                    isLoading = false,
-                )
+        } else {
+            // Only update achievements state if something actually changed to
+            // avoid redundant recompositions that cause flickering.
+            val currentAchievements = _achievementsState.value
+            val earnedIds = allBadges.filter { it.earnedDate != null }.map { it.id }.toSet()
+            val currentEarnedIds = currentAchievements.badges.filter { it.earnedDate != null }.map { it.id }.toSet()
+            if (currentAchievements.totalDonations != totalDonations ||
+                currentEarnedIds != earnedIds ||
+                currentAchievements.isLoading
+            ) {
+                _achievementsState.update {
+                    it.copy(
+                        badges = allBadges,
+                        totalDonations = totalDonations,
+                        isLoading = false,
+                    )
+                }
             }
         }
     }
@@ -418,8 +436,13 @@ class DonorViewModel @Inject constructor(
     // ═══════════════════════════════════════════════════════════
 
     fun loadDonationHistory() {
+        // If the observer has already delivered data, skip the explicit
+        // load to avoid a loading→loaded→loading→loaded flicker cycle.
+        if (observerHasEmitted && !_historyState.value.isLoading) return
         viewModelScope.launch {
-            _historyState.update { it.copy(isLoading = true, error = null) }
+            if (!observerHasEmitted) {
+                _historyState.update { it.copy(isLoading = true, error = null) }
+            }
 
             val userResult = userRepository.getUser(currentUserId)
             val user = (userResult as? Resource.Success)?.data
@@ -448,10 +471,17 @@ class DonorViewModel @Inject constructor(
 
     fun loadAchievements() {
         // The real-time observer in observeCurrentUser() already drives
-        // _achievementsState.  This explicit call is kept for the initial load
-        // on screens that open without a prior user-document emission.
+        // _achievementsState.  This explicit call is only needed if the
+        // observer hasn't emitted yet (e.g. slow network on first open).
+        // If the observer has already delivered data, skip the one-shot
+        // fetch to avoid racing with the observer and showing stale data.
+        if (observerHasEmitted && !_achievementsState.value.isLoading) return
         viewModelScope.launch {
-            _achievementsState.update { it.copy(isLoading = true) }
+            // Don't reset isLoading if the observer already set it to false
+            // — that would cause a flicker (loading → loaded → loading → loaded).
+            if (!observerHasEmitted) {
+                _achievementsState.update { it.copy(isLoading = true) }
+            }
             val userResult = userRepository.getUser(currentUserId)
             val user = (userResult as? Resource.Success)?.data ?: return@launch
             recalculateBadges(user)

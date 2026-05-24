@@ -339,6 +339,7 @@ private fun BadgeCard(
     ) {
         Column(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp)
                 .then(
                     if (!isEarned) Modifier.alpha(0.5f) else Modifier,
@@ -378,6 +379,7 @@ private fun BadgeCard(
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
+                modifier = Modifier.fillMaxWidth(),
             )
 
             Spacer(Modifier.height(4.dp))
@@ -386,10 +388,13 @@ private fun BadgeCard(
                 "${badge.criteria} donation${if (badge.criteria > 1) "s" else ""}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
 
+            Spacer(Modifier.height(8.dp))
+
             if (!isEarned) {
-                Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier
@@ -399,6 +404,9 @@ private fun BadgeCard(
                     color = BloodRed,
                     trackColor = BloodRed.copy(alpha = 0.1f),
                 )
+            } else {
+                // Placeholder spacer to keep card height uniform with unearned badges
+                Spacer(Modifier.height(4.dp))
             }
         }
     }

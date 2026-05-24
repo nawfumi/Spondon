@@ -33,6 +33,11 @@ data class SABroadcastState(
     val body: String = "",
     val type: String = "Announcement",
     val target: String = "All Users",
+    val targetDistrict: String = "",
+    val targetBloodGroup: String = "",
+    val targetCommunityId: String = "",
+    val targetCommunityName: String = "",
+    val communities: List<Pair<String, String>> = emptyList(), // id to name
     val isSending: Boolean = false,
     val sendSuccess: Boolean = false,
     val error: String? = null,
@@ -56,12 +61,28 @@ class SABroadcastViewModel @Inject constructor(
     private val _state = MutableStateFlow(SABroadcastState())
     val state: StateFlow<SABroadcastState> = _state.asStateFlow()
 
+    init {
+        loadCommunities()
+    }
+
+    private fun loadCommunities() {
+        viewModelScope.launch {
+            val result = saRepository.getAllCommunities()
+            if (result is Resource.Success) {
+                _state.update { it.copy(communities = result.data.map { c -> c.id to c.name }) }
+            }
+        }
+    }
+
     // ─── Composer ──────────────────────────────────────────
 
     fun updateTitle(v: String) = _state.update { it.copy(title = v.take(65), error = null) }
     fun updateBody(v: String) = _state.update { it.copy(body = v.take(240), error = null) }
     fun updateType(v: String) = _state.update { it.copy(type = v) }
     fun updateTarget(v: String) = _state.update { it.copy(target = v) }
+    fun updateTargetDistrict(v: String) = _state.update { it.copy(targetDistrict = v) }
+    fun updateTargetBloodGroup(v: String) = _state.update { it.copy(targetBloodGroup = v) }
+    fun updateTargetCommunity(id: String, name: String) = _state.update { it.copy(targetCommunityId = id, targetCommunityName = name) }
 
     fun sendBroadcast() {
         val s = _state.value
@@ -73,6 +94,25 @@ class SABroadcastViewModel @Inject constructor(
             _state.update { it.copy(error = "Body is required") }
             return
         }
+        if (s.target == "Specific District" && s.targetDistrict.isBlank()) {
+            _state.update { it.copy(error = "Please select a district") }
+            return
+        }
+        if (s.target == "Specific Blood Group" && s.targetBloodGroup.isBlank()) {
+            _state.update { it.copy(error = "Please select a blood group") }
+            return
+        }
+        if (s.target == "Specific Community" && s.targetCommunityId.isBlank()) {
+            _state.update { it.copy(error = "Please select a community") }
+            return
+        }
+
+        val targetValue = when (s.target) {
+            "Specific District" -> s.targetDistrict
+            "Specific Blood Group" -> s.targetBloodGroup
+            "Specific Community" -> s.targetCommunityName
+            else -> ""
+        }
 
         viewModelScope.launch {
             _state.update { it.copy(isSending = true, error = null) }
@@ -81,6 +121,7 @@ class SABroadcastViewModel @Inject constructor(
                 body = s.body,
                 type = s.type,
                 target = s.target,
+                targetValue = targetValue,
             )) {
                 is Resource.Success -> {
                     _state.update {
@@ -89,6 +130,10 @@ class SABroadcastViewModel @Inject constructor(
                             sendSuccess = true,
                             title = "",
                             body = "",
+                            targetDistrict = "",
+                            targetBloodGroup = "",
+                            targetCommunityId = "",
+                            targetCommunityName = "",
                         )
                     }
                 }

@@ -270,6 +270,7 @@ fun CommunityDetailScreen(
                             // Join / Leave button
                             when (state.membershipStatus) {
                                 MembershipStatus.NONE -> {
+                                    val isEligible = viewModel.isBloodGroupEligible(community)
                                     Button(
                                         onClick = {
                                             if (community.type == CommunityType.PUBLIC) {
@@ -279,12 +280,21 @@ fun CommunityDetailScreen(
                                             }
                                         },
                                         modifier = Modifier.weight(1f),
-                                        colors = ButtonDefaults.buttonColors(containerColor = BloodRed),
+                                        enabled = isEligible,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = BloodRed,
+                                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            disabledContentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                                        ),
                                         shape = RoundedCornerShape(12.dp),
                                     ) {
                                         Icon(Icons.Default.GroupAdd, contentDescription = null, Modifier.size(18.dp))
                                         Spacer(Modifier.width(6.dp))
-                                        Text(if (community.type == CommunityType.PUBLIC) "Join" else "Request to Join")
+                                        Text(
+                                            if (!isEligible) "Blood Group Mismatch"
+                                            else if (community.type == CommunityType.PUBLIC) "Join"
+                                            else "Request to Join"
+                                        )
                                     }
                                 }
                                 MembershipStatus.JOINED -> {
