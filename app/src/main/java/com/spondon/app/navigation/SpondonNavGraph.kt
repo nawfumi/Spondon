@@ -32,6 +32,7 @@ import com.spondon.app.feature.superadmin.maintenance.MaintenanceGateScreen
 import com.spondon.app.feature.superadmin.superAdminGraph
 import com.spondon.app.feature.support.SupportScreen
 import com.spondon.app.feature.feedback.SendFeedbackScreen
+import com.spondon.app.feature.onboarding.*
 import com.spondon.app.feature.update.UpdateInfo
 import kotlinx.coroutines.tasks.await
 
@@ -161,6 +162,23 @@ fun SpondonNavGraph(
                 composable(Routes.Permissions.route) {
                     PermissionsScreen(navController)
                 }
+
+                // ─── New Onboarding Flow ─────────────────────
+                composable(Routes.OnboardingWelcome.route) {
+                    WelcomeScreen(navController)
+                }
+                composable(Routes.OnboardingHowItWorks.route) {
+                    HowItWorksScreen(navController)
+                }
+                composable(Routes.OnboardingQuiz.route) {
+                    EligibilityQuizScreen(navController)
+                }
+                composable(Routes.OnboardingTipsPreview.route) {
+                    TipsPreviewScreen(navController)
+                }
+                composable(Routes.OnboardingComplete.route) {
+                    OnboardingCompleteScreen(navController)
+                }
             }
 
             // ─── Main (Bottom Nav Destinations) ──────────────
@@ -214,6 +232,9 @@ fun SpondonNavGraph(
             }
             composable(Routes.DonationHistory.route) { DonationHistoryScreen(navController) }
             composable(Routes.Achievements.route) { AchievementsScreen(navController) }
+
+            // ─── Tips ────────────────────────────────────────
+            composable(Routes.TipsLibrary.route) { TipsLibraryScreen(navController) }
 
             // ─── Profile Sub-screens ─────────────────────────
             composable(Routes.EditProfile.route) { EditProfileScreen(navController) }

@@ -37,3 +37,16 @@ val UrgencyNormal = Color(0xFF78909C)
 val AvailableGreen = Color(0xFF4CAF50)
 val UnavailableGrey = Color(0xFF757575)
 val PendingAmber = Color(0xFFFFC107)
+
+// Eligibility status
+val EligibleGreen = Color(0xFF2E7D32)
+val DeferredAmber = Color(0xFFFF8F00)
+val IneligibleRed = Color(0xFFC62828)
+
+// Tip category colors
+val TipHydration = Color(0xFF0288D1)
+val TipBefore = Color(0xFF7B1FA2)
+val TipDuring = Color(0xFFD32F2F)
+val TipAfter = Color(0xFF388E3C)
+val TipMedication = Color(0xFFE64A19)
+val TipTravel = Color(0xFF1976D2)

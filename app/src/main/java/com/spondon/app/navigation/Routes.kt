@@ -13,6 +13,13 @@ sealed class Routes(val route: String) {
     data object PhoneLogin : Routes("phone_login")
     data object Permissions : Routes("permissions")
 
+    // Onboarding (new sub-routes)
+    data object OnboardingWelcome : Routes("onboarding_welcome")
+    data object OnboardingHowItWorks : Routes("onboarding_how_it_works")
+    data object OnboardingQuiz : Routes("onboarding_quiz")
+    data object OnboardingTipsPreview : Routes("onboarding_tips_preview")
+    data object OnboardingComplete : Routes("onboarding_complete")
+
     // Main
     data object Home : Routes("home")
 
@@ -33,6 +40,7 @@ sealed class Routes(val route: String) {
     data object DonorProfile : Routes("donor_profile/{userId}")
     data object DonationHistory : Routes("donation_history")
     data object Achievements : Routes("achievements")
+    data object TipsLibrary : Routes("tips_library")
 
     // Profile
     data object Profile : Routes("profile")

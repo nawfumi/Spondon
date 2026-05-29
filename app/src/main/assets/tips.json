@@ -1,0 +1,227 @@
+[
+  {
+    "id": "tip_hydration_1",
+    "category": "HYDRATION_NUTRITION",
+    "title": "Drink plenty of water",
+    "titleBn": "প্রচুর পানি পান করুন",
+    "body": "Drink at least 16 ounces (500ml) of water before donating. Well-hydrated veins are easier to find and make the donation process smoother.",
+    "bodyBn": "রক্তদানের আগে কমপক্ষে ৫০০ মিলি পানি পান করুন। ভালোভাবে হাইড্রেটেড শিরা সহজে খুঁজে পাওয়া যায় এবং রক্তদান প্রক্রিয়া সহজ হয়।",
+    "iconName": "WaterDrop"
+  },
+  {
+    "id": "tip_hydration_2",
+    "category": "HYDRATION_NUTRITION",
+    "title": "Eat iron-rich foods",
+    "titleBn": "আয়রন সমৃদ্ধ খাবার খান",
+    "body": "Include iron-rich foods like spinach, red meat, beans, and fortified cereals in your diet for at least a week before donating to maintain healthy hemoglobin levels.",
+    "bodyBn": "রক্তদানের অন্তত এক সপ্তাহ আগে থেকে পালং শাক, লাল মাংস, ডাল এবং আয়রন সমৃদ্ধ সিরিয়াল আপনার খাদ্যতালিকায় অন্তর্ভুক্ত করুন।",
+    "iconName": "Restaurant"
+  },
+  {
+    "id": "tip_hydration_3",
+    "category": "HYDRATION_NUTRITION",
+    "title": "Avoid fatty foods",
+    "titleBn": "চর্বিযুক্ত খাবার এড়িয়ে চলুন",
+    "body": "Avoid fatty or fried foods for at least 24 hours before donating. High-fat meals can affect blood tests and may make your blood appear lipemic.",
+    "bodyBn": "রক্তদানের অন্তত ২৪ ঘণ্টা আগে চর্বিযুক্ত বা ভাজা খাবার এড়িয়ে চলুন। উচ্চ চর্বিযুক্ত খাবার রক্ত পরীক্ষায় প্রভাব ফেলতে পারে।",
+    "iconName": "NoFood"
+  },
+  {
+    "id": "tip_hydration_4",
+    "category": "HYDRATION_NUTRITION",
+    "title": "Eat well the day before",
+    "titleBn": "আগের দিন ভালো করে খান",
+    "body": "Have a balanced, nutritious meal the evening before your donation appointment. A well-nourished body recovers faster after donating blood.",
+    "bodyBn": "রক্তদানের আগের সন্ধ্যায় সুষম, পুষ্টিকর খাবার খান। সুপুষ্ট শরীর রক্তদানের পরে দ্রুত সুস্থ হয়।",
+    "iconName": "DinnerDining"
+  },
+  {
+    "id": "tip_hydration_5",
+    "category": "HYDRATION_NUTRITION",
+    "title": "Boost Vitamin C intake",
+    "titleBn": "ভিটামিন সি গ্রহণ বাড়ান",
+    "body": "Vitamin C helps your body absorb iron more efficiently. Eat citrus fruits, strawberries, or bell peppers alongside iron-rich foods in the days before donation.",
+    "bodyBn": "ভিটামিন সি আপনার শরীরকে আয়রন আরও কার্যকরভাবে শোষণ করতে সাহায্য করে। রক্তদানের আগে লেবু, কমলা, স্ট্রবেরি বা ক্যাপসিকাম খান।",
+    "iconName": "Vitamin"
+  },
+  {
+    "id": "tip_before_1",
+    "category": "BEFORE_APPOINTMENT",
+    "title": "Get a good night's sleep",
+    "titleBn": "ভালো করে ঘুমান",
+    "body": "Aim for at least 7-8 hours of sleep the night before your donation. Being well-rested helps prevent dizziness and fainting during and after donation.",
+    "bodyBn": "রক্তদানের আগের রাতে অন্তত ৭-৮ ঘণ্টা ঘুমানোর চেষ্টা করুন। পর্যাপ্ত বিশ্রাম মাথা ঘোরা এবং অজ্ঞান হওয়া প্রতিরোধ করে।",
+    "iconName": "Bedtime"
+  },
+  {
+    "id": "tip_before_2",
+    "category": "BEFORE_APPOINTMENT",
+    "title": "Wear comfortable clothes",
+    "titleBn": "আরামদায়ক পোশাক পরুন",
+    "body": "Wear a shirt with sleeves that can be easily rolled up above the elbow. This allows easy access to your arm veins for the donation process.",
+    "bodyBn": "এমন জামা পরুন যার হাতা সহজে কনুইয়ের উপরে গোটানো যায়। এটি রক্তদানের জন্য আপনার বাহুর শিরায় সহজে প্রবেশ করতে সাহায্য করে।",
+    "iconName": "Checkroom"
+  },
+  {
+    "id": "tip_before_3",
+    "category": "BEFORE_APPOINTMENT",
+    "title": "Bring a valid photo ID",
+    "titleBn": "বৈধ ফটো আইডি আনুন",
+    "body": "Always bring a valid government-issued photo ID to your donation appointment. This is required for identity verification and donor record keeping.",
+    "bodyBn": "রক্তদানের সময় সর্বদা সরকার প্রদত্ত বৈধ ফটো আইডি সাথে আনুন। পরিচয় যাচাই এবং দাতার রেকর্ড রাখার জন্য এটি প্রয়োজন।",
+    "iconName": "Badge"
+  },
+  {
+    "id": "tip_before_4",
+    "category": "BEFORE_APPOINTMENT",
+    "title": "Eat a healthy breakfast",
+    "titleBn": "স্বাস্থ্যকর নাস্তা করুন",
+    "body": "Never donate blood on an empty stomach. Eat a healthy meal or snack 2-3 hours before your appointment to maintain stable blood sugar levels.",
+    "bodyBn": "কখনো খালি পেটে রক্তদান করবেন না। রক্তের শর্করার মাত্রা স্থিতিশীল রাখতে অ্যাপয়েন্টমেন্টের ২-৩ ঘণ্টা আগে স্বাস্থ্যকর খাবার খান।",
+    "iconName": "FreeBreakfast"
+  },
+  {
+    "id": "tip_during_1",
+    "category": "DURING_DONATION",
+    "title": "Stay calm and relaxed",
+    "titleBn": "শান্ত এবং স্বাচ্ছন্দ্যে থাকুন",
+    "body": "Take slow, deep breaths and try to relax your body during the donation. Tension can make it harder for the phlebotomist to find your veins.",
+    "bodyBn": "রক্তদানের সময় ধীরে ধীরে গভীর শ্বাস নিন এবং শরীর শিথিল রাখার চেষ্টা করুন। টেনশন শিরা খুঁজে পেতে কঠিন করে তোলে।",
+    "iconName": "SelfImprovement"
+  },
+  {
+    "id": "tip_during_2",
+    "category": "DURING_DONATION",
+    "title": "Squeeze a stress ball",
+    "titleBn": "স্ট্রেস বল চাপুন",
+    "body": "Gently squeeze a stress ball or roll-up your fist every 5-10 seconds during donation. This helps maintain good blood flow and can speed up the process.",
+    "bodyBn": "রক্তদানের সময় প্রতি ৫-১০ সেকেন্ডে আলতো করে একটি স্ট্রেস বল চাপুন বা মুষ্টি খুলুন-বন্ধ করুন। এটি ভালো রক্ত প্রবাহ বজায় রাখতে সাহায্য করে।",
+    "iconName": "FitnessCenter"
+  },
+  {
+    "id": "tip_during_3",
+    "category": "DURING_DONATION",
+    "title": "Practice deep breathing",
+    "titleBn": "গভীর শ্বাস-প্রশ্বাসের অনুশীলন করুন",
+    "body": "If you feel lightheaded or anxious, focus on slow, deep breathing. Inhale for 4 counts, hold for 4 counts, and exhale for 4 counts.",
+    "bodyBn": "যদি মাথা ঘোরা বা উদ্বেগ অনুভব করেন, ধীর, গভীর শ্বাসের দিকে মনোযোগ দিন। ৪ গণনায় শ্বাস নিন, ৪ গণনা ধরে রাখুন, এবং ৪ গণনায় ছাড়ুন।",
+    "iconName": "Air"
+  },
+  {
+    "id": "tip_during_4",
+    "category": "DURING_DONATION",
+    "title": "Communicate with staff",
+    "titleBn": "কর্মীদের সাথে যোগাযোগ করুন",
+    "body": "Don't hesitate to tell the medical staff if you feel unwell, dizzy, or experience pain at any point during the donation. They are trained to help you.",
+    "bodyBn": "রক্তদানের সময় যেকোনো মুহূর্তে অসুস্থ, মাথা ঘোরা বা ব্যথা অনুভব করলে চিকিৎসা কর্মীদের জানাতে দ্বিধা করবেন না।",
+    "iconName": "SupportAgent"
+  },
+  {
+    "id": "tip_after_1",
+    "category": "AFTER_DONATION",
+    "title": "Rest for at least 15 minutes",
+    "titleBn": "অন্তত ১৫ মিনিট বিশ্রাম নিন",
+    "body": "After donating, sit in the recovery area for at least 15 minutes. Have a snack and a drink before leaving to ensure you feel well enough to go.",
+    "bodyBn": "রক্তদানের পর রিকভারি এরিয়ায় কমপক্ষে ১৫ মিনিট বসুন। যাওয়ার আগে হালকা নাস্তা এবং পানীয় খান।",
+    "iconName": "Weekend"
+  },
+  {
+    "id": "tip_after_2",
+    "category": "AFTER_DONATION",
+    "title": "Drink extra fluids",
+    "titleBn": "অতিরিক্ত তরল পান করুন",
+    "body": "Drink an extra 32 ounces (about 1 liter) of fluids in the 24 hours after donating. This helps your body replenish the donated blood volume quickly.",
+    "bodyBn": "রক্তদানের পর ২৪ ঘণ্টায় অতিরিক্ত প্রায় ১ লিটার তরল পান করুন। এটি আপনার শরীরকে রক্তের পরিমাণ দ্রুত পূরণ করতে সাহায্য করে।",
+    "iconName": "LocalDrink"
+  },
+  {
+    "id": "tip_after_3",
+    "category": "AFTER_DONATION",
+    "title": "Avoid heavy lifting",
+    "titleBn": "ভারী জিনিস তোলা এড়িয়ে চলুন",
+    "body": "Avoid heavy lifting or strenuous exercise for at least 24 hours after donating. Give your body time to recover and replenish its blood supply.",
+    "bodyBn": "রক্তদানের পর অন্তত ২৪ ঘণ্টা ভারী জিনিস তোলা বা কঠোর ব্যায়াম এড়িয়ে চলুন। আপনার শরীরকে সুস্থ হওয়ার সময় দিন।",
+    "iconName": "FitnessCenter"
+  },
+  {
+    "id": "tip_after_4",
+    "category": "AFTER_DONATION",
+    "title": "Eat an iron-rich snack",
+    "titleBn": "আয়রন সমৃদ্ধ নাস্তা খান",
+    "body": "After donating, eat iron-rich snacks like raisins, nuts, or dark chocolate. Continue eating iron-rich foods for the next few weeks to replenish your iron stores.",
+    "bodyBn": "রক্তদানের পর কিশমিশ, বাদাম বা ডার্ক চকোলেটের মতো আয়রন সমৃদ্ধ নাস্তা খান। পরবর্তী কয়েক সপ্তাহ আয়রন সমৃদ্ধ খাবার খেতে থাকুন।",
+    "iconName": "Cookie"
+  },
+  {
+    "id": "tip_after_5",
+    "category": "AFTER_DONATION",
+    "title": "Keep the bandage on",
+    "titleBn": "ব্যান্ডেজ রাখুন",
+    "body": "Keep the bandage on your arm for at least 4-5 hours after donation. If you notice any bleeding, apply pressure and raise your arm above your heart.",
+    "bodyBn": "রক্তদানের পর অন্তত ৪-৫ ঘণ্টা বাহুতে ব্যান্ডেজ রাখুন। রক্তপাত লক্ষ্য করলে চাপ দিন এবং বাহু হৃদপিণ্ডের উপরে তুলে রাখুন।",
+    "iconName": "Healing"
+  },
+  {
+    "id": "tip_medication_1",
+    "category": "MEDICATION_GUIDANCE",
+    "title": "Aspirin wait period",
+    "titleBn": "অ্যাসপিরিন অপেক্ষার সময়কাল",
+    "body": "If you take aspirin, you must wait at least 48 hours after your last dose before donating platelets. Aspirin does not affect whole blood donation eligibility.",
+    "bodyBn": "যদি আপনি অ্যাসপিরিন খান, প্লেটলেট দান করার আগে শেষ ডোজের পর কমপক্ষে ৪৮ ঘণ্টা অপেক্ষা করতে হবে। অ্যাসপিরিন পূর্ণ রক্তদানের যোগ্যতাকে প্রভাবিত করে না।",
+    "iconName": "Medication"
+  },
+  {
+    "id": "tip_medication_2",
+    "category": "MEDICATION_GUIDANCE",
+    "title": "Antibiotics and donation",
+    "titleBn": "অ্যান্টিবায়োটিক এবং রক্তদান",
+    "body": "If you are taking antibiotics for an infection, you must wait until 7 days after completing your course and until all symptoms have resolved before donating.",
+    "bodyBn": "যদি আপনি সংক্রমণের জন্য অ্যান্টিবায়োটিক খাচ্ছেন, কোর্স শেষ হওয়ার ৭ দিন পর এবং সমস্ত লক্ষণ দূর না হওয়া পর্যন্ত অপেক্ষা করতে হবে।",
+    "iconName": "MedicalServices"
+  },
+  {
+    "id": "tip_medication_3",
+    "category": "MEDICATION_GUIDANCE",
+    "title": "Blood thinners advisory",
+    "titleBn": "রক্ত পাতলাকারী ওষুধের পরামর্শ",
+    "body": "If you are on blood-thinning medication such as warfarin or heparin, you are generally not eligible to donate. Consult your doctor for specific guidance.",
+    "bodyBn": "যদি আপনি ওয়ারফারিন বা হেপারিনের মতো রক্ত পাতলাকারী ওষুধ খাচ্ছেন, আপনি সাধারণত রক্তদানের যোগ্য নন। নির্দিষ্ট নির্দেশনার জন্য আপনার ডাক্তারের সাথে পরামর্শ করুন।",
+    "iconName": "LocalPharmacy"
+  },
+  {
+    "id": "tip_medication_4",
+    "category": "MEDICATION_GUIDANCE",
+    "title": "Always consult your doctor",
+    "titleBn": "সর্বদা আপনার ডাক্তারের সাথে পরামর্শ করুন",
+    "body": "If you are taking any prescription medication, always inform the blood bank staff. Some medications may require a waiting period before you can safely donate.",
+    "bodyBn": "যদি আপনি কোনো প্রেসক্রিপশন ওষুধ খাচ্ছেন, সর্বদা ব্লাড ব্যাংকের কর্মীদের জানান। কিছু ওষুধে নিরাপদে দান করার আগে অপেক্ষার সময় প্রয়োজন হতে পারে।",
+    "iconName": "LocalHospital"
+  },
+  {
+    "id": "tip_travel_1",
+    "category": "TRAVEL_DEFERRAL",
+    "title": "Malaria-risk regions",
+    "titleBn": "ম্যালেরিয়া-ঝুঁকিপূর্ণ অঞ্চল",
+    "body": "If you have traveled to a malaria-endemic area, you must wait at least 3 months (90 days) before donating blood. This protects recipients from potential infection.",
+    "bodyBn": "যদি আপনি ম্যালেরিয়া প্রবণ এলাকায় ভ্রমণ করে থাকেন, রক্তদানের আগে কমপক্ষে ৩ মাস (৯০ দিন) অপেক্ষা করতে হবে। এটি প্রাপকদের সম্ভাব্য সংক্রমণ থেকে রক্ষা করে।",
+    "iconName": "BugReport"
+  },
+  {
+    "id": "tip_travel_2",
+    "category": "TRAVEL_DEFERRAL",
+    "title": "Zika virus areas",
+    "titleBn": "জিকা ভাইরাস এলাকা",
+    "body": "If you have visited an area with active Zika virus transmission, you must defer donation for at least 4 weeks (28 days) after returning from the affected area.",
+    "bodyBn": "যদি আপনি সক্রিয় জিকা ভাইরাস সংক্রমণ এলাকায় গিয়ে থাকেন, আক্রান্ত এলাকা থেকে ফেরার পর কমপক্ষে ৪ সপ্তাহ (২৮ দিন) রক্তদান স্থগিত রাখতে হবে।",
+    "iconName": "CoronaVirus"
+  },
+  {
+    "id": "tip_travel_3",
+    "category": "TRAVEL_DEFERRAL",
+    "title": "Recent travel guidelines",
+    "titleBn": "সাম্প্রতিক ভ্রমণ নির্দেশিকা",
+    "body": "Always inform the blood bank about any recent international travel. Different countries may have different deferral periods based on local disease risks.",
+    "bodyBn": "সর্বদা ব্লাড ব্যাংককে সাম্প্রতিক আন্তর্জাতিক ভ্রমণ সম্পর্কে জানান। স্থানীয় রোগের ঝুঁকির উপর ভিত্তি করে বিভিন্ন দেশে বিভিন্ন স্থগিতের সময়কাল থাকতে পারে।",
+    "iconName": "Flight"
+  }
+]

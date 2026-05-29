@@ -201,6 +201,53 @@ data class SpondonStrings(
     val confirm: String,
     val search: String,
     val noResults: String,
+
+    // ─── Onboarding ────────────────────
+    val everyDropCounts: String,
+    val onboardingSubtext: String,
+    val getStarted: String,
+    val iAlreadyDonate: String,
+    val howItWorks: String,
+    val checkEligibility: String,
+    val registerAndCheck: String,
+    val registerAndCheckDesc: String,
+    val bookAppointment: String,
+    val bookAppointmentDesc: String,
+    val donateAndTrack: String,
+    val donateAndTrackDesc: String,
+
+    // ─── Eligibility Quiz ───────────────
+    val eligibilityQuiz: String,
+    val howOldAreYou: String,
+    val howMuchDoYouWeigh: String,
+    val donatedBefore: String,
+    val yes: String,
+    val no: String,
+    val notSure: String,
+    val recentIllness: String,
+    val currentMedications: String,
+    val recentTravel: String,
+    val pregnancyOrBirth: String,
+    val tattooOrPiercing: String,
+    val next: String,
+
+    // ─── Eligibility Results ────────────
+    val eligible: String,
+    val eligibleMessage: String,
+    val temporarilyDeferred: String,
+    val permanentlyDeferred: String,
+    val continueText: String,
+    val continueAnyway: String,
+
+    // ─── Onboarding Complete ────────────
+    val readyToSaveLives: String,
+    val goToDashboard: String,
+
+    // ─── Tips ───────────────────────────
+    val donationTips: String,
+    val tipOfTheDay: String,
+    val seeAllTips: String,
+    val searchTips: String,
 )
 
 // ──────────────────────────────────────────────────────────────
@@ -383,6 +430,53 @@ val Bn = SpondonStrings(
     confirm = "নিশ্চিত",
     search = "অনুসন্ধান",
     noResults = "কোনো ফলাফল পাওয়া যায়নি",
+
+    // Onboarding
+    everyDropCounts = "প্রতিটি ফোঁটা গুরুত্বপূর্ণ",
+    onboardingSubtext = "বাংলাদেশ জুড়ে হাজারো দাতা জীবন বাঁচাচ্ছে, আপনিও যোগ দিন",
+    getStarted = "শুরু করুন",
+    iAlreadyDonate = "আমি ইতিমধ্যে রক্তদান করি",
+    howItWorks = "কিভাবে কাজ করে",
+    checkEligibility = "আমি যোগ্য কিনা যাচাই করুন",
+    registerAndCheck = "নিবন্ধন ও যোগ্যতা যাচাই",
+    registerAndCheckDesc = "আপনার অ্যাকাউন্ট তৈরি করুন এবং একটি দ্রুত যোগ্যতা কুইজ দিন",
+    bookAppointment = "অ্যাপয়েন্টমেন্ট বুক করুন",
+    bookAppointmentDesc = "কাছের রক্তদান কেন্দ্র খুঁজুন এবং সময় নির্ধারণ করুন",
+    donateAndTrack = "রক্তদান করুন ও প্রভাব দেখুন",
+    donateAndTrackDesc = "জীবন বাঁচান এবং আপনার রক্তদানের ইতিহাস দেখুন",
+
+    // Eligibility Quiz
+    eligibilityQuiz = "যোগ্যতা কুইজ",
+    howOldAreYou = "আপনার বয়স কত?",
+    howMuchDoYouWeigh = "আপনার ওজন কত?",
+    donatedBefore = "আপনি কি আগে রক্তদান করেছেন?",
+    yes = "হ্যাঁ",
+    no = "না",
+    notSure = "নিশ্চিত নই",
+    recentIllness = "গত ২ সপ্তাহে কি কোনো অসুস্থতা হয়েছে?",
+    currentMedications = "আপনি কি বর্তমানে কোনো ওষুধ খাচ্ছেন?",
+    recentTravel = "সম্প্রতি ম্যালেরিয়া/জিকা অঞ্চলে ভ্রমণ?",
+    pregnancyOrBirth = "গর্ভাবস্থা বা সাম্প্রতিক সন্তান জন্ম?",
+    tattooOrPiercing = "গত ৩ মাসে ট্যাটু বা পিয়ার্সিং?",
+    next = "পরবর্তী",
+
+    // Eligibility Results
+    eligible = "যোগ্য",
+    eligibleMessage = "আপনি রক্তদানের যোগ্য!",
+    temporarilyDeferred = "সাময়িকভাবে স্থগিত",
+    permanentlyDeferred = "অযোগ্য",
+    continueText = "চালিয়ে যান",
+    continueAnyway = "তবুও চালিয়ে যান",
+
+    // Onboarding Complete
+    readyToSaveLives = "আপনি জীবন বাঁচাতে প্রস্তুত!",
+    goToDashboard = "ড্যাশবোর্ডে যান",
+
+    // Tips
+    donationTips = "ডোনেশন টিপস",
+    tipOfTheDay = "আজকের টিপস",
+    seeAllTips = "সব টিপস দেখুন",
+    searchTips = "টিপস খুঁজুন",
 )
 
 // ──────────────────────────────────────────────────────────────
@@ -565,4 +659,51 @@ val En = SpondonStrings(
     confirm = "Confirm",
     search = "Search",
     noResults = "No results found",
+
+    // Onboarding
+    everyDropCounts = "Every drop counts",
+    onboardingSubtext = "Join thousands of donors saving lives across Bangladesh",
+    getStarted = "Get Started",
+    iAlreadyDonate = "I already donate",
+    howItWorks = "How It Works",
+    checkEligibility = "Check if I'm eligible",
+    registerAndCheck = "Register & Check Eligibility",
+    registerAndCheckDesc = "Create your account and take a quick eligibility quiz",
+    bookAppointment = "Book Your Appointment",
+    bookAppointmentDesc = "Find nearby donation centers and schedule",
+    donateAndTrack = "Donate & Track Impact",
+    donateAndTrackDesc = "Save lives and track your donation history",
+
+    // Eligibility Quiz
+    eligibilityQuiz = "Eligibility Quiz",
+    howOldAreYou = "How old are you?",
+    howMuchDoYouWeigh = "How much do you weigh?",
+    donatedBefore = "Have you donated blood before?",
+    yes = "Yes",
+    no = "No",
+    notSure = "Not sure",
+    recentIllness = "Any recent illness in the last 2 weeks?",
+    currentMedications = "Are you currently on any medications?",
+    recentTravel = "Recent travel to malaria/Zika regions?",
+    pregnancyOrBirth = "Pregnancy or recent birth?",
+    tattooOrPiercing = "Tattoo or piercing in last 3 months?",
+    next = "Next",
+
+    // Eligibility Results
+    eligible = "Eligible",
+    eligibleMessage = "You're eligible to donate blood!",
+    temporarilyDeferred = "Temporarily Deferred",
+    permanentlyDeferred = "Not Eligible",
+    continueText = "Continue",
+    continueAnyway = "Continue anyway",
+
+    // Onboarding Complete
+    readyToSaveLives = "You're ready to save lives!",
+    goToDashboard = "Go to Dashboard",
+
+    // Tips
+    donationTips = "Donation Tips",
+    tipOfTheDay = "Tip of the Day",
+    seeAllTips = "See all tips",
+    searchTips = "Search tips",
 )

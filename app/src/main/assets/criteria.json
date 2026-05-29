@@ -1,0 +1,82 @@
+[
+  {
+    "id": "age",
+    "group": "GENERAL",
+    "label": "Age Requirement",
+    "labelBn": "বয়সের প্রয়োজনীয়তা",
+    "description": "Donors must be between 17 and 65 years old.",
+    "descriptionBn": "রক্তদাতাদের বয়স ১৭ থেকে ৬৫ বছরের মধ্যে হতে হবে।",
+    "deferralType": "PERMANENT",
+    "deferralDays": null
+  },
+  {
+    "id": "weight",
+    "group": "GENERAL",
+    "label": "Minimum Weight",
+    "labelBn": "সর্বনিম্ন ওজন",
+    "description": "Donors must weigh at least 50 kg (110 lbs) to safely donate blood.",
+    "descriptionBn": "নিরাপদে রক্তদানের জন্য রক্তদাতাদের ওজন কমপক্ষে ৫০ কেজি (১১০ পাউন্ড) হতে হবে।",
+    "deferralType": "PERMANENT",
+    "deferralDays": null
+  },
+  {
+    "id": "recent_illness",
+    "group": "MEDICAL",
+    "label": "Recent Illness",
+    "labelBn": "সাম্প্রতিক অসুস্থতা",
+    "description": "If you have had a cold, flu, fever, or other illness in the past 14 days, you must wait until fully recovered.",
+    "descriptionBn": "গত ১৪ দিনে সর্দি, জ্বর বা অন্যান্য অসুস্থতা থাকলে সম্পূর্ণ সুস্থ না হওয়া পর্যন্ত অপেক্ষা করতে হবে।",
+    "deferralType": "TEMPORARY",
+    "deferralDays": 14
+  },
+  {
+    "id": "medications",
+    "group": "MEDICATION",
+    "label": "Current Medications",
+    "labelBn": "বর্তমান ওষুধ",
+    "description": "Certain medications such as aspirin, antibiotics, blood thinners, and isotretinoin may require a waiting period before donation.",
+    "descriptionBn": "অ্যাসপিরিন, অ্যান্টিবায়োটিক, রক্ত পাতলাকারী ওষুধ এবং আইসোট্রেটিনোইনের মতো কিছু ওষুধে রক্তদানের আগে অপেক্ষার সময় প্রয়োজন হতে পারে।",
+    "deferralType": "TEMPORARY",
+    "deferralDays": 30
+  },
+  {
+    "id": "recent_travel",
+    "group": "TRAVEL",
+    "label": "Recent Travel",
+    "labelBn": "সাম্প্রতিক ভ্রমণ",
+    "description": "Travel to malaria-endemic or Zika-affected areas requires a deferral period of at least 90 days.",
+    "descriptionBn": "ম্যালেরিয়া প্রবণ বা জিকা আক্রান্ত এলাকায় ভ্রমণে কমপক্ষে ৯০ দিনের স্থগিতকাল প্রয়োজন।",
+    "deferralType": "TEMPORARY",
+    "deferralDays": 90
+  },
+  {
+    "id": "pregnancy",
+    "group": "REPRODUCTIVE",
+    "label": "Pregnancy or Recent Childbirth",
+    "labelBn": "গর্ভাবস্থা বা সাম্প্রতিক সন্তান প্রসব",
+    "description": "Pregnant individuals or those who have given birth within the last 6 months are temporarily deferred from donating.",
+    "descriptionBn": "গর্ভবতী ব্যক্তি বা যারা গত ৬ মাসের মধ্যে সন্তান প্রসব করেছেন তাদের সাময়িকভাবে রক্তদান স্থগিত।",
+    "deferralType": "TEMPORARY",
+    "deferralDays": 180
+  },
+  {
+    "id": "tattoo_piercing",
+    "group": "LIFESTYLE",
+    "label": "Recent Tattoo or Piercing",
+    "labelBn": "সাম্প্রতিক ট্যাটু বা পিয়ার্সিং",
+    "description": "If you have gotten a tattoo or body piercing in the last 90 days, you must wait before donating due to infection risk.",
+    "descriptionBn": "গত ৯০ দিনে ট্যাটু বা বডি পিয়ার্সিং করালে সংক্রমণের ঝুঁকির কারণে রক্তদানের আগে অপেক্ষা করতে হবে।",
+    "deferralType": "TEMPORARY",
+    "deferralDays": 90
+  },
+  {
+    "id": "general_health",
+    "group": "GENERAL",
+    "label": "General Health",
+    "labelBn": "সাধারণ স্বাস্থ্য",
+    "description": "You must be feeling well and in good general health on the day of donation. No active infections or chronic conditions that may be affected.",
+    "descriptionBn": "রক্তদানের দিন আপনাকে সুস্থ এবং ভালো সাধারণ স্বাস্থ্যে থাকতে হবে। কোনো সক্রিয় সংক্রমণ বা দীর্ঘস্থায়ী রোগ থাকলে চলবে না।",
+    "deferralType": "ELIGIBLE",
+    "deferralDays": null
+  }
+]

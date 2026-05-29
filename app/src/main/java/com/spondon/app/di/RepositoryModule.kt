@@ -28,4 +28,10 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
+
+    @Binds @Singleton
+    abstract fun bindTipsRepository(impl: TipsRepositoryImpl): TipsRepository
+
+    @Binds @Singleton
+    abstract fun bindEligibilityRepository(impl: EligibilityRepositoryImpl): EligibilityRepository
 }

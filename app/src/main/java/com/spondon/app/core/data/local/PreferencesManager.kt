@@ -30,6 +30,14 @@ class PreferencesManager @Inject constructor(
         val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
         val HIDE_NOTIFICATION_CONTENT = booleanPreferencesKey("hide_notification_content")
         val SECURE_SCREEN = stringPreferencesKey("secure_screen")
+
+        // Eligibility
+        val ELIGIBILITY_STATUS = stringPreferencesKey("eligibility_status")
+        val DEFERRAL_END_DATE = longPreferencesKey("deferral_end_date")
+        val DEFERRAL_REASON = stringPreferencesKey("deferral_reason")
+        val DEFERRAL_REASON_BN = stringPreferencesKey("deferral_reason_bn")
+        val QUIZ_ANSWERS_JSON = stringPreferencesKey("quiz_answers_json")
+        val LAST_QUIZ_DATE = longPreferencesKey("last_quiz_date")
     }
 
     val isOnboardingComplete: Flow<Boolean> = dataStore.data
@@ -102,6 +110,55 @@ class PreferencesManager @Inject constructor(
 
     suspend fun setSecureScreen(mode: String) {
         dataStore.edit { it[SECURE_SCREEN] = mode }
+    }
+
+    // ─── Eligibility ────────────────────────────────────────
+    val eligibilityStatus: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[ELIGIBILITY_STATUS] ?: "" }
+
+    val deferralEndDate: Flow<Long> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[DEFERRAL_END_DATE] ?: 0L }
+
+    val deferralReason: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[DEFERRAL_REASON] ?: "" }
+
+    val deferralReasonBn: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[DEFERRAL_REASON_BN] ?: "" }
+
+    val quizAnswersJson: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[QUIZ_ANSWERS_JSON] ?: "" }
+
+    val lastQuizDate: Flow<Long> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[LAST_QUIZ_DATE] ?: 0L }
+
+    suspend fun setEligibilityStatus(status: String) {
+        dataStore.edit { it[ELIGIBILITY_STATUS] = status }
+    }
+
+    suspend fun setDeferralEndDate(date: Long) {
+        dataStore.edit { it[DEFERRAL_END_DATE] = date }
+    }
+
+    suspend fun setDeferralReason(reason: String) {
+        dataStore.edit { it[DEFERRAL_REASON] = reason }
+    }
+
+    suspend fun setDeferralReasonBn(reason: String) {
+        dataStore.edit { it[DEFERRAL_REASON_BN] = reason }
+    }
+
+    suspend fun setQuizAnswersJson(json: String) {
+        dataStore.edit { it[QUIZ_ANSWERS_JSON] = json }
+    }
+
+    suspend fun setLastQuizDate(date: Long) {
+        dataStore.edit { it[LAST_QUIZ_DATE] = date }
     }
 
     suspend fun clearAll() {
