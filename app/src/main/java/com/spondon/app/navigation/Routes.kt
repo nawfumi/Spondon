@@ -14,8 +14,8 @@ sealed class Routes(val route: String) {
     data object Permissions : Routes("permissions")
 
     // Onboarding (new sub-routes)
+    data object InitialSetup : Routes("initial_setup")
     data object OnboardingWelcome : Routes("onboarding_welcome")
-    data object OnboardingHowItWorks : Routes("onboarding_how_it_works")
     data object OnboardingQuiz : Routes("onboarding_quiz")
     data object OnboardingTipsPreview : Routes("onboarding_tips_preview")
     data object OnboardingComplete : Routes("onboarding_complete")

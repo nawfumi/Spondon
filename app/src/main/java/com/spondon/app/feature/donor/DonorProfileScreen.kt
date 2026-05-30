@@ -17,9 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -101,98 +103,109 @@ fun DonorProfileScreen(
                     contentPadding = PaddingValues(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    // ─── Profile Header ──────────────────────
+                    // ─── Profile Header Card ────────────────
                     item {
-                        Column(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         ) {
-                            // Avatar with blood group badge
-                            Box {
-                                if (donor.avatarUrl.isNotBlank()) {
-                                    AsyncImage(
-                                        model = donor.avatarUrl,
-                                        contentDescription = "Profile picture",
-                                        modifier = Modifier
-                                            .size(96.dp)
-                                            .clip(CircleShape),
-                                        contentScale = ContentScale.Crop,
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(96.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                Brush.linearGradient(
-                                                    colors = listOf(
-                                                        BloodRed.copy(alpha = 0.15f),
-                                                        SoftRose.copy(alpha = 0.1f),
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                // Avatar with blood group badge
+                                Box {
+                                    if (donor.avatarUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = donor.avatarUrl,
+                                            contentDescription = "Profile picture",
+                                            modifier = Modifier
+                                                .size(88.dp)
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(88.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    Brush.linearGradient(
+                                                        colors = listOf(
+                                                            BloodRed.copy(alpha = 0.15f),
+                                                            SoftRose.copy(alpha = 0.1f),
+                                                        ),
                                                     ),
                                                 ),
-                                            ),
-                                        contentAlignment = Alignment.Center,
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.Person,
+                                                null,
+                                                tint = BloodRed.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(48.dp),
+                                            )
+                                        }
+                                    }
+                                    // Blood group badge
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .offset(x = 4.dp, y = 4.dp),
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = BloodRed,
+                                        shadowElevation = 4.dp,
                                     ) {
-                                        Icon(
-                                            Icons.Filled.Person,
-                                            null,
-                                            tint = BloodRed.copy(alpha = 0.6f),
-                                            modifier = Modifier.size(52.dp),
+                                        Text(
+                                            text = donor.bloodGroup.ifBlank { "?" },
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                            ),
+                                            color = Color.White,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                         )
                                     }
                                 }
-                                // Blood group badge
-                                Surface(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .offset(x = 4.dp, y = 4.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = BloodRed,
-                                    shadowElevation = 4.dp,
-                                ) {
-                                    Text(
-                                        text = donor.bloodGroup.ifBlank { "?" },
-                                        style = MaterialTheme.typography.titleSmall.copy(
-                                            fontWeight = FontWeight.ExtraBold,
-                                        ),
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    )
-                                }
-                            }
 
-                            Spacer(Modifier.height(16.dp))
+                                Spacer(Modifier.height(14.dp))
 
-                            Text(
-                                text = donor.name.ifBlank { "Unknown" },
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
+                                Text(
+                                    text = donor.name.ifBlank { "Unknown" },
+                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
 
-                            if (donor.district.isNotBlank()) {
-                                Spacer(Modifier.height(4.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.LocationOn,
-                                        null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        text = buildString {
-                                            append(donor.district)
-                                            if (donor.upazila.isNotBlank()) append(", ${donor.upazila}")
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                                    )
+                                if (donor.district.isNotBlank()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.LocationOn,
+                                            null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = buildString {
+                                                append(donor.district)
+                                                if (donor.upazila.isNotBlank()) append(", ${donor.upazila}")
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -203,26 +216,27 @@ fun DonorProfileScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
+                                .padding(horizontal = 20.dp)
+                                .height(IntrinsicSize.Max),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             ProfileStatCard(
                                 value = "${donor.totalDonations}",
                                 label = "Donations",
                                 icon = Icons.Outlined.VolunteerActivism,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                             ProfileStatCard(
                                 value = "${donor.communityIds.size}",
                                 label = "Communities",
                                 icon = Icons.Outlined.Groups,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                             ProfileStatCard(
                                 value = donor.createdAt?.let { dateFormat.format(it) } ?: "—",
                                 label = "Joined",
                                 icon = Icons.Outlined.CalendarMonth,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                         }
                     }
@@ -235,60 +249,70 @@ fun DonorProfileScreen(
                                 .padding(horizontal = 20.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (state.isAvailable)
-                                    AvailableGreen.copy(alpha = 0.08f)
-                                else
-                                    UnavailableGrey.copy(alpha = 0.08f),
+                                containerColor = MaterialTheme.colorScheme.surface,
                             ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         ) {
                             Row(
                                 modifier = Modifier.padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                if (state.isAvailable) {
+                                // Status icon in colored circle
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (state.isAvailable)
+                                                AvailableGreen.copy(alpha = 0.1f)
+                                            else
+                                                UnavailableGrey.copy(alpha = 0.1f)
+                                        ),
+                                    contentAlignment = Alignment.Center,
+                                ) {
                                     Icon(
-                                        Icons.Filled.CheckCircle,
+                                        if (state.isAvailable) Icons.Filled.CheckCircle else Icons.Filled.Lock,
                                         null,
-                                        tint = AvailableGreen,
+                                        tint = if (state.isAvailable) AvailableGreen else UnavailableGrey,
                                         modifier = Modifier.size(24.dp),
                                     )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            "Available to Donate",
-                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                fontWeight = FontWeight.Bold,
-                                            ),
-                                            color = AvailableGreen,
-                                        )
-                                        Text(
-                                            "This donor is ready to help",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = AvailableGreen.copy(alpha = 0.7f),
-                                        )
-                                    }
-                                } else {
-                                    Icon(
-                                        Icons.Filled.Lock,
-                                        null,
-                                        tint = UnavailableGrey,
-                                        modifier = Modifier.size(24.dp),
+                                }
+                                Spacer(Modifier.width(14.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        if (state.isAvailable) "Available to Donate" else "Unavailable",
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                        ),
+                                        color = if (state.isAvailable) AvailableGreen else UnavailableGrey,
                                     )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            "Unavailable",
-                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                fontWeight = FontWeight.Bold,
-                                            ),
-                                            color = UnavailableGrey,
-                                        )
-                                        Text(
+                                    Text(
+                                        if (state.isAvailable)
+                                            "This donor is ready to help"
+                                        else
                                             "${state.cooldownDaysRemaining} days remaining in cooldown",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = UnavailableGrey.copy(alpha = 0.7f),
-                                        )
-                                    }
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (state.isAvailable)
+                                            AvailableGreen.copy(alpha = 0.7f)
+                                        else
+                                            UnavailableGrey.copy(alpha = 0.7f),
+                                    )
+                                }
+                                // Status badge
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (state.isAvailable)
+                                        AvailableGreen.copy(alpha = 0.1f)
+                                    else
+                                        UnavailableGrey.copy(alpha = 0.1f),
+                                ) {
+                                    Text(
+                                        text = if (state.isAvailable) "READY" else "COOLDOWN",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (state.isAvailable) AvailableGreen else UnavailableGrey,
+                                    )
                                 }
                             }
                         }
@@ -329,8 +353,9 @@ fun DonorProfileScreen(
                                     "Shared Communities",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp,
                                     ),
-                                    color = MaterialTheme.colorScheme.onBackground,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 LazyRow(
@@ -373,18 +398,15 @@ fun DonorProfileScreen(
                     // ─── Donation History (public) ────────────
                     if (state.donationHistory.isNotEmpty()) {
                         item {
-                            Column(
+                            Text(
+                                "Recent Donations",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp,
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(horizontal = 20.dp),
-                            ) {
-                                Text(
-                                    "Recent Donations",
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                    ),
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                            }
+                            )
                         }
 
                         items(state.donationHistory) { donation ->
@@ -392,10 +414,11 @@ fun DonorProfileScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 20.dp),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    containerColor = MaterialTheme.colorScheme.surface,
                                 ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                             ) {
                                 Row(
                                     modifier = Modifier.padding(14.dp),
@@ -403,8 +426,8 @@ fun DonorProfileScreen(
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(10.dp))
+                                            .size(44.dp)
+                                            .clip(RoundedCornerShape(12.dp))
                                             .background(BloodRed.copy(alpha = 0.1f)),
                                         contentAlignment = Alignment.Center,
                                     ) {
@@ -412,7 +435,7 @@ fun DonorProfileScreen(
                                             Icons.Outlined.VolunteerActivism,
                                             null,
                                             tint = BloodRed,
-                                            modifier = Modifier.size(20.dp),
+                                            modifier = Modifier.size(22.dp),
                                         )
                                     }
                                     Spacer(Modifier.width(12.dp))
@@ -420,19 +443,32 @@ fun DonorProfileScreen(
                                         Text(
                                             donation.hospital.ifBlank { "Hospital" },
                                             style = MaterialTheme.typography.bodyMedium.copy(
-                                                fontWeight = FontWeight.Medium,
+                                                fontWeight = FontWeight.SemiBold,
                                             ),
+                                            color = MaterialTheme.colorScheme.onSurface,
                                         )
                                         donation.date?.let {
                                             val df = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
                                             Text(
                                                 df.format(it),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                     }
-                                    // No patient details shown (public)
+                                    // Donation badge
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = AvailableGreen.copy(alpha = 0.1f),
+                                    ) {
+                                        Text(
+                                            text = "Donated",
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AvailableGreen,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -448,8 +484,9 @@ fun DonorProfileScreen(
                                     "Badges",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp,
                                     ),
-                                    color = MaterialTheme.colorScheme.onBackground,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 LazyRow(
@@ -466,8 +503,8 @@ fun DonorProfileScreen(
                                             else -> "🏅"
                                         }
                                         Surface(
-                                            shape = CircleShape,
-                                            color = PendingAmber.copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = PendingAmber.copy(alpha = 0.1f),
                                         ) {
                                             Text(
                                                 emoji,
@@ -490,19 +527,24 @@ fun DonorProfileScreen(
 private fun ProfileStatCard(
     value: String,
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
             Icon(
                 icon,
@@ -514,13 +556,14 @@ private fun ProfileStatCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
         }
     }

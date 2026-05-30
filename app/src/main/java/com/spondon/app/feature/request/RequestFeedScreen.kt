@@ -31,6 +31,7 @@ fun RequestFeedScreen(
     viewModel: RequestViewModel = hiltViewModel(),
 ) {
     val state by viewModel.feedState.collectAsState()
+    val currentUserId = remember { com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid }
 
     LaunchedEffect(Unit) { viewModel.loadFeed() }
 
@@ -109,6 +110,7 @@ fun RequestFeedScreen(
                             items(state.feedRequests, key = { it.id }) { request ->
                                 RequestCard(
                                     request = request,
+                                    currentUserId = currentUserId,
                                     onClick = {
                                         navController.navigate("request_detail/${request.id}")
                                     },
@@ -128,8 +130,9 @@ fun RequestFeedScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(state.myRequests, key = { it.id }) { request ->
-                                MyRequestCard(
+                                RequestCard(
                                     request = request,
+                                    currentUserId = currentUserId,
                                     onClick = {
                                         navController.navigate("request_detail/${request.id}")
                                     },
@@ -166,89 +169,4 @@ private fun EmptyFeedMessage(message: String) {
     }
 }
 
-@Composable
-private fun MyRequestCard(
-    request: BloodRequest,
-    onClick: () -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Blood group
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .padding(4.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = request.bloodGroup,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                    ),
-                    color = BloodRed,
-                )
-            }
-
-            Spacer(Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = request.hospital.ifBlank { "Hospital" },
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    UrgencyTag(request.urgency)
-                    Text(
-                        text = "${request.respondents.size} responded",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                    )
-                }
-            }
-
-            // Status chip
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = when (request.status) {
-                    RequestStatus.ACTIVE -> PendingAmber.copy(alpha = 0.15f)
-                    RequestStatus.FULFILLED -> AvailableGreen.copy(alpha = 0.15f)
-                    RequestStatus.CANCELLED -> UrgencyCritical.copy(alpha = 0.15f)
-                    RequestStatus.EXPIRED -> UnavailableGrey.copy(alpha = 0.15f)
-                },
-            ) {
-                Text(
-                    text = request.status.name,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                    ),
-                    color = when (request.status) {
-                        RequestStatus.ACTIVE -> PendingAmber
-                        RequestStatus.FULFILLED -> AvailableGreen
-                        RequestStatus.CANCELLED -> UrgencyCritical
-                        RequestStatus.EXPIRED -> UnavailableGrey
-                    },
-                )
-            }
-        }
-    }
-}
+// MyRequestCard removed in favor of standard RequestCard

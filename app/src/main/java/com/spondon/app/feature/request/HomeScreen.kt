@@ -1,5 +1,10 @@
 package com.spondon.app.feature.request
 
+import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -364,6 +369,7 @@ fun HomeScreen(
             items(state.urgentRequests.take(10), key = { it.id }) { request ->
                 RequestCard(
                     request = request,
+                    currentUserId = state.user?.uid,
                     onClick = {
                         navController.navigate("request_detail/${request.id}")
                     },
@@ -485,6 +491,7 @@ private fun QuickActionCard(
 @Composable
 fun RequestCard(
     request: BloodRequest,
+    currentUserId: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -538,9 +545,14 @@ fun RequestCard(
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                        val displayName = if (request.requesterId == currentUserId) {
+                            "${request.requesterName.ifBlank { "Unknown" }} (you)"
+                        } else {
+                            request.requesterName.ifBlank { "Unknown Requester" }
+                        }
                         Text(
-                            text = request.requesterName.ifBlank { "Unknown Requester" },
+                            text = displayName,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -554,11 +566,45 @@ fun RequestCard(
                         )
                     }
                 }
-                Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = "Options",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                val context = androidx.compose.ui.platform.LocalContext.current
+                var menuExpanded by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = {
+                                menuExpanded = false
+                                val shareText = "🩸 ${request.bloodGroup} blood needed at ${request.hospital}. ${request.unitsNeeded} unit(s) required. Help save a life!"
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Share Request"))
+                            },
+                            leadingIcon = { Icon(Icons.Outlined.Share, null, modifier = Modifier.size(18.dp)) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Copy Info") },
+                            onClick = {
+                                menuExpanded = false
+                                val copyText = "Blood Group: ${request.bloodGroup}\nHospital: ${request.hospital}\nUnits: ${request.unitsNeeded}\nUrgency: ${request.urgency.name}\nContact: ${request.contactNumber}"
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Request Info", copyText))
+                            },
+                            leadingIcon = { Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(18.dp)) },
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -640,7 +686,7 @@ fun RequestCard(
 }
 
 @Composable
-private fun InfoChipRow(
+internal fun InfoChipRow(
     icon: ImageVector,
     label: String,
     value: String,

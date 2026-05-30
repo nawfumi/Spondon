@@ -69,8 +69,6 @@ class TipsRepositoryImpl @Inject constructor(
             cachedTips = loaded
             loaded
         }
-        val dayOfYear = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
-        val index = dayOfYear % tips.size
-        return tips[index]
+        return tips.random()
     }
 }

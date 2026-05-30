@@ -1,9 +1,24 @@
 package com.spondon.app.feature.onboarding
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,9 +26,36 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,7 +69,11 @@ import androidx.navigation.NavController
 import com.spondon.app.core.domain.model.DeferralType
 import com.spondon.app.core.ui.components.EligibilityChip
 import com.spondon.app.core.ui.i18n.LocalAppLanguage
-import com.spondon.app.core.ui.theme.*
+import com.spondon.app.core.ui.theme.AvailableGreen
+import com.spondon.app.core.ui.theme.BloodRed
+import com.spondon.app.core.ui.theme.DeferredAmber
+import com.spondon.app.core.ui.theme.EligibleGreen
+import com.spondon.app.core.ui.theme.IneligibleRed
 
 @Composable
 fun EligibilityQuizScreen(
@@ -70,7 +116,8 @@ fun EligibilityQuizScreen(
                     },
                 )
                 // Progress
-                LinearProgressIndicator(
+
+                LinearWavyProgressIndicator(
                     progress = { (state.currentQuizStep + 1).toFloat() / state.totalQuizSteps.toFloat() },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                     color = BloodRed,
@@ -415,20 +462,41 @@ private fun TravelStep(state: OnboardingState, viewModel: OnboardingViewModel, i
     QuestionLayout(
         question = if (isBn) "সম্প্রতি ম্যালেরিয়া/জিকা অঞ্চলে ভ্রমণ?" else "Recent travel to malaria/Zika regions?",
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Switch(
-                checked = hasTravel,
-                onCheckedChange = { hasTravel = it },
-                colors = SwitchDefaults.colors(checkedTrackColor = BloodRed),
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = if (hasTravel) (if (isBn) "হ্যাঁ" else "Yes") else (if (isBn) "না" else "No"),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = hasTravel,
+                    onClick = { hasTravel = true },
+                    colors = RadioButtonDefaults.colors(selectedColor = BloodRed),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isBn) "হ্যাঁ" else "Yes",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = !hasTravel,
+                    onClick = { hasTravel = false },
+                    colors = RadioButtonDefaults.colors(selectedColor = BloodRed),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isBn) "না" else "No",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
         }
 
         if (hasTravel) {
@@ -462,20 +530,41 @@ private fun PregnancyStep(state: OnboardingState, viewModel: OnboardingViewModel
     QuestionLayout(
         question = if (isBn) "গর্ভাবস্থা বা সাম্প্রতিক সন্তান জন্ম?" else "Pregnancy or recent birth?",
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Switch(
-                checked = isPregnant,
-                onCheckedChange = { isPregnant = it },
-                colors = SwitchDefaults.colors(checkedTrackColor = BloodRed),
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = if (isPregnant) (if (isBn) "হ্যাঁ" else "Yes") else (if (isBn) "না" else "No"),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = isPregnant,
+                    onClick = { isPregnant = true },
+                    colors = RadioButtonDefaults.colors(selectedColor = BloodRed),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isBn) "হ্যাঁ" else "Yes",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = !isPregnant,
+                    onClick = { isPregnant = false },
+                    colors = RadioButtonDefaults.colors(selectedColor = BloodRed),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isBn) "না" else "No",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -499,20 +588,41 @@ private fun TattooPiercingStep(state: OnboardingState, viewModel: OnboardingView
     QuestionLayout(
         question = if (isBn) "গত ৩ মাসে ট্যাটু বা পিয়ার্সিং?" else "Tattoo or piercing in last 3 months?",
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Switch(
-                checked = hasTattoo,
-                onCheckedChange = { hasTattoo = it },
-                colors = SwitchDefaults.colors(checkedTrackColor = BloodRed),
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = if (hasTattoo) (if (isBn) "হ্যাঁ" else "Yes") else (if (isBn) "না" else "No"),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = hasTattoo,
+                    onClick = { hasTattoo = true },
+                    colors = RadioButtonDefaults.colors(selectedColor = BloodRed),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isBn) "হ্যাঁ" else "Yes",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = !hasTattoo,
+                    onClick = { hasTattoo = false },
+                    colors = RadioButtonDefaults.colors(selectedColor = BloodRed),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isBn) "না" else "No",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))

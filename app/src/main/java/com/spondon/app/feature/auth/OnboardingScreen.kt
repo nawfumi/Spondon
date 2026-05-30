@@ -14,7 +14,7 @@ fun OnboardingScreen(
     viewModel: AuthViewModel,
 ) {
     LaunchedEffect(Unit) {
-        navController.navigate("onboarding_welcome") {
+        navController.navigate("initial_setup") {
             popUpTo("onboarding") { inclusive = true }
         }
     }

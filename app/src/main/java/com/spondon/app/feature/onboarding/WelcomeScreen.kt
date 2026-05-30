@@ -154,7 +154,7 @@ fun WelcomeScreen(navController: NavController) {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Button(
-                        onClick = { navController.navigate("onboarding_how_it_works") },
+                        onClick = { navController.navigate("onboarding_quiz") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(54.dp),

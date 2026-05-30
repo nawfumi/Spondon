@@ -164,11 +164,11 @@ fun SpondonNavGraph(
                 }
 
                 // ─── New Onboarding Flow ─────────────────────
+                composable(Routes.InitialSetup.route) {
+                    InitialSetupScreen(navController)
+                }
                 composable(Routes.OnboardingWelcome.route) {
                     WelcomeScreen(navController)
-                }
-                composable(Routes.OnboardingHowItWorks.route) {
-                    HowItWorksScreen(navController)
                 }
                 composable(Routes.OnboardingQuiz.route) {
                     EligibilityQuizScreen(navController)

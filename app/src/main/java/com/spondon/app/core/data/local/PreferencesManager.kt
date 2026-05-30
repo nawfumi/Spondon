@@ -21,6 +21,7 @@ class PreferencesManager @Inject constructor(
     private val dataStore = context.dataStore
 
     companion object Keys {
+        val INITIAL_SETUP_COMPLETE = booleanPreferencesKey("initial_setup_complete")
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val REMEMBER_ME = booleanPreferencesKey("remember_me")
         val SAVED_EMAIL = stringPreferencesKey("saved_email")
@@ -39,6 +40,10 @@ class PreferencesManager @Inject constructor(
         val QUIZ_ANSWERS_JSON = stringPreferencesKey("quiz_answers_json")
         val LAST_QUIZ_DATE = longPreferencesKey("last_quiz_date")
     }
+
+    val isInitialSetupComplete: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[INITIAL_SETUP_COMPLETE] ?: false }
 
     val isOnboardingComplete: Flow<Boolean> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
@@ -75,6 +80,10 @@ class PreferencesManager @Inject constructor(
     val secureScreen: Flow<String> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[SECURE_SCREEN] ?: "off" }
+
+    suspend fun setInitialSetupComplete(complete: Boolean) {
+        dataStore.edit { it[INITIAL_SETUP_COMPLETE] = complete }
+    }
 
     suspend fun setOnboardingComplete(complete: Boolean) {
         dataStore.edit { it[ONBOARDING_COMPLETE] = complete }

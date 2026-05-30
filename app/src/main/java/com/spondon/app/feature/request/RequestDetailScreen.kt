@@ -16,8 +16,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -111,6 +113,19 @@ fun RequestDetailScreen(
             state.request != null -> {
                 val request = state.request!!
                 val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
+                val dateOnlyFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+                val timeOnlyFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
+
+                val urgencyColor = when (request.urgency) {
+                    Urgency.CRITICAL -> UrgencyCritical
+                    Urgency.MODERATE -> UrgencyModerate
+                    Urgency.NORMAL -> UrgencyNormal
+                }
+                val urgencyText = when (request.urgency) {
+                    Urgency.CRITICAL -> "CRITICAL"
+                    Urgency.MODERATE -> "URGENT"
+                    Urgency.NORMAL -> "NORMAL"
+                }
 
                 LazyColumn(
                     modifier = Modifier
@@ -119,109 +134,180 @@ fun RequestDetailScreen(
                     contentPadding = PaddingValues(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    // ─── Header: Blood Group + Urgency ───────
+                    // ─── Request Info Card (matches RequestCard style) ─────
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = when (request.urgency) {
-                                    Urgency.CRITICAL -> UrgencyCritical.copy(alpha = 0.08f)
-                                    Urgency.MODERATE -> UrgencyModerate.copy(alpha = 0.08f)
-                                    Urgency.NORMAL -> UrgencyNormal.copy(alpha = 0.08f)
-                                },
+                                containerColor = MaterialTheme.colorScheme.surface,
                             ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                // Large blood group
-                                Box(
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            when (request.urgency) {
-                                                Urgency.CRITICAL -> UrgencyCritical
-                                                Urgency.MODERATE -> UrgencyModerate
-                                                Urgency.NORMAL -> UrgencyNormal
-                                            },
-                                        ),
-                                    contentAlignment = Alignment.Center,
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                // Header: Requester avatar + name + time
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(
-                                        text = request.bloodGroup,
-                                        style = MaterialTheme.typography.headlineLarge.copy(
-                                            fontWeight = FontWeight.ExtraBold,
-                                        ),
-                                        color = Color.White,
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Person,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = state.requesterName.ifBlank { "Unknown Requester" },
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            text = "Posted: ${RequestViewModel.getRelativeTime(request.createdAt)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+
+                                    // Status chip for non-active
+                                    if (request.status != RequestStatus.ACTIVE) {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = when (request.status) {
+                                                RequestStatus.FULFILLED -> AvailableGreen.copy(alpha = 0.15f)
+                                                RequestStatus.CANCELLED -> UrgencyCritical.copy(alpha = 0.15f)
+                                                RequestStatus.EXPIRED -> UnavailableGrey.copy(alpha = 0.15f)
+                                                else -> Color.Transparent
+                                            },
+                                        ) {
+                                            Text(
+                                                text = request.status.name,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp,
+                                                color = when (request.status) {
+                                                    RequestStatus.FULFILLED -> AvailableGreen
+                                                    RequestStatus.CANCELLED -> UrgencyCritical
+                                                    RequestStatus.EXPIRED -> UnavailableGrey
+                                                    else -> Color.Unspecified
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(Modifier.height(16.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                Spacer(Modifier.height(16.dp))
+
+                                // Info grid — same pattern as RequestCard
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    InfoChipRow(
+                                        icon = Icons.Filled.Bloodtype,
+                                        label = "Blood Group",
+                                        value = request.bloodGroup.ifBlank { "?" },
+                                        valueColor = BloodRed,
+                                        valueBg = BloodRed.copy(alpha = 0.1f),
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    InfoChipRow(
+                                        icon = Icons.Filled.Warning,
+                                        label = "Urgency",
+                                        value = urgencyText,
+                                        valueColor = urgencyColor,
+                                        valueBg = urgencyColor.copy(alpha = 0.1f),
+                                        modifier = Modifier.weight(1f),
                                     )
                                 }
 
                                 Spacer(Modifier.height(12.dp))
-                                UrgencyTag(request.urgency)
-                                Spacer(Modifier.height(8.dp))
 
-                                Text(
-                                    text = "${request.unitsNeeded} unit${if (request.unitsNeeded > 1) "s" else ""} needed",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                    ),
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    InfoChipRow(
+                                        icon = Icons.Filled.WaterDrop,
+                                        label = "Quantity",
+                                        value = "${request.unitsNeeded} Bag${if (request.unitsNeeded > 1) "s" else ""}",
+                                        valueColor = MaterialTheme.colorScheme.primary,
+                                        valueBg = MaterialTheme.colorScheme.primaryContainer,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    InfoChipRow(
+                                        icon = Icons.Filled.LocalHospital,
+                                        label = "Hospital",
+                                        value = request.hospital.ifBlank { "Not specified" },
+                                        valueColor = MaterialTheme.colorScheme.secondary,
+                                        valueBg = MaterialTheme.colorScheme.secondaryContainer,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
 
-                                Text(
-                                    text = RequestViewModel.getRelativeTime(request.createdAt),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                                )
+                                Spacer(Modifier.height(12.dp))
 
-                                // Status chip
-                                if (request.status != RequestStatus.ACTIVE) {
-                                    Spacer(Modifier.height(8.dp))
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = when (request.status) {
-                                            RequestStatus.FULFILLED -> AvailableGreen.copy(alpha = 0.15f)
-                                            RequestStatus.CANCELLED -> UrgencyCritical.copy(alpha = 0.15f)
-                                            RequestStatus.EXPIRED -> UnavailableGrey.copy(alpha = 0.15f)
-                                            else -> Color.Transparent
-                                        },
-                                    ) {
-                                        Text(
-                                            text = request.status.name,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp,
-                                            color = when (request.status) {
-                                                RequestStatus.FULFILLED -> AvailableGreen
-                                                RequestStatus.CANCELLED -> UrgencyCritical
-                                                RequestStatus.EXPIRED -> UnavailableGrey
-                                                else -> Color.Unspecified
-                                            },
-                                        )
-                                    }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    InfoChipRow(
+                                        icon = Icons.Filled.CalendarMonth,
+                                        label = "Donation Date",
+                                        value = request.donationDateTime?.let { dateOnlyFormat.format(it) } ?: "Not set",
+                                        valueColor = MaterialTheme.colorScheme.tertiary,
+                                        valueBg = MaterialTheme.colorScheme.tertiaryContainer,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    InfoChipRow(
+                                        icon = Icons.Filled.AccessTime,
+                                        label = "Time",
+                                        value = request.donationDateTime?.let { timeOnlyFormat.format(it) } ?: "Not set",
+                                        valueColor = MaterialTheme.colorScheme.tertiary,
+                                        valueBg = MaterialTheme.colorScheme.tertiaryContainer,
+                                        modifier = Modifier.weight(1f),
+                                    )
                                 }
                             }
                         }
                     }
 
-                    // ─── Patient Info ────────────────────────
-                    item {
-                        DetailSection(title = "Patient Information") {
-                            if (!request.patientName.isNullOrBlank()) {
-                                DetailRow(Icons.Outlined.Person, "Patient", request.patientName)
-                            }
-                            DetailRow(Icons.Outlined.LocalHospital, "Hospital", request.hospital)
-                            request.donationDateTime?.let {
-                                DetailRow(
-                                    Icons.Outlined.CalendarMonth,
-                                    "Donation Date",
-                                    dateFormat.format(it),
-                                )
+                    // ─── Patient Info Card ─────────────────────────
+                    if (!request.patientName.isNullOrBlank() || request.address.isNotBlank()) {
+                        item {
+                            DetailSection(title = "Patient Information") {
+                                if (!request.patientName.isNullOrBlank()) {
+                                    DetailInfoRow(
+                                        icon = Icons.Outlined.Person,
+                                        label = "Patient",
+                                        value = request.patientName,
+                                        chipColor = MaterialTheme.colorScheme.primary,
+                                        chipBg = MaterialTheme.colorScheme.primaryContainer,
+                                    )
+                                }
+                                if (request.address.isNotBlank()) {
+                                    Spacer(Modifier.height(8.dp))
+                                    DetailInfoRow(
+                                        icon = Icons.Outlined.LocationOn,
+                                        label = "Address",
+                                        value = request.address,
+                                        chipColor = MaterialTheme.colorScheme.tertiary,
+                                        chipBg = MaterialTheme.colorScheme.tertiaryContainer,
+                                    )
+                                }
                             }
                         }
                     }
@@ -229,30 +315,45 @@ fun RequestDetailScreen(
                     // ─── Contact Section ─────────────────────
                     item {
                         DetailSection(title = "Contact") {
-                            DetailRow(Icons.Outlined.Person, "Requester", state.requesterName)
+                            DetailInfoRow(
+                                icon = Icons.Outlined.Person,
+                                label = "Requester",
+                                value = state.requesterName.ifBlank { "Unknown" },
+                                chipColor = MaterialTheme.colorScheme.primary,
+                                chipBg = MaterialTheme.colorScheme.primaryContainer,
+                            )
                             if (request.contactNumber.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    DetailRow(
-                                        Icons.Outlined.Phone,
-                                        "Phone",
-                                        request.contactNumber,
+                                    DetailInfoRow(
+                                        icon = Icons.Outlined.Phone,
+                                        label = "Phone",
+                                        value = request.contactNumber,
+                                        chipColor = AvailableGreen,
+                                        chipBg = AvailableGreen.copy(alpha = 0.1f),
+                                        modifier = Modifier.weight(1f),
                                     )
-                                    FilledIconButton(
+                                    Spacer(Modifier.width(8.dp))
+                                    FilledTonalButton(
                                         onClick = {
                                             val intent = Intent(Intent.ACTION_DIAL).apply {
                                                 data = Uri.parse("tel:${request.contactNumber}")
                                             }
                                             context.startActivity(intent)
                                         },
-                                        colors = IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = AvailableGreen,
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = AvailableGreen.copy(alpha = 0.12f),
+                                            contentColor = AvailableGreen,
                                         ),
                                     ) {
-                                        Icon(Icons.Filled.Phone, "Call", tint = Color.White)
+                                        Icon(Icons.Filled.Phone, "Call", modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Call", fontWeight = FontWeight.SemiBold)
                                     }
                                 }
                             }
@@ -276,52 +377,78 @@ fun RequestDetailScreen(
                                         val profile = state.respondentProfiles[respondentId]
                                         val donorName = profile?.name?.takeIf { it.isNotBlank() } ?: "Donor"
                                         val donorPhone = if (profile?.isPhoneVisible == true) profile.phone else ""
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
+
+                                        Surface(
                                             modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                         ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(36.dp)
-                                                    .clip(CircleShape)
-                                                    .background(BloodRed.copy(alpha = 0.15f)),
-                                                contentAlignment = Alignment.Center,
+                                            Row(
+                                                modifier = Modifier.padding(12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
                                             ) {
-                                                Icon(
-                                                    Icons.Filled.Person,
-                                                    null,
-                                                    tint = BloodRed,
-                                                    modifier = Modifier.size(18.dp),
-                                                )
-                                            }
-                                            Spacer(Modifier.width(10.dp))
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    donorName,
-                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                                )
-                                                if (donorPhone.isNotBlank()) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(40.dp)
+                                                        .clip(CircleShape)
+                                                        .background(BloodRed.copy(alpha = 0.1f)),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
                                                     Text(
-                                                        donorPhone,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                                        text = donorName.first().uppercase(),
+                                                        style = MaterialTheme.typography.titleSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = BloodRed,
                                                     )
                                                 }
-                                            }
-                                            if (donorPhone.isNotBlank()) {
-                                                FilledIconButton(
-                                                    onClick = {
-                                                        val intent = Intent(Intent.ACTION_DIAL).apply {
-                                                            data = Uri.parse("tel:$donorPhone")
-                                                        }
-                                                        context.startActivity(intent)
-                                                    },
-                                                    colors = IconButtonDefaults.filledIconButtonColors(
-                                                        containerColor = AvailableGreen,
-                                                    ),
-                                                    modifier = Modifier.size(32.dp),
-                                                ) {
-                                                    Icon(Icons.Filled.Phone, "Call", tint = Color.White, modifier = Modifier.size(16.dp))
+                                                Spacer(Modifier.width(12.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        donorName,
+                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                            fontWeight = FontWeight.SemiBold,
+                                                        ),
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                    )
+                                                    if (donorPhone.isNotBlank()) {
+                                                        Text(
+                                                            donorPhone,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        )
+                                                    }
+                                                }
+                                                if (profile?.bloodGroup?.isNotBlank() == true) {
+                                                    Surface(
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        color = BloodRed.copy(alpha = 0.1f),
+                                                    ) {
+                                                        Text(
+                                                            text = profile.bloodGroup,
+                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = BloodRed,
+                                                        )
+                                                    }
+                                                    Spacer(Modifier.width(8.dp))
+                                                }
+                                                if (donorPhone.isNotBlank()) {
+                                                    FilledIconButton(
+                                                        onClick = {
+                                                            val intent = Intent(Intent.ACTION_DIAL).apply {
+                                                                data = Uri.parse("tel:$donorPhone")
+                                                            }
+                                                            context.startActivity(intent)
+                                                        },
+                                                        colors = IconButtonDefaults.filledIconButtonColors(
+                                                            containerColor = AvailableGreen.copy(alpha = 0.12f),
+                                                            contentColor = AvailableGreen,
+                                                        ),
+                                                        modifier = Modifier.size(36.dp),
+                                                    ) {
+                                                        Icon(Icons.Filled.Phone, "Call", modifier = Modifier.size(16.dp))
+                                                    }
                                                 }
                                             }
                                         }
@@ -344,7 +471,7 @@ fun RequestDetailScreen(
                                         OutlinedButton(
                                             onClick = { viewModel.updateStatus(RequestStatus.CANCELLED) },
                                             modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(14.dp),
+                                            shape = RoundedCornerShape(16.dp),
                                             colors = ButtonDefaults.outlinedButtonColors(
                                                 contentColor = UrgencyCritical,
                                             ),
@@ -354,7 +481,7 @@ fun RequestDetailScreen(
                                         Button(
                                             onClick = { viewModel.updateStatus(RequestStatus.FULFILLED) },
                                             modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(14.dp),
+                                            shape = RoundedCornerShape(16.dp),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = AvailableGreen,
                                             ),
@@ -382,7 +509,7 @@ fun RequestDetailScreen(
                                             FilledTonalButton(
                                                 onClick = { showConfirmDialog = true },
                                                 modifier = Modifier.fillMaxWidth(),
-                                                shape = RoundedCornerShape(12.dp),
+                                                shape = RoundedCornerShape(16.dp),
                                                 colors = ButtonDefaults.filledTonalButtonColors(
                                                     containerColor = AvailableGreen.copy(alpha = 0.12f),
                                                     contentColor = AvailableGreen,
@@ -571,7 +698,7 @@ private fun DetailSection(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -589,33 +716,49 @@ private fun DetailSection(
 }
 
 @Composable
-private fun DetailRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun DetailInfoRow(
+    icon: ImageVector,
     label: String,
     value: String,
+    chipColor: Color,
+    chipBg: Color,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier.padding(vertical = 4.dp),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(
             icon,
             null,
-            tint = BloodRed.copy(alpha = 0.7f),
+            tint = chipColor,
             modifier = Modifier.size(18.dp),
         )
-        Spacer(Modifier.width(10.dp))
         Column {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+            Spacer(Modifier.height(3.dp))
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = chipBg,
+            ) {
+                Text(
+                    text = value,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = chipColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

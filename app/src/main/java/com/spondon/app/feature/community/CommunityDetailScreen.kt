@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Feed
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,10 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -241,19 +244,22 @@ fun CommunityDetailScreen(
                                 .height(IntrinsicSize.Max),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            StatCard(
+                            CommunityStatCard(
+                                icon = Icons.Outlined.People,
                                 label = "Members",
                                 value = "${community.memberCount}",
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
-                            StatCard(
+                            CommunityStatCard(
+                                icon = Icons.Outlined.VolunteerActivism,
                                 label = "Donations",
                                 value = "${community.donationCount}",
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
-                            StatCard(
-                                label = "Active Requests",
-                                value = "${state.requests.count { it.status == com.spondon.app.core.domain.model.RequestStatus.ACTIVE }}",
+                            CommunityStatCard(
+                                icon = Icons.Outlined.Pending,
+                                label = "Active",
+                                value = "${state.requests.count { it.status == RequestStatus.ACTIVE }}",
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                         }
@@ -286,7 +292,7 @@ fun CommunityDetailScreen(
                                             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                                             disabledContentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
                                         ),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                     ) {
                                         Icon(Icons.Default.GroupAdd, contentDescription = null, Modifier.size(18.dp))
                                         Spacer(Modifier.width(6.dp))
@@ -301,7 +307,7 @@ fun CommunityDetailScreen(
                                     OutlinedButton(
                                         onClick = { viewModel.leaveCommunity(communityId) },
                                         modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                     ) {
                                         Text("Leave Community")
                                     }
@@ -311,7 +317,7 @@ fun CommunityDetailScreen(
                                         onClick = {},
                                         modifier = Modifier.weight(1f),
                                         enabled = false,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                     ) {
                                         Text("⏳ Pending Approval")
                                     }
@@ -451,20 +457,55 @@ fun CommunityDetailScreen(
                                         Spacer(Modifier.height(16.dp))
                                     }
 
-                                    // Community info cards
+                                    // Community info card — redesigned with chips
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                         colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            containerColor = MaterialTheme.colorScheme.surface,
                                         ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                                     ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
-                                            InfoRow("Type", if (community.type == CommunityType.PUBLIC) "Public" else "Private")
-                                            InfoRow("District", community.district.ifEmpty { "—" })
-                                            InfoRow("Upazila", community.upazila.ifEmpty { "—" })
-                                            InfoRow("Founded", community.createdAt?.formatDisplay() ?: "—")
-                                            InfoRow("Verified", if (community.isVerified) "✅ Yes" else "No")
+                                            AboutInfoRow(
+                                                icon = Icons.Outlined.Public,
+                                                label = "Type",
+                                                value = if (community.type == CommunityType.PUBLIC) "Public" else "Private",
+                                                chipColor = if (community.type == CommunityType.PUBLIC) AvailableGreen else PendingAmber,
+                                                chipBg = if (community.type == CommunityType.PUBLIC) AvailableGreen.copy(alpha = 0.1f) else PendingAmber.copy(alpha = 0.1f),
+                                            )
+                                            Spacer(Modifier.height(10.dp))
+                                            AboutInfoRow(
+                                                icon = Icons.Outlined.LocationOn,
+                                                label = "District",
+                                                value = community.district.ifEmpty { "—" },
+                                                chipColor = MaterialTheme.colorScheme.tertiary,
+                                                chipBg = MaterialTheme.colorScheme.tertiaryContainer,
+                                            )
+                                            Spacer(Modifier.height(10.dp))
+                                            AboutInfoRow(
+                                                icon = Icons.Outlined.Map,
+                                                label = "Upazila",
+                                                value = community.upazila.ifEmpty { "—" },
+                                                chipColor = MaterialTheme.colorScheme.tertiary,
+                                                chipBg = MaterialTheme.colorScheme.tertiaryContainer,
+                                            )
+                                            Spacer(Modifier.height(10.dp))
+                                            AboutInfoRow(
+                                                icon = Icons.Outlined.CalendarMonth,
+                                                label = "Founded",
+                                                value = community.createdAt?.formatDisplay() ?: "—",
+                                                chipColor = MaterialTheme.colorScheme.secondary,
+                                                chipBg = MaterialTheme.colorScheme.secondaryContainer,
+                                            )
+                                            Spacer(Modifier.height(10.dp))
+                                            AboutInfoRow(
+                                                icon = Icons.Outlined.Verified,
+                                                label = "Verified",
+                                                value = if (community.isVerified) "Yes ✅" else "No",
+                                                chipColor = if (community.isVerified) AvailableGreen else UnavailableGrey,
+                                                chipBg = if (community.isVerified) AvailableGreen.copy(alpha = 0.1f) else UnavailableGrey.copy(alpha = 0.1f),
+                                            )
                                         }
                                     }
 
@@ -493,6 +534,52 @@ fun CommunityDetailScreen(
 }
 
 @Composable
+private fun CommunityStatCard(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = BloodRed,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
 private fun MemberRow(
     user: User,
     community: Community,
@@ -510,15 +597,16 @@ private fun MemberRow(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable(onClick = onProfileClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Avatar
@@ -526,7 +614,7 @@ private fun MemberRow(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(BloodRed.copy(alpha = 0.15f)),
+                    .background(BloodRed.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center,
             ) {
                 if (user.avatarUrl.isNotEmpty()) {
@@ -577,27 +665,53 @@ private fun MemberRow(
                     )
                 }
             }
+
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun AboutInfoRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    chipColor: Color,
+    chipBg: Color,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = chipColor,
         )
         Text(
-            value,
+            text = label,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            modifier = Modifier.weight(1f),
         )
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = chipBg,
+        ) {
+            Text(
+                text = value,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = chipColor,
+            )
+        }
     }
 }
