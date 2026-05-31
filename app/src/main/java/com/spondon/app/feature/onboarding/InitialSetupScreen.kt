@@ -21,6 +21,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -102,14 +105,21 @@ fun InitialSetupScreen(
         delay(200); showButton = true
     }
 
-    // Blood drop pulse
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.94f, targetValue = 1.06f,
+    // ECG wave sweep animation
+    val infiniteTransition = rememberInfiniteTransition(label = "ecg")
+    val ecgProgress by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ), label = "ecgSweep",
+    )
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.08f, targetValue = 0.2f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse,
-        ), label = "dropScale",
+        ), label = "glowPulse",
     )
 
     Box(
@@ -134,30 +144,110 @@ fun InitialSetupScreen(
                 enter = fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.5f),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Canvas(modifier = Modifier.size(80.dp)) {
-                        val cx = size.width / 2
-                        val cy = size.height / 2
-                        val r = size.width * 0.28f * scale
+                    Canvas(modifier = Modifier.size(90.dp)) {
+                        val w = size.width
+                        val h = size.height
+                        val cx = w / 2f
+                        val cy = h / 2f
+                        val radius = w * 0.44f
 
+                        // Outer glow circle
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.1f),
-                            radius = r * 1.6f,
+                            color = Color.White.copy(alpha = glowAlpha),
+                            radius = radius * 1.15f,
                             center = Offset(cx, cy),
                         )
 
-                        val path = Path().apply {
-                            moveTo(cx, cy - r * 1.5f)
-                            cubicTo(cx + r * 0.8f, cy - r * 0.5f, cx + r, cy + r * 0.3f, cx, cy + r)
-                            cubicTo(cx - r, cy + r * 0.3f, cx - r * 0.8f, cy - r * 0.5f, cx, cy - r * 1.5f)
-                            close()
-                        }
-                        drawPath(path, Color.White.copy(alpha = 0.9f))
-
+                        // Background circle
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.3f),
-                            radius = r * 0.2f,
-                            center = Offset(cx - r * 0.2f, cy - r * 0.1f),
+                            color = Color.White.copy(alpha = 0.12f),
+                            radius = radius,
+                            center = Offset(cx, cy),
                         )
+
+                        // Circle border
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.35f),
+                            radius = radius,
+                            center = Offset(cx, cy),
+                            style = Stroke(width = 1.5f),
+                        )
+
+                        // ECG wave path — draw the classic P-QRS-T waveform
+                        // The wave scrolls continuously from right to left
+                        val waveLeft = cx - radius * 0.82f
+                        val waveRight = cx + radius * 0.82f
+                        val waveWidth = waveRight - waveLeft
+                        val baseline = cy
+
+                        // ECG keyframes as (fraction, yOffset) where yOffset is relative to baseline
+                        // One full heartbeat cycle
+                        val ecgPoints = listOf(
+                            0.00f to 0f,       // flat
+                            0.10f to 0f,       // flat
+                            0.14f to -0.06f,   // P wave up
+                            0.18f to 0f,       // P wave down
+                            0.22f to 0f,       // PR segment
+                            0.26f to 0.04f,    // Q dip
+                            0.30f to -0.42f,   // R peak (tall spike up)
+                            0.34f to 0.18f,    // S dip (below baseline)
+                            0.38f to 0f,       // return to baseline
+                            0.42f to 0f,       // ST segment
+                            0.48f to -0.10f,   // T wave up
+                            0.54f to 0f,       // T wave down
+                            0.60f to 0f,       // flat
+                            1.00f to 0f,       // flat rest
+                        )
+
+                        // Build the wave path, offset by ecgProgress for scrolling effect
+                        val ecgPath = Path()
+                        val totalSteps = 120
+                        var firstPoint = true
+
+                        for (i in 0..totalSteps) {
+                            val rawFrac = i.toFloat() / totalSteps
+                            // Shift the waveform by progress to create scrolling
+                            val shiftedFrac = (rawFrac + ecgProgress) % 1f
+
+                            // Interpolate y from ECG keyframes
+                            var yOffset = 0f
+                            for (j in 0 until ecgPoints.size - 1) {
+                                val (f1, y1) = ecgPoints[j]
+                                val (f2, y2) = ecgPoints[j + 1]
+                                if (shiftedFrac in f1..f2) {
+                                    val t = if (f2 - f1 > 0f) (shiftedFrac - f1) / (f2 - f1) else 0f
+                                    // Smooth interpolation
+                                    val smoothT = t * t * (3f - 2f * t)
+                                    yOffset = y1 + (y2 - y1) * smoothT
+                                    break
+                                }
+                            }
+
+                            val x = waveLeft + rawFrac * waveWidth
+                            val y = baseline + yOffset * radius * 1.2f
+
+                            if (firstPoint) {
+                                ecgPath.moveTo(x, y)
+                                firstPoint = false
+                            } else {
+                                ecgPath.lineTo(x, y)
+                            }
+                        }
+
+                        // Clip the wave to the circle so it stays inside
+                        val ecgClipPath = Path().apply {
+                            addOval(androidx.compose.ui.geometry.Rect(
+                                cx - radius + 2f, cy - radius + 2f,
+                                cx + radius - 2f, cy + radius - 2f,
+                            ))
+                        }
+                        clipPath(ecgClipPath) {
+                            drawPath(
+                                path = ecgPath,
+                                color = Color.White.copy(alpha = 0.9f),
+                                style = Stroke(width = 2.5f, cap = StrokeCap.Round),
+                            )
+                        }
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -187,7 +277,7 @@ fun InitialSetupScreen(
                 visible = showLanguage,
                 enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { it / 3 },
             ) {
-                Column {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "Choose your language",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -230,7 +320,7 @@ fun InitialSetupScreen(
                 visible = showTheme,
                 enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { it / 3 },
             ) {
-                Column {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = if (setupState.language == "bn") "থিম নির্বাচন করুন" else "Choose your theme",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
