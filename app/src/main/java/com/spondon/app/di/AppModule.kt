@@ -7,6 +7,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
 import com.spondon.app.core.data.local.SpondonDatabase
+import com.spondon.app.core.data.local.dao.NotificationDao
 import com.spondon.app.core.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
@@ -42,4 +43,7 @@ object AppModule {
 
     @Provides @Singleton
     fun provideUserDao(database: SpondonDatabase): UserDao = database.userDao()
+
+    @Provides @Singleton
+    fun provideNotificationDao(database: SpondonDatabase): NotificationDao = database.notificationDao()
 }

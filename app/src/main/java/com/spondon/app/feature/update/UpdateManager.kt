@@ -96,29 +96,27 @@ class UpdateManager(private val context: Context) {
     // ── Notification channel ──────────────────────────────────────
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Low importance channel for silent progress updates
-            val progressChannel = NotificationChannel(
-                CHANNEL_ID_PROGRESS,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Download progress for app updates"
-                setShowBadge(false)
-            }
-            notificationManager.createNotificationChannel(progressChannel)
-
-            // High importance channel for the final Install prompt
-            val completeChannel = NotificationChannel(
-                CHANNEL_ID_COMPLETE,
-                "App Update Ready",
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = "Notifications when an app update is ready to install"
-                setShowBadge(true)
-            }
-            notificationManager.createNotificationChannel(completeChannel)
+        // Low importance channel for silent progress updates
+        val progressChannel = NotificationChannel(
+            CHANNEL_ID_PROGRESS,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Download progress for app updates"
+            setShowBadge(false)
         }
+        notificationManager.createNotificationChannel(progressChannel)
+
+        // High importance channel for the final Install prompt
+        val completeChannel = NotificationChannel(
+            CHANNEL_ID_COMPLETE,
+            "App Update Ready",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Notifications when an app update is ready to install"
+            setShowBadge(true)
+        }
+        notificationManager.createNotificationChannel(completeChannel)
     }
 
     // ── Notification builders ─────────────────────────────────────

@@ -1,5 +1,7 @@
 package com.spondon.app.feature.donor
 
+import android.content.Context
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -67,6 +69,7 @@ data class DonationHistoryState(
     val user: User? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
+    val certificateMessage: String? = null,
 )
 
 data class Badge(
@@ -517,5 +520,43 @@ class DonorViewModel @Inject constructor(
 
     companion object {
         val BLOOD_GROUPS = listOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Certificate Generation
+    // ═══════════════════════════════════════════════════════════
+
+    fun generateCertificate(context: Context) {
+        val state = _historyState.value
+        val user = state.user ?: return
+
+        if (state.totalDonations <= 0) {
+            _historyState.update { it.copy(certificateMessage = "You need at least one donation to get a certificate.") }
+            return
+        }
+
+        viewModelScope.launch {
+            val certificateData = com.spondon.app.core.util.CertificateGenerator.CertificateData(
+                donorName = user.name.ifBlank { "Donor" },
+                bloodGroup = user.bloodGroup.ifBlank { "Unknown" },
+                totalDonations = user.totalDonations,
+                lastDonationDate = user.lastDonationDate,
+            )
+
+            val result = com.spondon.app.core.util.CertificateGenerator.generateCertificate(
+                context = context,
+                data = certificateData,
+            )
+
+            if (result != null) {
+                _historyState.update { it.copy(certificateMessage = "Certificate saved to Downloads!") }
+            } else {
+                _historyState.update { it.copy(certificateMessage = "Failed to generate certificate.") }
+            }
+        }
+    }
+
+    fun clearCertificateMessage() {
+        _historyState.update { it.copy(certificateMessage = null) }
     }
 }

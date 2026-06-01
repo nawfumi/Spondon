@@ -14,9 +14,6 @@ import javax.inject.Inject
 
 data class SecuritySettingsState(
     val isBiometricEnabled: Boolean = false,
-    val autoLockTimeout: String = "always",
-    val hideNotificationContent: Boolean = false,
-    val secureScreen: String = "off",
     val isLoading: Boolean = true,
     /** Set to a description when the user wants to change a sensitive setting.
      *  The UI layer reads this, triggers the biometric prompt, and calls
@@ -29,10 +26,6 @@ sealed class PendingAuthAction(val promptTitle: String) {
     /** Toggle the biometric lock (enable ↔ disable). */
     data class ToggleBiometric(val newValue: Boolean) :
         PendingAuthAction(if (newValue) "Enable Biometric Lock" else "Disable Biometric Lock")
-
-    /** Change the auto-lock timeout value. */
-    data class ChangeAutoLock(val newValue: String) :
-        PendingAuthAction("Change Auto-Lock Timeout")
 }
 
 @HiltViewModel
@@ -50,16 +43,10 @@ class SecuritySettingsViewModel @Inject constructor(
     private fun loadSettings() {
         viewModelScope.launch {
             val biometric = preferencesManager.isBiometricEnabled.first()
-            val autoLock = preferencesManager.autoLockTimeout.first()
-            val hideNotif = preferencesManager.hideNotificationContent.first()
-            val secure = preferencesManager.secureScreen.first()
 
             _state.update {
                 it.copy(
                     isBiometricEnabled = biometric,
-                    autoLockTimeout = autoLock,
-                    hideNotificationContent = hideNotif,
-                    secureScreen = secure,
                     isLoading = false,
                 )
             }
@@ -76,16 +63,6 @@ class SecuritySettingsViewModel @Inject constructor(
     fun requestToggleBiometric() {
         val newValue = !_state.value.isBiometricEnabled
         _state.update { it.copy(pendingAuthAction = PendingAuthAction.ToggleBiometric(newValue)) }
-    }
-
-    // ─── Auto-Lock Timeout ─────────────────────────────────────
-
-    /**
-     * Called when the user selects a new auto-lock timeout.
-     * Requires biometric authentication before applying.
-     */
-    fun requestChangeAutoLock(newValue: String) {
-        _state.update { it.copy(pendingAuthAction = PendingAuthAction.ChangeAutoLock(newValue)) }
     }
 
     // ─── Auth Result ───────────────────────────────────────────
@@ -108,37 +85,11 @@ class SecuritySettingsViewModel @Inject constructor(
                             )
                         }
                     }
-                    is PendingAuthAction.ChangeAutoLock -> {
-                        preferencesManager.setAutoLockTimeout(action.newValue)
-                        _state.update {
-                            it.copy(
-                                autoLockTimeout = action.newValue,
-                                pendingAuthAction = null,
-                            )
-                        }
-                    }
                 }
             }
         } else {
             // Auth failed / cancelled — just clear the pending action
             _state.update { it.copy(pendingAuthAction = null) }
-        }
-    }
-
-    // ─── Non-Sensitive Settings (no auth required) ─────────────
-
-    fun toggleHideNotificationContent() {
-        viewModelScope.launch {
-            val newVal = !_state.value.hideNotificationContent
-            preferencesManager.setHideNotificationContent(newVal)
-            _state.update { it.copy(hideNotificationContent = newVal) }
-        }
-    }
-
-    fun setSecureScreen(mode: String) {
-        viewModelScope.launch {
-            preferencesManager.setSecureScreen(mode)
-            _state.update { it.copy(secureScreen = mode) }
         }
     }
 }

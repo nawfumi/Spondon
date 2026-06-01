@@ -4,15 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Resource
+import com.spondon.app.core.data.local.dao.NotificationDao
 import com.spondon.app.core.data.repository.NotificationRepository
 import com.spondon.app.core.data.repository.NotificationRepositoryImpl
 import com.spondon.app.core.domain.model.AppNotification
+import com.spondon.app.core.domain.model.NotificationType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Date
 import javax.inject.Inject
 
 data class NotificationState(
@@ -26,6 +29,7 @@ data class NotificationState(
 class NotificationViewModel @Inject constructor(
     private val notificationRepository: NotificationRepository,
     private val notificationRepositoryImpl: NotificationRepositoryImpl,
+    private val notificationDao: NotificationDao,
     private val auth: FirebaseAuth,
 ) : ViewModel() {
 
@@ -37,7 +41,9 @@ class NotificationViewModel @Inject constructor(
     init {
         observeUnread()
         observeNotificationsList()
+        syncFirebaseToLocal()
         // Clean up notifications older than 30 days from Firestore
+        // (they remain in local Room database on device)
         cleanupOldNotifications()
     }
 
@@ -45,6 +51,23 @@ class NotificationViewModel @Inject constructor(
         if (currentUserId.isBlank()) return
         viewModelScope.launch {
             notificationRepositoryImpl.deleteOldNotifications(currentUserId)
+        }
+    }
+
+    /**
+     * Syncs Firebase notifications to local Room database.
+     * This ensures that notifications received while the app was closed
+     * are captured locally before Firebase's 30-day cleanup removes them.
+     */
+    private fun syncFirebaseToLocal() {
+        if (currentUserId.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val result = notificationRepository.getNotifications(currentUserId)
+                // getNotifications already syncs to local DB in the impl
+            } catch (_: Exception) {
+                // Best-effort sync
+            }
         }
     }
 

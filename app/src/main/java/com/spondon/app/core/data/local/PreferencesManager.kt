@@ -28,9 +28,6 @@ class PreferencesManager @Inject constructor(
         val DARK_MODE = booleanPreferencesKey("dark_mode")
         val LANGUAGE = stringPreferencesKey("language")
         val BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
-        val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
-        val HIDE_NOTIFICATION_CONTENT = booleanPreferencesKey("hide_notification_content")
-        val SECURE_SCREEN = stringPreferencesKey("secure_screen")
 
         // Eligibility
         val ELIGIBILITY_STATUS = stringPreferencesKey("eligibility_status")
@@ -69,17 +66,7 @@ class PreferencesManager @Inject constructor(
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[BIOMETRIC_ENABLED] ?: false }
 
-    val autoLockTimeout: Flow<String> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { it[AUTO_LOCK_TIMEOUT] ?: "always" }
 
-    val hideNotificationContent: Flow<Boolean> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { it[HIDE_NOTIFICATION_CONTENT] ?: false }
-
-    val secureScreen: Flow<String> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { it[SECURE_SCREEN] ?: "off" }
 
     suspend fun setInitialSetupComplete(complete: Boolean) {
         dataStore.edit { it[INITIAL_SETUP_COMPLETE] = complete }
@@ -109,17 +96,7 @@ class PreferencesManager @Inject constructor(
         dataStore.edit { it[BIOMETRIC_ENABLED] = enabled }
     }
 
-    suspend fun setAutoLockTimeout(timeout: String) {
-        dataStore.edit { it[AUTO_LOCK_TIMEOUT] = timeout }
-    }
 
-    suspend fun setHideNotificationContent(hide: Boolean) {
-        dataStore.edit { it[HIDE_NOTIFICATION_CONTENT] = hide }
-    }
-
-    suspend fun setSecureScreen(mode: String) {
-        dataStore.edit { it[SECURE_SCREEN] = mode }
-    }
 
     // ─── Eligibility ────────────────────────────────────────
     val eligibilityStatus: Flow<String> = dataStore.data

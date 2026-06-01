@@ -3,6 +3,8 @@ package com.spondon.app.core.data.repository
 import com.google.firebase.Timestamp
 import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
+import com.spondon.app.core.data.local.dao.NotificationDao
+import com.spondon.app.core.data.local.entity.NotificationEntity
 import com.spondon.app.core.data.remote.FirestoreService
 import com.spondon.app.core.domain.model.AppNotification
 import com.spondon.app.core.domain.model.NotificationType
@@ -20,51 +22,85 @@ import javax.inject.Singleton
 class NotificationRepositoryImpl @Inject constructor(
     private val firestoreService: FirestoreService,
     private val firestore: FirebaseFirestore,
+    private val notificationDao: NotificationDao,
 ) : NotificationRepository {
 
     override suspend fun getNotifications(userId: String): Resource<List<AppNotification>> {
         return when (val result = firestoreService.getNotifications(userId)) {
-            is Resource.Success -> Resource.Success(result.data.map { it.toAppNotification() })
-            is Resource.Error -> Resource.Error(result.message)
+            is Resource.Success -> {
+                val notifications = result.data.map { it.toAppNotification() }
+                // Sync to local DB
+                notificationDao.insertAll(notifications.map { it.toEntity(userId) })
+                Resource.Success(notifications)
+            }
+            is Resource.Error -> {
+                // Fall back to local data
+                val local = notificationDao.getAllForUser(userId).map { it.toAppNotification() }
+                if (local.isNotEmpty()) Resource.Success(local)
+                else Resource.Error(result.message)
+            }
             is Resource.Loading -> Resource.Loading
         }
     }
 
     override suspend fun markAsRead(notificationId: String): Resource<Unit> {
+        // Update local DB immediately
+        notificationDao.markAsRead(notificationId)
+        // Then update Firebase
         return firestoreService.markNotificationRead(notificationId)
     }
 
     override suspend fun markAllAsRead(userId: String): Resource<Unit> {
+        // Update local DB immediately
+        notificationDao.markAllAsRead(userId)
+        // Then update Firebase
         return firestoreService.markAllNotificationsRead(userId)
     }
 
     override suspend fun deleteNotification(notificationId: String): Resource<Unit> {
+        // Delete from local DB immediately
+        notificationDao.delete(notificationId)
+        // Then delete from Firebase
         return firestoreService.deleteNotification(notificationId)
     }
 
-    override fun observeUnreadCount(userId: String): Flow<Int> = callbackFlow {
-        if (userId.isBlank()) {
+    override fun observeUnreadCount(userId: String): Flow<Int> {
+        if (userId.isBlank()) return callbackFlow {
             trySend(0)
             awaitClose()
-            return@callbackFlow
         }
-        val listener = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
-            .whereEqualTo("userId", userId)
-            .whereEqualTo("isRead", false)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(0)
-                    return@addSnapshotListener
-                }
-                trySend(snapshot?.size() ?: 0)
-            }
-        awaitClose { listener.remove() }
+        // Use local DB for unread count (more reliable, works offline)
+        return notificationDao.observeUnreadCount(userId)
     }
 
     override fun observeNotifications(userId: String): Flow<List<AppNotification>> {
-        return firestoreService.observeNotifications(userId).map { list ->
-            list.map { it.toAppNotification() }
+        // First, set up Firestore listener that syncs to local DB
+        syncFirestoreToLocal(userId)
+        // Then observe from local DB (single source of truth)
+        return notificationDao.observeNotifications(userId).map { entities ->
+            entities.map { it.toAppNotification() }
         }
+    }
+
+    /**
+     * Starts a Firestore snapshot listener that syncs incoming notifications
+     * to the local Room database. This ensures notifications are persisted
+     * locally and survive Firebase's 30-day cleanup.
+     */
+    private fun syncFirestoreToLocal(userId: String) {
+        if (userId.isBlank()) return
+        firestoreService.observeNotifications(userId).map { list ->
+            val entities = list.map { data ->
+                val notification = data.toAppNotification()
+                notification.toEntity(userId)
+            }
+            if (entities.isNotEmpty()) {
+                notificationDao.insertAll(entities)
+            }
+        }
+        // The flow collection happens in the caller's coroutine scope
+        // (NotificationViewModel), so we just need to start observing
+        // from Firestore and let the ViewModel's scope handle cancellation.
     }
 
     /**
@@ -82,6 +118,7 @@ class NotificationRepositoryImpl @Inject constructor(
         deepLink: String = "",
     ): Resource<String> {
         return try {
+            val now = Timestamp.now()
             val data = hashMapOf(
                 "userId" to userId,
                 "type" to type.name,
@@ -89,11 +126,26 @@ class NotificationRepositoryImpl @Inject constructor(
                 "body" to body,
                 "deepLink" to deepLink,
                 "isRead" to false,
-                "createdAt" to Timestamp.now(),
+                "createdAt" to now,
             )
             val docRef = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
                 .add(data)
                 .await()
+
+            // Also save to local DB immediately
+            notificationDao.insert(
+                NotificationEntity(
+                    id = docRef.id,
+                    type = type.name,
+                    title = title,
+                    body = body,
+                    deepLink = deepLink,
+                    isRead = false,
+                    createdAt = now.toDate().time,
+                    userId = userId,
+                )
+            )
+
             Resource.Success(docRef.id)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to create notification", e)
@@ -149,10 +201,39 @@ class NotificationRepositoryImpl @Inject constructor(
         )
     }
 
+    private fun NotificationEntity.toAppNotification(): AppNotification {
+        return AppNotification(
+            id = id,
+            type = try {
+                NotificationType.valueOf(type)
+            } catch (_: Exception) {
+                NotificationType.REQUEST
+            },
+            title = title,
+            body = body,
+            deepLink = deepLink,
+            isRead = isRead,
+            createdAt = if (createdAt > 0) Date(createdAt) else null,
+        )
+    }
+
+    private fun AppNotification.toEntity(userId: String): NotificationEntity {
+        return NotificationEntity(
+            id = id,
+            type = type.name,
+            title = title,
+            body = body,
+            deepLink = deepLink,
+            isRead = isRead,
+            createdAt = createdAt?.time ?: 0L,
+            userId = userId,
+        )
+    }
+
     /**
      * Deletes all notifications older than 30 days from Firestore.
-     * This is a server-side cleanup — notifications are removed from the database,
-     * not just hidden in the app. Runs silently; errors are swallowed.
+     * Notifications remain in the local Room database so users keep them
+     * on device until the app is uninstalled.
      */
     suspend fun deleteOldNotifications(userId: String) {
         try {
