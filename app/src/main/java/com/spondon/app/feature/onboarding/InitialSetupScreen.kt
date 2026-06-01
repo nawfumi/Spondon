@@ -422,28 +422,20 @@ private fun LanguageCard(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = selected,
-                    onClick = onClick,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = Color.White,
-                        unselectedColor = Color.White.copy(alpha = 0.5f),
-                    ),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    ),
-                    color = Color.White,
-                )
-            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                ),
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -504,25 +496,14 @@ private fun ThemeCard(
 
             Spacer(Modifier.height(8.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = selected,
-                    onClick = onClick,
-                    modifier = Modifier.size(20.dp),
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = Color.White,
-                        unselectedColor = Color.White.copy(alpha = 0.5f),
-                    ),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    ),
-                    color = Color.White,
-                )
-            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                ),
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

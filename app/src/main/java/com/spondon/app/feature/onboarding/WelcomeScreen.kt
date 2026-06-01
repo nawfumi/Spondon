@@ -14,6 +14,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,21 +43,21 @@ fun WelcomeScreen(navController: NavController) {
         delay(300); showButtons = true
     }
 
-    // Blood drop pulse
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.92f, targetValue = 1.08f,
+    // ECG wave sweep animation
+    val infiniteTransition = rememberInfiniteTransition(label = "ecg")
+    val ecgProgress by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse,
-        ), label = "dropScale",
+            animation = tween(2400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ), label = "ecgSweep",
     )
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f, targetValue = 1f,
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.08f, targetValue = 0.2f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse,
-        ), label = "dropAlpha",
+        ), label = "glowPulse",
     )
 
     Box(
@@ -76,39 +79,103 @@ fun WelcomeScreen(navController: NavController) {
         ) {
             Spacer(Modifier.weight(0.2f))
 
-            // Blood drop animation
+            // ECG animation (same as InitialSetupScreen)
             Canvas(modifier = Modifier.size(140.dp)) {
-                val cx = size.width / 2
-                val cy = size.height / 2
-                val r = size.width * 0.28f * scale
+                val w = size.width
+                val h = size.height
+                val cx = w / 2f
+                val cy = h / 2f
+                val radius = w * 0.44f
 
-                // Outer glow
+                // Outer glow circle
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.08f * alpha),
-                    radius = r * 1.8f,
-                    center = Offset(cx, cy),
-                )
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.12f * alpha),
-                    radius = r * 1.4f,
+                    color = Color.White.copy(alpha = glowAlpha),
+                    radius = radius * 1.15f,
                     center = Offset(cx, cy),
                 )
 
-                // Blood drop shape
-                val path = Path().apply {
-                    moveTo(cx, cy - r * 1.5f)
-                    cubicTo(cx + r * 0.8f, cy - r * 0.5f, cx + r, cy + r * 0.3f, cx, cy + r)
-                    cubicTo(cx - r, cy + r * 0.3f, cx - r * 0.8f, cy - r * 0.5f, cx, cy - r * 1.5f)
-                    close()
+                // Background circle
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.12f),
+                    radius = radius,
+                    center = Offset(cx, cy),
+                )
+
+                // Circle border
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.35f),
+                    radius = radius,
+                    center = Offset(cx, cy),
+                    style = Stroke(width = 1.5f),
+                )
+
+                // ECG wave path — classic P-QRS-T waveform
+                val waveLeft = cx - radius * 0.82f
+                val waveRight = cx + radius * 0.82f
+                val waveWidth = waveRight - waveLeft
+                val baseline = cy
+
+                val ecgPoints = listOf(
+                    0.00f to 0f,
+                    0.10f to 0f,
+                    0.14f to -0.06f,
+                    0.18f to 0f,
+                    0.22f to 0f,
+                    0.26f to 0.04f,
+                    0.30f to -0.42f,
+                    0.34f to 0.18f,
+                    0.38f to 0f,
+                    0.42f to 0f,
+                    0.48f to -0.10f,
+                    0.54f to 0f,
+                    0.60f to 0f,
+                    1.00f to 0f,
+                )
+
+                val ecgPath = Path()
+                val totalSteps = 120
+                var firstPoint = true
+
+                for (i in 0..totalSteps) {
+                    val rawFrac = i.toFloat() / totalSteps
+                    val shiftedFrac = (rawFrac + ecgProgress) % 1f
+
+                    var yOffset = 0f
+                    for (j in 0 until ecgPoints.size - 1) {
+                        val (f1, y1) = ecgPoints[j]
+                        val (f2, y2) = ecgPoints[j + 1]
+                        if (shiftedFrac in f1..f2) {
+                            val t = if (f2 - f1 > 0f) (shiftedFrac - f1) / (f2 - f1) else 0f
+                            val smoothT = t * t * (3f - 2f * t)
+                            yOffset = y1 + (y2 - y1) * smoothT
+                            break
+                        }
+                    }
+
+                    val x = waveLeft + rawFrac * waveWidth
+                    val y = baseline + yOffset * radius * 1.2f
+
+                    if (firstPoint) {
+                        ecgPath.moveTo(x, y)
+                        firstPoint = false
+                    } else {
+                        ecgPath.lineTo(x, y)
+                    }
                 }
-                drawPath(path, Color.White.copy(alpha = 0.9f * alpha))
 
-                // Inner highlight
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.3f),
-                    radius = r * 0.25f,
-                    center = Offset(cx - r * 0.2f, cy - r * 0.1f),
-                )
+                val ecgClipPath = Path().apply {
+                    addOval(androidx.compose.ui.geometry.Rect(
+                        cx - radius + 2f, cy - radius + 2f,
+                        cx + radius - 2f, cy + radius - 2f,
+                    ))
+                }
+                clipPath(ecgClipPath) {
+                    drawPath(
+                        path = ecgPath,
+                        color = Color.White.copy(alpha = 0.9f),
+                        style = Stroke(width = 2.5f, cap = StrokeCap.Round),
+                    )
+                }
             }
 
             Spacer(Modifier.height(40.dp))

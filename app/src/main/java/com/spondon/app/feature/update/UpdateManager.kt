@@ -8,14 +8,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.net.Uri
-import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import com.spondon.app.BuildConfig
 import com.spondon.app.R
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -338,7 +337,7 @@ class UpdateManager(private val context: Context) {
         val file = getApkFile()
         if (file.exists()) file.delete()
 
-        val request = DownloadManager.Request(Uri.parse(apkUrl))
+        val request = DownloadManager.Request(apkUrl.toUri())
             .setTitle("Spondon Update")
             .setDescription("Downloading latest version…")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
@@ -375,7 +374,7 @@ class UpdateManager(private val context: Context) {
 
         if (!ctx.packageManager.canRequestPackageInstalls()) {
             val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                data = Uri.parse("package:${ctx.packageName}")
+                data = "package:${ctx.packageName}".toUri()
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             ctx.startActivity(settingsIntent)

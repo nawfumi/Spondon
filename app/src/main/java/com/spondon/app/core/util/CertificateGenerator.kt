@@ -377,9 +377,9 @@ object CertificateGenerator {
                 MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues,
             ) ?: return null
 
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                document.writeTo(outputStream)
-            }
+            val outputStream = context.contentResolver.openOutputStream(uri)
+                ?: return null
+            outputStream.use { document.writeTo(it) }
             uri.toString()
         } else {
             // Fallback for older Android

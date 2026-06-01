@@ -535,23 +535,27 @@ class DonorViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
-            val certificateData = com.spondon.app.core.util.CertificateGenerator.CertificateData(
-                donorName = user.name.ifBlank { "Donor" },
-                bloodGroup = user.bloodGroup.ifBlank { "Unknown" },
-                totalDonations = user.totalDonations,
-                lastDonationDate = user.lastDonationDate,
-            )
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val certificateData = com.spondon.app.core.util.CertificateGenerator.CertificateData(
+                    donorName = user.name.ifBlank { "Donor" },
+                    bloodGroup = user.bloodGroup.ifBlank { "Unknown" },
+                    totalDonations = user.totalDonations,
+                    lastDonationDate = user.lastDonationDate,
+                )
 
-            val result = com.spondon.app.core.util.CertificateGenerator.generateCertificate(
-                context = context,
-                data = certificateData,
-            )
+                val result = com.spondon.app.core.util.CertificateGenerator.generateCertificate(
+                    context = context,
+                    data = certificateData,
+                )
 
-            if (result != null) {
-                _historyState.update { it.copy(certificateMessage = "Certificate saved to Downloads!") }
-            } else {
-                _historyState.update { it.copy(certificateMessage = "Failed to generate certificate.") }
+                if (result != null) {
+                    _historyState.update { it.copy(certificateMessage = "Certificate saved to Downloads!") }
+                } else {
+                    _historyState.update { it.copy(certificateMessage = "Failed to generate certificate.") }
+                }
+            } catch (e: Exception) {
+                _historyState.update { it.copy(certificateMessage = "Failed to generate certificate: ${e.localizedMessage}") }
             }
         }
     }
