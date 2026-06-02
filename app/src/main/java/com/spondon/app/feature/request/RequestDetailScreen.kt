@@ -29,6 +29,7 @@ import com.spondon.app.core.domain.model.Urgency
 import com.spondon.app.core.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -341,7 +342,7 @@ fun RequestDetailScreen(
                                     FilledTonalButton(
                                         onClick = {
                                             val intent = Intent(Intent.ACTION_DIAL).apply {
-                                                data = Uri.parse("tel:${request.contactNumber}")
+                                                data = "tel:${request.contactNumber}".toUri()
                                             }
                                             context.startActivity(intent)
                                         },
@@ -437,7 +438,7 @@ fun RequestDetailScreen(
                                                     FilledIconButton(
                                                         onClick = {
                                                             val intent = Intent(Intent.ACTION_DIAL).apply {
-                                                                data = Uri.parse("tel:$donorPhone")
+                                                                data = "tel:$donorPhone".toUri()
                                                             }
                                                             context.startActivity(intent)
                                                         },

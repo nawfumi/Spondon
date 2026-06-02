@@ -1,34 +1,78 @@
 package com.spondon.app.feature.request
 
-import android.content.Intent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-
-import androidx.compose.animation.core.*
+import android.content.Intent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Bloodtype
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VolunteerActivism
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Pending
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,13 +82,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.spondon.app.core.domain.model.BloodRequest
 import com.spondon.app.core.domain.model.Urgency
-import com.spondon.app.core.ui.i18n.S
-import com.spondon.app.core.ui.theme.*
-import com.spondon.app.navigation.Routes
-import com.spondon.app.feature.notification.NotificationViewModel
-import com.spondon.app.feature.donor.TipsViewModel
 import com.spondon.app.core.ui.components.TipOfTheDayCard
 import com.spondon.app.core.ui.i18n.LocalAppLanguage
+import com.spondon.app.core.ui.i18n.S
+import com.spondon.app.core.ui.theme.AvailableGreen
+import com.spondon.app.core.ui.theme.BloodRed
+import com.spondon.app.core.ui.theme.DarkRose
+import com.spondon.app.core.ui.theme.PendingAmber
+import com.spondon.app.core.ui.theme.SoftRose
+import com.spondon.app.core.ui.theme.UrgencyCritical
+import com.spondon.app.core.ui.theme.UrgencyModerate
+import com.spondon.app.core.ui.theme.UrgencyNormal
+import com.spondon.app.feature.donor.TipsViewModel
+import com.spondon.app.feature.notification.NotificationViewModel
+import com.spondon.app.navigation.Routes
 
 @Composable
 fun HomeScreen(
@@ -490,10 +541,10 @@ private fun QuickActionCard(
  */
 @Composable
 fun RequestCard(
+    modifier: Modifier = Modifier,
     request: BloodRequest,
     currentUserId: String? = null,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val urgencyColor = when (request.urgency) {
         Urgency.CRITICAL -> UrgencyCritical
@@ -733,37 +784,3 @@ internal fun InfoChipRow(
     }
 }
 
-@Composable
-fun UrgencyTag(urgency: Urgency) {
-    val (color, text, icon) = when (urgency) {
-        Urgency.CRITICAL -> Triple(UrgencyCritical, "CRITICAL", Icons.Filled.Warning)
-        Urgency.MODERATE -> Triple(UrgencyModerate, "URGENT", Icons.Filled.Schedule)
-        Urgency.NORMAL -> Triple(UrgencyNormal, "NORMAL", Icons.Outlined.CheckCircle)
-    }
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.12f),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(10.dp),
-                tint = color,
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 9.sp,
-                    letterSpacing = 0.8.sp,
-                ),
-                color = color,
-            )
-        }
-    }
-}

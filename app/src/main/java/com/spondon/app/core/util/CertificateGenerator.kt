@@ -53,11 +53,64 @@ object CertificateGenerator {
         return try {
             val filePath = savePdf(context, document, fileName)
             document.close()
+            if (filePath != null) {
+                showCertificateNotification(context, filePath)
+            }
             filePath
         } catch (e: Exception) {
             document.close()
             null
         }
+    }
+
+    private fun showCertificateNotification(context: Context, filePath: String) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val channelId = "certificate_downloads"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                channelId,
+                "Certificate Downloads",
+                android.app.NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Notifications for downloaded certificates"
+            }
+            manager.createNotificationChannel(channel)
+        }
+
+        val uri = if (filePath.startsWith("content://")) {
+            android.net.Uri.parse(filePath)
+        } else {
+            androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                File(filePath)
+            )
+        }
+
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/pdf")
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context,
+            filePath.hashCode(),
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(com.spondon.app.R.mipmap.ic_launcher)
+            .setContentTitle("Certificate Saved")
+            .setContentText("Tap to view your certificate")
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        manager.notify(filePath.hashCode(), notification)
     }
 
     private fun drawCertificate(canvas: Canvas, data: CertificateData) {
