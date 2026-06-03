@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,7 +28,7 @@ private fun tipCategoryIcon(category: TipCategory): ImageVector = when (category
     TipCategory.HYDRATION_NUTRITION -> Icons.Filled.WaterDrop
     TipCategory.BEFORE_APPOINTMENT -> Icons.Filled.NightsStay
     TipCategory.DURING_DONATION -> Icons.Filled.Bloodtype
-    TipCategory.AFTER_DONATION -> Icons.Filled.DirectionsRun
+    TipCategory.AFTER_DONATION -> Icons.AutoMirrored.Filled.DirectionsRun
     TipCategory.MEDICATION_GUIDANCE -> Icons.Filled.Medication
     TipCategory.TRAVEL_DEFERRAL -> Icons.Filled.Flight
 }

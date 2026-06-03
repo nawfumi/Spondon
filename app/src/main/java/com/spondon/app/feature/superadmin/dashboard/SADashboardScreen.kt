@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -63,7 +64,7 @@ fun SADashboardScreen(
                 },
                 actions = {
                     IconButton(onClick = { showLogoutDialog = true }) {
-                        Icon(Icons.Outlined.Logout, contentDescription = "Logout", tint = SARed)
+                        Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = "Logout", tint = SARed)
                     }
                 },
                 windowInsets = WindowInsets(0.dp),

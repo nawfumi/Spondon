@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -476,7 +477,7 @@ private fun FeedbackDetailSheet(
                         if (isSending) {
                             CircularProgressIndicator(Modifier.size(16.dp), color = SADark, strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Outlined.Send, null, Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Outlined.Send, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Send Reply", fontWeight = FontWeight.Bold)
                         }

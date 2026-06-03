@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -445,7 +446,7 @@ fun AdminDashboardScreen(
                                                     Spacer(Modifier.width(8.dp))
                                                     Text("Sending\u2026")
                                                 } else {
-                                                    Icon(Icons.Default.Send, null, modifier = Modifier.size(18.dp))
+                                                    Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(18.dp))
                                                     Spacer(Modifier.width(8.dp))
                                                     Text("Send to All Members", fontWeight = FontWeight.SemiBold)
                                                 }

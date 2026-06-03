@@ -35,10 +35,10 @@ object AppModule {
     @Provides @Singleton
     fun provideSpondonDatabase(@ApplicationContext context: Context): SpondonDatabase {
         return Room.databaseBuilder(
-            context,
-            SpondonDatabase::class.java,
-            "spondon_database"
-        ).fallbackToDestructiveMigration().build()
+                context,
+                SpondonDatabase::class.java,
+                "spondon_database"
+            ).fallbackToDestructiveMigration(false).build()
     }
 
     @Provides @Singleton

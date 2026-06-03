@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -52,7 +53,7 @@ fun tipIconFromName(name: String): ImageVector = when (name) {
     "BatteryChargingFull" -> Icons.Filled.BatteryChargingFull
     "MonitorHeart" -> Icons.Filled.MonitorHeart
     "Inventory2" -> Icons.Filled.Inventory2
-    "DirectionsRun" -> Icons.Filled.DirectionsRun
+    "DirectionsRun" -> Icons.AutoMirrored.Filled.DirectionsRun
     "Badge" -> Icons.Filled.Badge
     "BreakfastDining" -> Icons.Filled.BreakfastDining
     "AirlineSeatReclineNormal" -> Icons.Filled.AirlineSeatReclineNormal

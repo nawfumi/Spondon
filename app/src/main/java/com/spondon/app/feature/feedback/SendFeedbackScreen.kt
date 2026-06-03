@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.*
@@ -246,7 +247,7 @@ fun SendFeedbackScreen(
                             Spacer(Modifier.width(10.dp))
                             Text(s.feedbackSending, fontWeight = FontWeight.Bold)
                         } else {
-                            Icon(Icons.Outlined.Send, null, Modifier.size(18.dp))
+                            Icon(Icons.AutoMirrored.Outlined.Send, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(10.dp))
                             Text(s.feedbackSubmit, fontWeight = FontWeight.Bold)
                         }

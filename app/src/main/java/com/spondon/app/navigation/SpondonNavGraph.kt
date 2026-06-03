@@ -2,10 +2,19 @@ package com.spondon.app.navigation
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,6 +26,7 @@ import androidx.navigation.navArgument
 import com.google.firebase.firestore.FirebaseFirestore
 import com.spondon.app.core.ui.components.SpondonBottomNav
 import com.spondon.app.core.ui.components.bottomNavItems
+import com.spondon.app.core.ui.theme.BloodRed
 import com.spondon.app.feature.auth.*
 import com.spondon.app.feature.auth.PermissionsScreen
 import com.spondon.app.feature.community.*
@@ -56,6 +66,8 @@ fun SpondonNavGraph(
     onDownloadUpdate: (String) -> Unit = {},
     onDismissUpdate: () -> Unit = {},
     onClearUpToDate: () -> Unit = {},
+    // Network connectivity
+    isConnected: Boolean = true,
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -76,34 +88,35 @@ fun SpondonNavGraph(
     val bottomNavRoutes = bottomNavItems.map { it.route }.toSet()
     val showBottomBar = currentRoute in bottomNavRoutes
 
-    Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
-        bottomBar = {
-            if (showBottomBar) {
-                SpondonBottomNav(
-                    currentRoute = currentRoute ?: "",
-                    onNavigate = { route ->
-                        navController.navigate(route) {
-                            popUpTo(Routes.Home.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                )
-            }
-        },
-    ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = "auth_flow",
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            enterTransition = { safeEnter },
-            exitTransition = { safeExit },
-            popEnterTransition = { safeEnter },
-            popExitTransition = { safeExit },
-        ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            contentWindowInsets = WindowInsets.statusBars,
+            bottomBar = {
+                if (showBottomBar) {
+                    SpondonBottomNav(
+                        currentRoute = currentRoute ?: "",
+                        onNavigate = { route ->
+                            navController.navigate(route) {
+                                popUpTo(Routes.Home.route) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                    )
+                }
+            },
+        ) { padding ->
+            NavHost(
+                navController = navController,
+                startDestination = "auth_flow",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                enterTransition = { safeEnter },
+                exitTransition = { safeExit },
+                popEnterTransition = { safeEnter },
+                popExitTransition = { safeExit },
+            ) {
             // ─── Auth Flow (nested graph) ────────────────────
             navigation(
                 startDestination = Routes.Splash.route,
@@ -291,6 +304,53 @@ fun SpondonNavGraph(
 
             // ─── SuperAdmin (gitignored in production) ───────
             superAdminGraph(navController, isSARegistered)
+        }
+        }
+
+        // ─── No Internet Blocking Overlay ─────────────────────
+        if (!isConnected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    ) // Block all interactions
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.WifiOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = BloodRed,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No Internet Connection",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Please check your internet connection and try again",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
         }
     }
 }

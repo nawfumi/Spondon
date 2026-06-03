@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -235,7 +236,7 @@ fun SuperAdminLoginScreen(
                                 strokeWidth = 2.dp,
                             )
                         } else {
-                            Icon(Icons.Outlined.Login, null, Modifier.size(18.dp))
+                            Icon(Icons.AutoMirrored.Outlined.Login, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 if (isLocked) "Locked" else "Authenticate",
