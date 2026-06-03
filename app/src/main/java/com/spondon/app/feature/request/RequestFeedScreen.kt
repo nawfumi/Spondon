@@ -114,6 +114,12 @@ fun RequestFeedScreen(
                                     onClick = {
                                         navController.navigate("request_detail/${request.id}")
                                     },
+                                    onCancelRequest = {
+                                        viewModel.deleteRequest(request.id)
+                                    },
+                                    onMarkFulfilled = {
+                                        viewModel.updateRequestStatusById(request.id, RequestStatus.FULFILLED)
+                                    },
                                 )
                             }
                         }
@@ -135,6 +141,12 @@ fun RequestFeedScreen(
                                     currentUserId = currentUserId,
                                     onClick = {
                                         navController.navigate("request_detail/${request.id}")
+                                    },
+                                    onCancelRequest = {
+                                        viewModel.deleteRequest(request.id)
+                                    },
+                                    onMarkFulfilled = {
+                                        viewModel.updateRequestStatusById(request.id, RequestStatus.FULFILLED)
                                     },
                                 )
                             }

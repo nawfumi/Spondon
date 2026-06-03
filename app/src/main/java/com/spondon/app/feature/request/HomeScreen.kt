@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.spondon.app.core.domain.model.BloodRequest
+import com.spondon.app.core.domain.model.RequestStatus
 import com.spondon.app.core.domain.model.Urgency
 import com.spondon.app.core.ui.components.TipOfTheDayCard
 import com.spondon.app.core.ui.i18n.LocalAppLanguage
@@ -424,6 +425,12 @@ fun HomeScreen(
                     onClick = {
                         navController.navigate("request_detail/${request.id}")
                     },
+                    onCancelRequest = {
+                        viewModel.deleteRequest(request.id)
+                    },
+                    onMarkFulfilled = {
+                        viewModel.updateRequestStatusById(request.id, RequestStatus.FULFILLED)
+                    },
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                 )
             }
@@ -544,6 +551,8 @@ fun RequestCard(
     modifier: Modifier = Modifier,
     request: BloodRequest,
     currentUserId: String? = null,
+    onCancelRequest: (() -> Unit)? = null,
+    onMarkFulfilled: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     val urgencyColor = when (request.urgency) {
@@ -654,6 +663,30 @@ fun RequestCard(
                             },
                             leadingIcon = { Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(18.dp)) },
                         )
+                        // Owner-only actions
+                        if (currentUserId != null && request.requesterId == currentUserId && request.status == RequestStatus.ACTIVE) {
+                            HorizontalDivider()
+                            if (onMarkFulfilled != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Mark as Fulfilled") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onMarkFulfilled()
+                                    },
+                                    leadingIcon = { Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(18.dp), tint = AvailableGreen) },
+                                )
+                            }
+                            if (onCancelRequest != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Cancel Request", color = BloodRed) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onCancelRequest()
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.Warning, null, modifier = Modifier.size(18.dp), tint = BloodRed) },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -731,6 +764,24 @@ fun RequestCard(
                     valueBg = MaterialTheme.colorScheme.tertiaryContainer,
                     modifier = Modifier.weight(1f)
                 )
+            }
+
+            // Patient Condition (if provided)
+            if (request.patientCondition.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    InfoChipRow(
+                        icon = Icons.Filled.Person,
+                        label = "Patient Condition",
+                        value = request.patientCondition,
+                        valueColor = PendingAmber,
+                        valueBg = PendingAmber.copy(alpha = 0.1f),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

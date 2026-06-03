@@ -104,6 +104,9 @@ class CommunityViewModel @Inject constructor(
     private val currentUserId: String
         get() = auth.currentUser?.uid ?: ""
 
+    /** Expose current user ID for UI pending-status checks */
+    fun getCurrentUserId(): String = currentUserId
+
     // ─── Community List ──────────────────────────────────────
 
     private val _listState = MutableStateFlow(CommunityListState())
@@ -263,15 +266,17 @@ class CommunityViewModel @Inject constructor(
                 is Resource.Success -> {
                     _detailState.update {
                         it.copy(
-                            requests = result.data.sortedWith(
-                                compareByDescending<BloodRequest> { r ->
-                                    when (r.urgency) {
-                                        com.spondon.app.core.domain.model.Urgency.CRITICAL -> 2
-                                        com.spondon.app.core.domain.model.Urgency.MODERATE -> 1
-                                        com.spondon.app.core.domain.model.Urgency.NORMAL   -> 0
-                                    }
-                                }.thenByDescending { r -> r.createdAt }
-                            ),
+                            requests = result.data
+                                .filter { r -> r.status == com.spondon.app.core.domain.model.RequestStatus.ACTIVE }
+                                .sortedWith(
+                                    compareByDescending<BloodRequest> { r ->
+                                        when (r.urgency) {
+                                            com.spondon.app.core.domain.model.Urgency.CRITICAL -> 2
+                                            com.spondon.app.core.domain.model.Urgency.MODERATE -> 1
+                                            com.spondon.app.core.domain.model.Urgency.NORMAL   -> 0
+                                        }
+                                    }.thenByDescending { r -> r.createdAt }
+                                ),
                             isRequestsLoading = false,
                         )
                     }
@@ -561,7 +566,7 @@ class CommunityViewModel @Inject constructor(
                     }
                 }
                 is Resource.Error -> {
-                    _adminState.update { it.copy(isLoading = false) }
+                    _adminState.update { it.copy(error = "Failed to load pending requests: ${result.message}", isLoading = false) }
                 }
                 is Resource.Loading -> {}
             }
@@ -572,7 +577,16 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = communityRepository.getCommunityMembers(memberIds)) {
                 is Resource.Success -> {
-                    _adminState.update { it.copy(members = result.data) }
+                    val members = result.data
+                    val activeCount = members.count { isUserAvailable(it) }
+                    val totalDonations = members.sumOf { it.totalDonations }
+                    _adminState.update {
+                        it.copy(
+                            members = members,
+                            activeMembers = activeCount,
+                            monthlyDonations = totalDonations,
+                        )
+                    }
                 }
                 is Resource.Error -> {} // Silently handle
                 is Resource.Loading -> {}

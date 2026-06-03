@@ -172,6 +172,7 @@ class AuthViewModel @Inject constructor(
                             if (needsSetup) {
                                 _navigationEvent.send(AuthNavigationEvent.NavigateToProfileSetup)
                             } else {
+                                preferencesManager.setOnboardingComplete(true)
                                 _navigationEvent.send(AuthNavigationEvent.NavigateToHome)
                             }
                         }
@@ -404,6 +405,7 @@ class AuthViewModel @Inject constructor(
                 when (val result = userRepository.updateUser(updatedUser)) {
                     is Resource.Success -> {
                         _state.update { it.copy(isLoading = false, isSignUpComplete = true, isLoggedIn = true, needsProfileSetup = false) }
+                        preferencesManager.setOnboardingComplete(true)
                         _navigationEvent.send(AuthNavigationEvent.NavigateToHome)
                     }
                     is Resource.Error -> {
@@ -415,6 +417,7 @@ class AuthViewModel @Inject constructor(
                 when (val result = authRepository.signUpWithEmail(s.email, s.password, user)) {
                     is Resource.Success -> {
                         _state.update { it.copy(isLoading = false, isSignUpComplete = true, isLoggedIn = true) }
+                        preferencesManager.setOnboardingComplete(true)
                         _navigationEvent.send(AuthNavigationEvent.NavigateToHome)
                     }
                     is Resource.Error -> {

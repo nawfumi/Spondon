@@ -262,16 +262,18 @@ fun CommunityListScreen(
                             items(communities, key = { it.id }) { community ->
                                 val isJoined = state.myCommunities.any { it.id == community.id }
                                 val isEligible = viewModel.isBloodGroupEligible(community)
+                                val isPending = community.pendingIds.contains(viewModel.getCurrentUserId())
                                 CommunityCard(
                                     community = community,
                                     isDiscover = state.selectedTab == 1,
                                     isJoined = isJoined,
+                                    isPending = isPending,
                                     isEligible = isEligible,
                                     onClick = {
                                         navController.navigate("community_detail/${community.id}")
                                     },
                                     onJoin = {
-                                        if (!isJoined) {
+                                        if (!isJoined && !isPending) {
                                             if (community.type == CommunityType.PUBLIC) {
                                                 viewModel.joinPublicCommunity(community.id)
                                             } else {
@@ -294,6 +296,7 @@ private fun CommunityCard(
     community: Community,
     isDiscover: Boolean,
     isJoined: Boolean = false,
+    isPending: Boolean = false,
     isEligible: Boolean = true,
     onClick: () -> Unit,
     onJoin: () -> Unit,
@@ -494,6 +497,19 @@ private fun CommunityCard(
                                         color = AvailableGreen,
                                     )
                                 }
+                            } else if (isPending) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = PendingAmber.copy(alpha = 0.1f),
+                                ) {
+                                    Text(
+                                        "⏳ Pending",
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PendingAmber,
+                                    )
+                                }
                             } else if (!isEligible) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
@@ -546,6 +562,19 @@ private fun CommunityCard(
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = AvailableGreen,
+                            )
+                        }
+                    } else if (isPending) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = PendingAmber.copy(alpha = 0.1f),
+                        ) {
+                            Text(
+                                "⏳ Pending",
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PendingAmber,
                             )
                         }
                     } else if (!isEligible) {

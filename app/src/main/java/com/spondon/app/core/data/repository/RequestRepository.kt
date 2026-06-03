@@ -12,5 +12,6 @@ interface RequestRepository {
     suspend fun getMyRequests(userId: String): Resource<List<BloodRequest>>
     suspend fun respondToRequest(requestId: String, donorId: String): Resource<Unit>
     suspend fun updateRequestStatus(requestId: String, status: RequestStatus): Resource<Unit>
+    suspend fun deleteRequest(requestId: String): Resource<Unit>
     fun observeRequests(communityIds: List<String>): Flow<List<BloodRequest>>
 }

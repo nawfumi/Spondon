@@ -287,7 +287,7 @@ fun RequestDetailScreen(
                     }
 
                     // ─── Patient Info Card ─────────────────────────
-                    if (!request.patientName.isNullOrBlank() || request.address.isNotBlank()) {
+                    if (!request.patientName.isNullOrBlank() || request.address.isNotBlank() || request.patientCondition.isNotBlank()) {
                         item {
                             DetailSection(title = "Patient Information") {
                                 if (!request.patientName.isNullOrBlank()) {
@@ -297,6 +297,16 @@ fun RequestDetailScreen(
                                         value = request.patientName,
                                         chipColor = MaterialTheme.colorScheme.primary,
                                         chipBg = MaterialTheme.colorScheme.primaryContainer,
+                                    )
+                                }
+                                if (request.patientCondition.isNotBlank()) {
+                                    Spacer(Modifier.height(8.dp))
+                                    DetailInfoRow(
+                                        icon = Icons.Outlined.Info,
+                                        label = "Condition",
+                                        value = request.patientCondition,
+                                        chipColor = PendingAmber,
+                                        chipBg = PendingAmber.copy(alpha = 0.1f),
                                     )
                                 }
                                 if (request.address.isNotBlank()) {

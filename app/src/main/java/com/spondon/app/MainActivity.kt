@@ -16,11 +16,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -70,6 +74,7 @@ import androidx.compose.material3.AlertDialog
 import com.spondon.app.feature.update.UpdateManager
 import com.spondon.app.feature.update.UpdateViewModel
 import com.spondon.app.feature.notification.NotificationObserver
+import com.spondon.app.core.util.NetworkConnectivityObserver
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
@@ -84,6 +89,8 @@ class MainActivity : FragmentActivity() {
 
     private lateinit var updateManager: UpdateManager
     private lateinit var notificationObserver: NotificationObserver
+
+    @Inject lateinit var networkObserver: NetworkConnectivityObserver
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -252,23 +259,52 @@ class MainActivity : FragmentActivity() {
                     } else {
                         // Main app
                         Surface(modifier = Modifier.fillMaxSize()) {
-                            SpondonNavGraph(
-                                authViewModel = authViewModel,
-                                onGoogleSignIn = { launchGoogleSignIn() },
-                                onSendOtp = { phone -> sendOtp(phone) },
-                                updateAvailable = updateInfo,
-                                isCheckingUpdate = isCheckingUpdate,
-                                isUpToDate = isUpToDate,
-                                onCheckForUpdate = {
-                                    updateViewModel.checkForUpdates(BuildConfig.VERSION_NAME)
+                            val isConnected by networkObserver.isConnected
+                                .collectAsState(initial = true)
+                            val snackbarHostState = remember { SnackbarHostState() }
+
+                            LaunchedEffect(isConnected) {
+                                if (!isConnected) {
+                                    snackbarHostState.showSnackbar(
+                                        message = "No internet connection",
+                                        duration = androidx.compose.material3.SnackbarDuration.Indefinite,
+                                    )
+                                } else {
+                                    snackbarHostState.currentSnackbarData?.dismiss()
+                                }
+                            }
+
+                            androidx.compose.material3.Scaffold(
+                                snackbarHost = {
+                                    SnackbarHost(snackbarHostState) { data ->
+                                        Snackbar(
+                                            snackbarData = data,
+                                            containerColor = BloodRed,
+                                            contentColor = androidx.compose.ui.graphics.Color.White,
+                                        )
+                                    }
                                 },
-                                onDownloadUpdate = { url ->
-                                    updateManager.downloadUpdate(url)
-                                    updateViewModel.dismissUpdate()
-                                },
-                                onDismissUpdate = { updateViewModel.dismissUpdate() },
-                                onClearUpToDate = { updateViewModel.clearUpToDateFlag() },
-                            )
+                            ) { innerPadding ->
+                                Box(modifier = Modifier.padding(innerPadding)) {
+                                    SpondonNavGraph(
+                                        authViewModel = authViewModel,
+                                        onGoogleSignIn = { launchGoogleSignIn() },
+                                        onSendOtp = { phone -> sendOtp(phone) },
+                                        updateAvailable = updateInfo,
+                                        isCheckingUpdate = isCheckingUpdate,
+                                        isUpToDate = isUpToDate,
+                                        onCheckForUpdate = {
+                                            updateViewModel.checkForUpdates(BuildConfig.VERSION_NAME)
+                                        },
+                                        onDownloadUpdate = { url ->
+                                            updateManager.downloadUpdate(url)
+                                            updateViewModel.dismissUpdate()
+                                        },
+                                        onDismissUpdate = { updateViewModel.dismissUpdate() },
+                                        onClearUpToDate = { updateViewModel.clearUpToDateFlag() },
+                                    )
+                                }
+                            }
                         }
                     }
                 }

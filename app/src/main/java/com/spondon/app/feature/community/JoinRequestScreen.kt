@@ -112,7 +112,9 @@ fun JoinRequestScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
-                            modifier = Modifier.padding(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             // Community avatar

@@ -16,6 +16,7 @@ data class BloodRequest(
     val address: String = "",
     val donationDateTime: Date? = null,
     val contactNumber: String = "",
+    val patientCondition: String = "",
     val respondents: List<String> = emptyList(),
     val status: RequestStatus = RequestStatus.ACTIVE,
     val isPinned: Boolean = false,

@@ -179,6 +179,20 @@ fun CreateRequestScreen(
                 )
             }
 
+            // ─── Patient Condition ──────────────────────────
+            item {
+                OutlinedTextField(
+                    value = state.patientCondition,
+                    onValueChange = viewModel::updatePatientCondition,
+                    label = { Text("Patient Condition (optional)") },
+                    leadingIcon = { Icon(Icons.Outlined.Info, null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    singleLine = false,
+                    maxLines = 2,
+                )
+            }
+
             // ─── Hospital ────────────────────────────────────
             item {
                 OutlinedTextField(

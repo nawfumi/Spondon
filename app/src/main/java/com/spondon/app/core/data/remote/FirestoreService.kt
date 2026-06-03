@@ -327,11 +327,12 @@ class FirestoreService @Inject constructor(
                 .document(communityId)
                 .collection(Constants.JOIN_REQUESTS_COLLECTION)
                 .whereEqualTo("status", "PENDING")
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
             val list = docs.documents.mapNotNull { doc ->
                 if (doc.exists()) (doc.data ?: emptyMap()) + ("id" to doc.id) else null
+            }.sortedByDescending { map ->
+                (map["createdAt"] as? com.google.firebase.Timestamp)?.toDate()?.time ?: 0L
             }
             Resource.Success(list)
         } catch (e: Exception) {
@@ -869,6 +870,17 @@ class FirestoreService @Inject constructor(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to delete account", e)
+        }
+    }
+    suspend fun deleteRequest(requestId: String): Resource<Unit> {
+        return try {
+            firestore.collection(Constants.REQUESTS_COLLECTION)
+                .document(requestId)
+                .delete()
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to delete request", e)
         }
     }
 }

@@ -31,6 +31,7 @@ class RequestRepositoryImpl @Inject constructor(
             "address" to request.address,
             "donationDateTime" to request.donationDateTime?.let { Timestamp(it) },
             "contactNumber" to request.contactNumber,
+            "patientCondition" to request.patientCondition,
             "respondents" to request.respondents,
             "status" to request.status.name,
             "isPinned" to request.isPinned,
@@ -83,6 +84,10 @@ class RequestRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteRequest(requestId: String): Resource<Unit> {
+        return firestoreService.deleteRequest(requestId)
+    }
+
     private fun mapToBloodRequest(data: Map<String, Any>): BloodRequest {
         val donationDt = when (val d = data["donationDateTime"]) {
             is Timestamp -> d.toDate()
@@ -115,6 +120,7 @@ class RequestRepositoryImpl @Inject constructor(
             address = data["address"] as? String ?: "",
             donationDateTime = donationDt,
             contactNumber = data["contactNumber"] as? String ?: "",
+            patientCondition = data["patientCondition"] as? String ?: "",
             respondents = (data["respondents"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             status = try {
                 RequestStatus.valueOf(data["status"] as? String ?: "ACTIVE")

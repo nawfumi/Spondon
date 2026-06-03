@@ -49,6 +49,7 @@ data class CreateRequestState(
     val address: String = "",
     val donationDate: Date? = null,
     val contactNumber: String = "",
+    val patientCondition: String = "",
     val selectedCommunityIds: List<String> = emptyList(),
     val availableCommunities: List<Community> = emptyList(),
     val isSubmitting: Boolean = false,
@@ -217,6 +218,7 @@ class RequestViewModel @Inject constructor(
     fun updateAddress(a: String) = _createState.update { it.copy(address = a) }
     fun updateDonationDate(d: Date?) = _createState.update { it.copy(donationDate = d) }
     fun updateContactNumber(n: String) = _createState.update { it.copy(contactNumber = n) }
+    fun updatePatientCondition(c: String) = _createState.update { it.copy(patientCondition = c) }
 
     fun toggleCommunity(id: String) {
         _createState.update { state ->
@@ -284,6 +286,7 @@ class RequestViewModel @Inject constructor(
                 hospital = state.hospital,
                 donationDateTime = state.donationDate,
                 contactNumber = state.contactNumber,
+                patientCondition = state.patientCondition,
                 status = RequestStatus.ACTIVE,
                 expiresAt = expiry,
             )
@@ -432,6 +435,38 @@ class RequestViewModel @Inject constructor(
                     }
                 }
 
+                else -> {}
+            }
+        }
+    }
+
+    /**
+     * Updates the status of a request by ID (used from card menu).
+     * After updating, refreshes the home feed.
+     */
+    fun updateRequestStatusById(requestId: String, status: RequestStatus) {
+        viewModelScope.launch {
+            when (requestRepository.updateRequestStatus(requestId, status)) {
+                is Resource.Success -> {
+                    loadHome()
+                    loadFeed()
+                }
+                else -> {}
+            }
+        }
+    }
+
+    /**
+     * Deletes a request permanently (used when user cancels from card menu).
+     * After deleting, refreshes the home feed.
+     */
+    fun deleteRequest(requestId: String) {
+        viewModelScope.launch {
+            when (requestRepository.deleteRequest(requestId)) {
+                is Resource.Success -> {
+                    loadHome()
+                    loadFeed()
+                }
                 else -> {}
             }
         }
