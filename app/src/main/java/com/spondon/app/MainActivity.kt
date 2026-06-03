@@ -267,7 +267,7 @@ class MainActivity : FragmentActivity() {
                                 if (!isConnected) {
                                     snackbarHostState.showSnackbar(
                                         message = "No internet connection",
-                                        duration = androidx.compose.material3.SnackbarDuration.Indefinite,
+                                        duration = androidx.compose.material3.SnackbarDuration.Short,
                                     )
                                 } else {
                                     snackbarHostState.currentSnackbarData?.dismiss()

@@ -76,6 +76,7 @@ fun SpondonNavGraph(
     val showBottomBar = currentRoute in bottomNavRoutes
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             if (showBottomBar) {
                 SpondonBottomNav(
