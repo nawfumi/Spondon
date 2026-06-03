@@ -105,7 +105,7 @@ class CommunityViewModel @Inject constructor(
         get() = auth.currentUser?.uid ?: ""
 
     /** Expose current user ID for UI pending-status checks */
-    fun getCurrentUserId(): String = currentUserId
+    fun fetchCurrentUserId(): String = currentUserId
 
     // ─── Community List ──────────────────────────────────────
 

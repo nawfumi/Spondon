@@ -262,7 +262,7 @@ fun CommunityListScreen(
                             items(communities, key = { it.id }) { community ->
                                 val isJoined = state.myCommunities.any { it.id == community.id }
                                 val isEligible = viewModel.isBloodGroupEligible(community)
-                                val isPending = community.pendingIds.contains(viewModel.getCurrentUserId())
+                                val isPending = community.pendingIds.contains(viewModel.fetchCurrentUserId())
                                 CommunityCard(
                                     community = community,
                                     isDiscover = state.selectedTab == 1,
