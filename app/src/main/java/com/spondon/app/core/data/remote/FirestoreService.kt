@@ -883,4 +883,125 @@ class FirestoreService @Inject constructor(
             Resource.Error(e.message ?: "Failed to delete request", e)
         }
     }
+
+    // ─── Spondon Global Community ─────────────────────────────────
+
+    /**
+     * Reads the Spondon community ID from the config document.
+     * Returns null if the config doc doesn't exist yet.
+     */
+    suspend fun getSpondonCommunityId(): String? {
+        return try {
+            val doc = firestore.document(Constants.SPONDON_CONFIG_DOC).get().await()
+            if (doc.exists()) doc.getString("communityId") else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Creates the Spondon community if it doesn't already exist,
+     * and stores its ID in the config document.
+     */
+    suspend fun ensureSpondonCommunity(superAdminId: String): Resource<String> {
+        return try {
+            // Check if already created
+            val existingId = getSpondonCommunityId()
+            if (existingId != null) return Resource.Success(existingId)
+
+            // Create the community
+            val data = mapOf<String, Any?>(
+                "name" to Constants.SPONDON_COMMUNITY_NAME,
+                "description" to "স্পন্দন — the official community of the Spondon platform. Every user is a member. Admin posts announcements, news, and updates here.",
+                "coverUrl" to "",
+                "type" to "SPONDON",
+                "adminIds" to listOf(superAdminId),
+                "moderatorIds" to emptyList<String>(),
+                "memberIds" to listOf(superAdminId),
+                "pendingIds" to emptyList<String>(),
+                "district" to "",
+                "upazila" to "",
+                "bloodGroups" to emptyList<String>(),
+                "memberCount" to 1,
+                "donationCount" to 0,
+                "isVerified" to true,
+                "isSpondon" to true,
+                "createdAt" to com.google.firebase.Timestamp.now(),
+            )
+            val result = createCommunity(data)
+            if (result is Resource.Success) {
+                val communityId = result.data
+                // Store the ID in config
+                firestore.document(Constants.SPONDON_CONFIG_DOC)
+                    .set(mapOf("communityId" to communityId))
+                    .await()
+                // Add to super admin's communityIds
+                firestore.collection(Constants.USERS_COLLECTION)
+                    .document(superAdminId)
+                    .update("communityIds", FieldValue.arrayUnion(communityId))
+                    .await()
+                Resource.Success(communityId)
+            } else {
+                Resource.Error("Failed to create Spondon community")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to ensure Spondon community", e)
+        }
+    }
+
+    // ─── Community Posts ───────────────────────────────────────────
+
+    /**
+     * Creates a general-purpose community post.
+     */
+    suspend fun createCommunityPost(data: Map<String, Any?>): Resource<String> {
+        return try {
+            val docRef = firestore.collection(Constants.COMMUNITY_POSTS_COLLECTION)
+                .add(data)
+                .await()
+            Resource.Success(docRef.id)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to create post", e)
+        }
+    }
+
+    /**
+     * Fetches all posts for a community, sorted by creation date descending.
+     */
+    suspend fun getCommunityPosts(communityId: String): Resource<List<Map<String, Any>>> {
+        return try {
+            val docs = firestore.collection(Constants.COMMUNITY_POSTS_COLLECTION)
+                .whereEqualTo("communityId", communityId)
+                .get()
+                .await()
+            val list = docs.documents.mapNotNull { doc ->
+                if (doc.exists()) (doc.data ?: emptyMap()) + ("id" to doc.id) else null
+            }
+            val sorted = list.sortedByDescending { data ->
+                when (val d = data["createdAt"]) {
+                    is com.google.firebase.Timestamp -> d.toDate().time
+                    is java.util.Date -> d.time
+                    else -> 0L
+                }
+            }
+            Resource.Success(sorted)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to get community posts", e)
+        }
+    }
+
+    /**
+     * Deletes a community post.
+     */
+    suspend fun deleteCommunityPost(postId: String): Resource<Unit> {
+        return try {
+            firestore.collection(Constants.COMMUNITY_POSTS_COLLECTION)
+                .document(postId)
+                .delete()
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to delete post", e)
+        }
+    }
 }

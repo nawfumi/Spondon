@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Feed
+import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,34 +34,18 @@ import com.spondon.app.core.domain.model.*
 import com.spondon.app.core.ui.components.AvailabilityIndicator
 import com.spondon.app.core.ui.components.BloodGroupBadge
 import com.spondon.app.core.ui.components.RoleBadge
-import com.spondon.app.core.ui.components.StatCard
 import com.spondon.app.core.ui.theme.*
+import com.spondon.app.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CommunityDetailScreen(
+fun SpondonCommunityScreen(
     navController: NavController,
     viewModel: CommunityViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.detailState.collectAsState()
+    val state by viewModel.spondonState.collectAsState()
 
-    // Extract communityId from navController back stack
-    val communityId = navController.currentBackStackEntry
-        ?.arguments?.getString("communityId") ?: ""
-
-    LaunchedEffect(communityId) {
-        if (communityId.isNotEmpty()) viewModel.loadCommunityDetail(communityId)
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is CommunityEvent.ShowSnackbar -> { /* handled by snackbar host */ }
-                is CommunityEvent.NavigateBack -> navController.popBackStack()
-                else -> {}
-            }
-        }
-    }
+    LaunchedEffect(Unit) { viewModel.loadSpondonCommunity() }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -72,20 +57,21 @@ fun CommunityDetailScreen(
         }
     }
 
+    val isAdmin = state.currentUserRole == CommunityRole.ADMIN ||
+            state.currentUserRole == CommunityRole.MODERATOR
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            val isAdminOrMod = state.currentUserRole == CommunityRole.ADMIN ||
-                    state.currentUserRole == CommunityRole.MODERATOR
-            if (isAdminOrMod && state.community != null) {
+            if (isAdmin && state.community != null) {
                 FloatingActionButton(
-                    onClick = { navController.navigate("admin_dashboard/$communityId") },
+                    onClick = { navController.navigate(Routes.CreateSpondonPost.route) },
                     containerColor = BloodRed,
                     contentColor = Color.White,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AdminPanelSettings,
-                        contentDescription = "Admin Dashboard",
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Create Post",
                     )
                 }
             }
@@ -105,7 +91,20 @@ fun CommunityDetailScreen(
                     Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(state.error ?: "Error", color = MaterialTheme.colorScheme.error)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = BloodRed,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            state.error ?: "Error",
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
             state.community != null -> {
@@ -121,9 +120,9 @@ fun CommunityDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(220.dp),
+                                .height(200.dp),
                         ) {
-                            // Cover image
+                            // Cover image or gradient
                             if (community.coverUrl.isNotEmpty()) {
                                 AsyncImage(
                                     model = community.coverUrl,
@@ -137,7 +136,11 @@ fun CommunityDetailScreen(
                                         .fillMaxSize()
                                         .background(
                                             Brush.linearGradient(
-                                                listOf(BloodRed, DarkRose, BloodRed.copy(alpha = 0.6f)),
+                                                listOf(
+                                                    BloodRed,
+                                                    DarkRose,
+                                                    BloodRed.copy(alpha = 0.7f),
+                                                ),
                                             )
                                         ),
                                 )
@@ -149,8 +152,8 @@ fun CommunityDetailScreen(
                                     .fillMaxSize()
                                     .background(
                                         Brush.verticalGradient(
-                                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                                            startY = 80f,
+                                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+                                            startY = 60f,
                                         )
                                     ),
                             )
@@ -172,35 +175,35 @@ fun CommunityDetailScreen(
                                 )
                             }
 
-                            // Membership status chip
+                            // "Official" badge
                             Surface(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .padding(12.dp),
                                 shape = RoundedCornerShape(20.dp),
-                                color = when (state.membershipStatus) {
-                                    MembershipStatus.JOINED -> AvailableGreen
-                                    MembershipStatus.PENDING -> PendingAmber
-                                    MembershipStatus.NONE -> MaterialTheme.colorScheme.surfaceVariant
-                                },
+                                color = AvailableGreen,
                             ) {
-                                Text(
-                                    text = when (state.membershipStatus) {
-                                        MembershipStatus.JOINED -> "✓ Member"
-                                        MembershipStatus.PENDING -> "⏳ Pending"
-                                        MembershipStatus.NONE -> "Not Joined"
-                                    },
+                                Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = when (state.membershipStatus) {
-                                        MembershipStatus.JOINED -> Color.White
-                                        MembershipStatus.PENDING -> Color.Black
-                                        MembershipStatus.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Default.Verified,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = Color.White,
+                                    )
+                                    Text(
+                                        "Official",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                    )
+                                }
                             }
 
-                            // Community info at bottom of header
+                            // Community name at bottom
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
@@ -212,25 +215,11 @@ fun CommunityDetailScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                 )
-                                if (community.district.isNotEmpty()) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            Icons.Default.LocationOn,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                            tint = Color.White.copy(alpha = 0.7f),
-                                        )
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(
-                                            buildString {
-                                                append(community.district)
-                                                if (community.upazila.isNotEmpty()) append(" · ${community.upazila}")
-                                            },
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.7f),
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = "Every heartbeat counts · Everyone is a member",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.8f),
+                                )
                             }
                         }
                     }
@@ -244,93 +233,29 @@ fun CommunityDetailScreen(
                                 .height(IntrinsicSize.Max),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            CommunityStatCard(
+                            SpondonStatCard(
                                 icon = Icons.Outlined.People,
                                 label = "Members",
                                 value = "${community.memberCount}",
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
-                            CommunityStatCard(
+                            SpondonStatCard(
+                                icon = Icons.AutoMirrored.Outlined.Article,
+                                label = "Posts",
+                                value = "${state.posts.size}",
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                            SpondonStatCard(
                                 icon = Icons.Outlined.VolunteerActivism,
                                 label = "Donations",
                                 value = "${community.donationCount}",
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
-                            CommunityStatCard(
-                                icon = Icons.Outlined.Pending,
-                                label = "Active",
-                                value = "${state.requests.count { it.status == RequestStatus.ACTIVE }}",
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                            )
-                        }
-                    }
-
-                    // ─── Action Buttons (hidden for Spondon) ──────────────────
-                    if (!community.isSpondon) {
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                // Join / Leave button
-                                when (state.membershipStatus) {
-                                    MembershipStatus.NONE -> {
-                                        val isEligible = viewModel.isBloodGroupEligible(community)
-                                        Button(
-                                            onClick = {
-                                                if (community.type == CommunityType.PUBLIC) {
-                                                    viewModel.joinPublicCommunity(communityId)
-                                                } else {
-                                                    navController.navigate("join_request/$communityId")
-                                                }
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                            enabled = isEligible,
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = BloodRed,
-                                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                                disabledContentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
-                                            ),
-                                            shape = RoundedCornerShape(16.dp),
-                                        ) {
-                                            Icon(Icons.Default.GroupAdd, contentDescription = null, Modifier.size(18.dp))
-                                            Spacer(Modifier.width(6.dp))
-                                            Text(
-                                                if (!isEligible) "Blood Group Mismatch"
-                                                else if (community.type == CommunityType.PUBLIC) "Join"
-                                                else "Request to Join"
-                                            )
-                                        }
-                                    }
-                                    MembershipStatus.JOINED -> {
-                                        OutlinedButton(
-                                            onClick = { viewModel.leaveCommunity(communityId) },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(16.dp),
-                                        ) {
-                                            Text("Leave Community")
-                                        }
-                                    }
-                                    MembershipStatus.PENDING -> {
-                                        OutlinedButton(
-                                            onClick = {},
-                                            modifier = Modifier.weight(1f),
-                                            enabled = false,
-                                            shape = RoundedCornerShape(16.dp),
-                                        ) {
-                                            Text("⏳ Pending Approval")
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
 
                     // ─── Tab Row ─────────────────────────
                     item {
-                        Spacer(Modifier.height(8.dp))
                         TabRow(
                             selectedTabIndex = state.selectedTab,
                             containerColor = MaterialTheme.colorScheme.background,
@@ -338,17 +263,17 @@ fun CommunityDetailScreen(
                         ) {
                             Tab(
                                 selected = state.selectedTab == 0,
-                                onClick = { viewModel.setDetailTab(0) },
+                                onClick = { viewModel.setSpondonTab(0) },
                                 text = { Text("Feed") },
                             )
                             Tab(
                                 selected = state.selectedTab == 1,
-                                onClick = { viewModel.setDetailTab(1) },
+                                onClick = { viewModel.setSpondonTab(1) },
                                 text = { Text("Members") },
                             )
                             Tab(
                                 selected = state.selectedTab == 2,
-                                onClick = { viewModel.setDetailTab(2) },
+                                onClick = { viewModel.setSpondonTab(2) },
                                 text = { Text("About") },
                             )
                         }
@@ -357,8 +282,8 @@ fun CommunityDetailScreen(
                     // ─── Tab Content ─────────────────────
                     when (state.selectedTab) {
                         0 -> {
-                            // Loading state
-                            if (state.isRequestsLoading) {
+                            // Feed tab — show community posts
+                            if (state.isPostsLoading) {
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -369,7 +294,7 @@ fun CommunityDetailScreen(
                                         ContainedLoadingIndicator()
                                     }
                                 }
-                            } else if (state.requests.isEmpty()) {
+                            } else if (state.posts.isEmpty()) {
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -379,34 +304,34 @@ fun CommunityDetailScreen(
                                     ) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Icon(
-                                                Icons.AutoMirrored.Filled.Feed,
+                                                Icons.AutoMirrored.Outlined.Article,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(48.dp),
                                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                                             )
                                             Spacer(Modifier.height(12.dp))
                                             Text(
-                                                "No blood requests yet",
+                                                "No posts yet",
                                                 style = MaterialTheme.typography.bodyLarge,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                                             )
                                             Spacer(Modifier.height(4.dp))
                                             Text(
-                                                "Requests posted to this community will appear here",
+                                                "Admin posts will appear here",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                             )
                                         }
                                     }
                                 }
                             } else {
-                                items(state.requests, key = { it.id }) { request ->
-                                    com.spondon.app.feature.request.RequestCard(
-                                        request = request,
-                                        onClick = { navController.navigate("request_detail/${request.id}") },
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                items(state.posts, key = { it.id }) { post ->
+                                    PostCard(
+                                        post = post,
+                                        isAdmin = isAdmin,
+                                        onDelete = { viewModel.deletePost(post.id) },
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                     )
                                 }
                             }
@@ -429,7 +354,7 @@ fun CommunityDetailScreen(
                                 }
                             } else {
                                 items(state.members, key = { it.uid }) { user ->
-                                    MemberRow(
+                                    SpondonMemberRow(
                                         user = user,
                                         community = community,
                                         viewModel = viewModel,
@@ -444,22 +369,23 @@ fun CommunityDetailScreen(
                             // About tab
                             item {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    if (community.description.isNotEmpty()) {
-                                        Text(
-                                            "About",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(
-                                            community.description,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                        )
-                                        Spacer(Modifier.height(16.dp))
-                                    }
+                                    Text(
+                                        "About",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        community.description.ifEmpty {
+                                            "স্পন্দন — the official community of the Spondon platform. " +
+                                                    "Every user is automatically a member. Admin posts announcements, " +
+                                                    "news, and updates here."
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                    )
+                                    Spacer(Modifier.height(16.dp))
 
-                                    // Community info card — redesigned with chips
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(16.dp),
@@ -469,60 +395,37 @@ fun CommunityDetailScreen(
                                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                                     ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.Public,
+                                            SpondonAboutRow(
+                                                icon = Icons.Outlined.Shield,
                                                 label = "Type",
-                                                value = if (community.type == CommunityType.PUBLIC) "Public" else "Private",
-                                                chipColor = if (community.type == CommunityType.PUBLIC) AvailableGreen else PendingAmber,
-                                                chipBg = if (community.type == CommunityType.PUBLIC) AvailableGreen.copy(alpha = 0.1f) else PendingAmber.copy(alpha = 0.1f),
+                                                value = "Official Platform Community",
+                                                chipColor = AvailableGreen,
+                                                chipBg = AvailableGreen.copy(alpha = 0.1f),
                                             )
                                             Spacer(Modifier.height(10.dp))
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.LocationOn,
-                                                label = "District",
-                                                value = community.district.ifEmpty { "—" },
-                                                chipColor = MaterialTheme.colorScheme.tertiary,
-                                                chipBg = MaterialTheme.colorScheme.tertiaryContainer,
+                                            SpondonAboutRow(
+                                                icon = Icons.Outlined.People,
+                                                label = "Membership",
+                                                value = "All Users (Auto-join)",
+                                                chipColor = MaterialTheme.colorScheme.primary,
+                                                chipBg = MaterialTheme.colorScheme.primaryContainer,
                                             )
                                             Spacer(Modifier.height(10.dp))
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.Map,
-                                                label = "Upazila",
-                                                value = community.upazila.ifEmpty { "—" },
-                                                chipColor = MaterialTheme.colorScheme.tertiary,
-                                                chipBg = MaterialTheme.colorScheme.tertiaryContainer,
+                                            SpondonAboutRow(
+                                                icon = Icons.Outlined.Edit,
+                                                label = "Who Can Post",
+                                                value = "Admin Only",
+                                                chipColor = BloodRed,
+                                                chipBg = BloodRed.copy(alpha = 0.1f),
                                             )
                                             Spacer(Modifier.height(10.dp))
-                                            AboutInfoRow(
+                                            SpondonAboutRow(
                                                 icon = Icons.Outlined.CalendarMonth,
                                                 label = "Founded",
                                                 value = community.createdAt?.formatDisplay() ?: "—",
                                                 chipColor = MaterialTheme.colorScheme.secondary,
                                                 chipBg = MaterialTheme.colorScheme.secondaryContainer,
                                             )
-                                            Spacer(Modifier.height(10.dp))
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.Verified,
-                                                label = "Verified",
-                                                value = if (community.isVerified) "Yes ✅" else "No",
-                                                chipColor = if (community.isVerified) AvailableGreen else UnavailableGrey,
-                                                chipBg = if (community.isVerified) AvailableGreen.copy(alpha = 0.1f) else UnavailableGrey.copy(alpha = 0.1f),
-                                            )
-                                        }
-                                    }
-
-                                    if (community.bloodGroups.isNotEmpty()) {
-                                        Spacer(Modifier.height(16.dp))
-                                        Text(
-                                            "Supported Blood Groups",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        Spacer(Modifier.height(8.dp))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            community.bloodGroups.forEach { group ->
-                                                BloodGroupBadge(bloodGroup = group)
-                                            }
                                         }
                                     }
                                 }
@@ -535,8 +438,160 @@ fun CommunityDetailScreen(
     }
 }
 
+// ─── Post Card ─────────────────────────────────────────────────────
+
 @Composable
-private fun CommunityStatCard(
+fun PostCard(
+    post: CommunityPost,
+    isAdmin: Boolean,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Post") },
+            text = { Text("Are you sure you want to delete this post?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    onDelete()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Author row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                // Avatar
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(BloodRed.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (post.authorAvatarUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = post.authorAvatarUrl,
+                            contentDescription = post.authorName,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                        )
+                    } else {
+                        Text(
+                            text = post.authorName.firstOrNull()?.uppercase() ?: "A",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = BloodRed,
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = post.authorName.ifEmpty { "Admin" },
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = BloodRed.copy(alpha = 0.1f),
+                        ) {
+                            Text(
+                                "Admin",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = BloodRed,
+                                fontSize = 9.sp,
+                            )
+                        }
+                    }
+                    Text(
+                        text = post.createdAt?.formatDisplay() ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
+                }
+
+                // Delete button for admin
+                if (isAdmin) {
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Post content
+            if (post.content.isNotEmpty()) {
+                Text(
+                    text = post.content,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 22.sp,
+                )
+            }
+
+            // Post image
+            if (!post.imageUrl.isNullOrEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                AsyncImage(
+                    model = post.imageUrl,
+                    contentDescription = "Post image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.FillWidth,
+                )
+            }
+        }
+    }
+}
+
+// ─── Stat Card ────────────────────────────────────────────────────
+
+@Composable
+private fun SpondonStatCard(
     icon: ImageVector,
     label: String,
     value: String,
@@ -581,8 +636,10 @@ private fun CommunityStatCard(
     }
 }
 
+// ─── Member Row ──────────────────────────────────────────────────
+
 @Composable
-private fun MemberRow(
+private fun SpondonMemberRow(
     user: User,
     community: Community,
     viewModel: CommunityViewModel,
@@ -678,8 +735,10 @@ private fun MemberRow(
     }
 }
 
+// ─── About Row ──────────────────────────────────────────────────
+
 @Composable
-private fun AboutInfoRow(
+private fun SpondonAboutRow(
     icon: ImageVector,
     label: String,
     value: String,

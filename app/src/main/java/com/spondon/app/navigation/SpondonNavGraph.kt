@@ -229,6 +229,14 @@ fun SpondonNavGraph(
                 AdminDashboardScreen(navController)
             }
 
+            // ─── Spondon Community ────────────────────────────
+            composable(Routes.SpondonCommunity.route) {
+                SpondonCommunityScreen(navController)
+            }
+            composable(Routes.CreateSpondonPost.route) {
+                CreateSpondonPostScreen(navController)
+            }
+
             // ─── Blood Request Sub-screens ───────────────────
             composable(
                 route = Routes.RequestDetail.route,

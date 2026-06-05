@@ -15,4 +15,9 @@ object Constants {
     const val DONATIONS_COLLECTION = "donations"
     const val NOTIFICATIONS_COLLECTION = "notifications"
     const val JOIN_REQUESTS_COLLECTION = "joinRequests"
+
+    // Spondon global community
+    const val COMMUNITY_POSTS_COLLECTION = "communityPosts"
+    const val SPONDON_COMMUNITY_NAME = "Spondon · স্পন্দন"
+    const val SPONDON_CONFIG_DOC = "config/spondon_community"
 }

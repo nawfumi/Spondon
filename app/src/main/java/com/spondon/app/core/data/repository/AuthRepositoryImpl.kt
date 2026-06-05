@@ -59,7 +59,11 @@ class AuthRepositoryImpl @Inject constructor(
                 "createdAt" to Date(),
             )
             when (val createResult = firestoreService.createUser(uid, userData)) {
-                is Resource.Success -> Resource.Success(user.copy(uid = uid, createdAt = Date()))
+                is Resource.Success -> {
+                    // Auto-add to Spondon community
+                    autoJoinSpondonCommunity(uid)
+                    Resource.Success(user.copy(uid = uid, createdAt = Date()))
+                }
                 is Resource.Error -> Resource.Error(createResult.message)
                 is Resource.Loading -> Resource.Loading
             }
@@ -100,6 +104,8 @@ class AuthRepositoryImpl @Inject constructor(
                         "createdAt" to Date(),
                     )
                     firestoreService.createUser(uid, userData)
+                    // Auto-add to Spondon community
+                    autoJoinSpondonCommunity(uid)
                     Resource.Success(
                         User(
                             uid = uid,
@@ -158,6 +164,19 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signOut() {
         auth.signOut()
+    }
+
+    /**
+     * Silently adds a user to the Spondon global community.
+     * Never throws — failure is ignored so registration isn't blocked.
+     */
+    private suspend fun autoJoinSpondonCommunity(userId: String) {
+        try {
+            val spondonId = firestoreService.getSpondonCommunityId() ?: return
+            firestoreService.joinCommunity(spondonId, userId)
+        } catch (_: Exception) {
+            // Fail silently — user can be added later when they open the community list
+        }
     }
 
     private fun mapToUser(uid: String, data: Map<String, Any>): User {

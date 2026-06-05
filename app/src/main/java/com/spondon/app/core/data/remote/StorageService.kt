@@ -41,6 +41,13 @@ class StorageService @Inject constructor(
     }
 
     /**
+     * Uploads an image for a community post.
+     */
+    suspend fun uploadPostImage(postId: String, uri: Uri): Resource<String> {
+        return uploadImage("community_posts/$postId/${System.currentTimeMillis()}.jpg", uri)
+    }
+
+    /**
      * Deletes a file at the given storage path.
      */
     suspend fun deleteFile(path: String): Resource<Unit> {

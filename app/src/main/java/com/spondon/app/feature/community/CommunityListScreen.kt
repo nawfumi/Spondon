@@ -230,13 +230,17 @@ fun CommunityListScreen(
                     }
                 }
                 else -> {
-                    val communities = if (state.selectedTab == 0) {
+                    val allCommunities = if (state.selectedTab == 0) {
                         state.myCommunities
                     } else {
                         viewModel.getFilteredDiscoverCommunities()
                     }
 
-                    if (communities.isEmpty()) {
+                    // Separate Spondon from regular communities
+                    val spondonCommunity = allCommunities.find { it.isSpondon }
+                    val regularCommunities = allCommunities.filter { !it.isSpondon }
+
+                    if (allCommunities.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
@@ -259,7 +263,20 @@ fun CommunityListScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            items(communities, key = { it.id }) { community ->
+                            // ─── Pinned Spondon Card ──────────
+                            if (spondonCommunity != null) {
+                                item(key = "spondon_pinned") {
+                                    SpondonPinnedCard(
+                                        community = spondonCommunity,
+                                        onClick = {
+                                            navController.navigate(Routes.SpondonCommunity.route)
+                                        },
+                                    )
+                                }
+                            }
+
+                            // ─── Regular Communities ──────────
+                            items(regularCommunities, key = { it.id }) { community ->
                                 val isJoined = state.myCommunities.any { it.id == community.id }
                                 val isEligible = viewModel.isBloodGroupEligible(community)
                                 val isPending = community.pendingIds.contains(viewModel.fetchCurrentUserId())
@@ -286,6 +303,113 @@ fun CommunityListScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * A special highlighted card for the Spondon global community,
+ * always pinned at the top of the community list.
+ */
+@Composable
+private fun SpondonPinnedCard(
+    community: Community,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+    ) {
+        // Gradient accent bar at top
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(BloodRed, DarkRose, SoftRose),
+                    )
+                ),
+        )
+
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Spondon icon
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(BloodRed, DarkRose),
+                            ),
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (community.coverUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = community.coverUrl,
+                            contentDescription = community.name,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Favorite,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = community.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.Verified,
+                            contentDescription = "Official",
+                            modifier = Modifier.size(16.dp),
+                            tint = AvailableGreen,
+                        )
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "Official Platform Community · ${community.memberCount} members",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = BloodRed.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
     }

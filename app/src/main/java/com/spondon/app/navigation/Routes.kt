@@ -54,4 +54,8 @@ sealed class Routes(val route: String) {
     data object About : Routes("about")
     data object Support : Routes("support")
     data object SendFeedback : Routes("send_feedback")
+
+    // Spondon Global Community
+    data object SpondonCommunity : Routes("spondon_community")
+    data object CreateSpondonPost : Routes("create_spondon_post")
 }

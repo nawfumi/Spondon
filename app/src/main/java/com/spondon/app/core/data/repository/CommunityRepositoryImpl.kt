@@ -171,9 +171,25 @@ class CommunityRepositoryImpl @Inject constructor(
         requestId: String,
         userId: String,
     ): Resource<Unit> {
-        firestoreService.updateJoinRequestStatus(communityId, requestId, "APPROVED")
-        firestoreService.removePendingMember(communityId, userId)
-        return firestoreService.joinCommunity(communityId, userId)
+        // Step 1: Update the join request document status
+        val statusResult = firestoreService.updateJoinRequestStatus(communityId, requestId, "APPROVED")
+        if (statusResult is Resource.Error) {
+            return Resource.Error("Failed to update request status: ${statusResult.message}")
+        }
+
+        // Step 2: Remove user from the pending list
+        val pendingResult = firestoreService.removePendingMember(communityId, userId)
+        if (pendingResult is Resource.Error) {
+            return Resource.Error("Failed to remove from pending: ${pendingResult.message}")
+        }
+
+        // Step 3: Add user as a member
+        val joinResult = firestoreService.joinCommunity(communityId, userId)
+        if (joinResult is Resource.Error) {
+            return Resource.Error("Failed to add member: ${joinResult.message}")
+        }
+
+        return Resource.Success(Unit)
     }
 
     /**
@@ -185,8 +201,17 @@ class CommunityRepositoryImpl @Inject constructor(
         userId: String,
         note: String?,
     ): Resource<Unit> {
-        firestoreService.updateJoinRequestStatus(communityId, requestId, "REJECTED", note)
-        return firestoreService.removePendingMember(communityId, userId)
+        val statusResult = firestoreService.updateJoinRequestStatus(communityId, requestId, "REJECTED", note)
+        if (statusResult is Resource.Error) {
+            return Resource.Error("Failed to update request status: ${statusResult.message}")
+        }
+
+        val pendingResult = firestoreService.removePendingMember(communityId, userId)
+        if (pendingResult is Resource.Error) {
+            return Resource.Error("Failed to remove from pending: ${pendingResult.message}")
+        }
+
+        return Resource.Success(Unit)
     }
 
     /**
@@ -280,6 +305,7 @@ class CommunityRepositoryImpl @Inject constructor(
             memberCount = (data["memberCount"] as? Number)?.toInt() ?: 0,
             donationCount = (data["donationCount"] as? Number)?.toInt() ?: 0,
             isVerified = data["isVerified"] as? Boolean ?: false,
+            isSpondon = data["isSpondon"] as? Boolean ?: false,
             createdAt = createdAt,
         )
     }
@@ -340,4 +366,112 @@ class CommunityRepositoryImpl @Inject constructor(
             badges = (data["badges"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
         )
     }
+
+    private fun mapToCommunityPost(data: Map<String, Any>): CommunityPost {
+        val createdAt = when (val ts = data["createdAt"]) {
+            is Timestamp -> ts.toDate()
+            is Date -> ts
+            else -> null
+        }
+        return CommunityPost(
+            id = data["id"] as? String ?: "",
+            communityId = data["communityId"] as? String ?: "",
+            authorId = data["authorId"] as? String ?: "",
+            authorName = data["authorName"] as? String ?: "",
+            authorAvatarUrl = data["authorAvatarUrl"] as? String ?: "",
+            content = data["content"] as? String ?: "",
+            imageUrl = data["imageUrl"] as? String,
+            createdAt = createdAt,
+        )
+    }
+
+    // ─── Spondon Community ────────────────────────────────────────
+
+    /**
+     * Returns the Spondon community ID from config, or null if not created yet.
+     */
+    suspend fun getSpondonCommunityId(): String? {
+        return firestoreService.getSpondonCommunityId()
+    }
+
+    /**
+     * Ensures the current user is a member of the Spondon community.
+     * If the Spondon community exists and the user is not yet a member,
+     * they are silently added.
+     */
+    suspend fun ensureUserInSpondonCommunity(userId: String): Resource<Unit> {
+        val spondonId = firestoreService.getSpondonCommunityId() ?: return Resource.Success(Unit)
+        return try {
+            // Check if user is already a member
+            val communityResult = firestoreService.getCommunity(spondonId)
+            if (communityResult is Resource.Success) {
+                val memberIds = (communityResult.data["memberIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+                if (!memberIds.contains(userId)) {
+                    firestoreService.joinCommunity(spondonId, userId)
+                } else {
+                    Resource.Success(Unit)
+                }
+            } else {
+                Resource.Success(Unit)
+            }
+        } catch (_: Exception) {
+            Resource.Success(Unit) // fail silently
+        }
+    }
+
+    // ─── Community Posts ──────────────────────────────────────────
+
+    /**
+     * Creates a community post with optional image upload.
+     */
+    suspend fun createCommunityPost(
+        communityId: String,
+        authorId: String,
+        authorName: String,
+        authorAvatarUrl: String,
+        content: String,
+        imageUri: Uri?,
+    ): Resource<String> {
+        // Upload image first if provided
+        var imageUrl: String? = null
+        if (imageUri != null) {
+            val tempId = System.currentTimeMillis().toString()
+            when (val uploadResult = storageService.uploadPostImage(tempId, imageUri)) {
+                is Resource.Success -> imageUrl = uploadResult.data
+                is Resource.Error -> return Resource.Error("Image upload failed: ${uploadResult.message}")
+                is Resource.Loading -> {}
+            }
+        }
+
+        val data = mapOf<String, Any?>(
+            "communityId" to communityId,
+            "authorId" to authorId,
+            "authorName" to authorName,
+            "authorAvatarUrl" to authorAvatarUrl,
+            "content" to content,
+            "imageUrl" to imageUrl,
+            "createdAt" to Timestamp.now(),
+        )
+        return firestoreService.createCommunityPost(data)
+    }
+
+    /**
+     * Fetches all posts for a community.
+     */
+    suspend fun getCommunityPosts(communityId: String): Resource<List<CommunityPost>> {
+        return when (val result = firestoreService.getCommunityPosts(communityId)) {
+            is Resource.Success -> Resource.Success(result.data.map { mapToCommunityPost(it) })
+            is Resource.Error -> Resource.Error(result.message)
+            is Resource.Loading -> Resource.Loading
+        }
+    }
+
+    /**
+     * Deletes a community post.
+     */
+    suspend fun deleteCommunityPost(postId: String): Resource<Unit> {
+        return firestoreService.deleteCommunityPost(postId)
+    }
 }
+

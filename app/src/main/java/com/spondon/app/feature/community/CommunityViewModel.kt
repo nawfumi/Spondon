@@ -596,13 +596,13 @@ class CommunityViewModel @Inject constructor(
 
     fun approveJoinRequest(communityId: String, requestId: String, userId: String) {
         viewModelScope.launch {
-            when (communityRepository.approveJoinRequest(communityId, requestId, userId)) {
+            when (val result = communityRepository.approveJoinRequest(communityId, requestId, userId)) {
                 is Resource.Success -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Member approved!"))
                     loadAdminDashboard(communityId)
                 }
                 is Resource.Error -> {
-                    _events.emit(CommunityEvent.ShowSnackbar("Failed to approve"))
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to approve: ${result.message}"))
                 }
                 is Resource.Loading -> {}
             }
@@ -611,13 +611,13 @@ class CommunityViewModel @Inject constructor(
 
     fun rejectJoinRequest(communityId: String, requestId: String, userId: String, note: String?) {
         viewModelScope.launch {
-            when (communityRepository.rejectJoinRequest(communityId, requestId, userId, note)) {
+            when (val result = communityRepository.rejectJoinRequest(communityId, requestId, userId, note)) {
                 is Resource.Success -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Request rejected"))
                     loadAdminDashboard(communityId)
                 }
                 is Resource.Error -> {
-                    _events.emit(CommunityEvent.ShowSnackbar("Failed to reject"))
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to reject: ${result.message}"))
                 }
                 is Resource.Loading -> {}
             }
@@ -810,4 +810,201 @@ class CommunityViewModel @Inject constructor(
         if (userBg.isBlank()) return true // can't determine, allow
         return community.bloodGroups.any { normalizeBloodGroup(it) == normalizeBloodGroup(userBg) }
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // Spondon Global Community
+    // ═══════════════════════════════════════════════════════════
+
+    private val _spondonState = MutableStateFlow(SpondonCommunityState())
+    val spondonState: StateFlow<SpondonCommunityState> = _spondonState.asStateFlow()
+
+    private val _createPostState = MutableStateFlow(CreatePostState())
+    val createPostState: StateFlow<CreatePostState> = _createPostState.asStateFlow()
+
+    /**
+     * Loads the Spondon community data and its posts.
+     * Also ensures the current user is a member.
+     */
+    fun loadSpondonCommunity() {
+        viewModelScope.launch {
+            _spondonState.update { it.copy(isLoading = true, error = null) }
+
+            // Get the Spondon community ID
+            val spondonId = communityRepository.getSpondonCommunityId()
+            if (spondonId == null) {
+                _spondonState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Spondon community not set up yet. Contact admin.",
+                    )
+                }
+                return@launch
+            }
+
+            // Ensure user is a member
+            communityRepository.ensureUserInSpondonCommunity(currentUserId)
+
+            // Load community details
+            when (val result = getCommunitiesUseCase.getCommunity(spondonId)) {
+                is Resource.Success -> {
+                    val community = result.data
+                    val role = when {
+                        community.adminIds.contains(currentUserId) -> CommunityRole.ADMIN
+                        community.moderatorIds.contains(currentUserId) -> CommunityRole.MODERATOR
+                        else -> CommunityRole.MEMBER
+                    }
+                    _spondonState.update {
+                        it.copy(
+                            community = community,
+                            currentUserRole = role,
+                            isLoading = false,
+                        )
+                    }
+                    // Load posts
+                    loadSpondonPosts(spondonId)
+                    // Load members
+                    if (community.memberIds.isNotEmpty()) {
+                        loadSpondonMembers(community.memberIds)
+                    }
+                }
+                is Resource.Error -> {
+                    _spondonState.update { it.copy(error = result.message, isLoading = false) }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    private fun loadSpondonPosts(communityId: String) {
+        viewModelScope.launch {
+            _spondonState.update { it.copy(isPostsLoading = true) }
+            when (val result = communityRepository.getCommunityPosts(communityId)) {
+                is Resource.Success -> {
+                    _spondonState.update {
+                        it.copy(posts = result.data, isPostsLoading = false)
+                    }
+                }
+                is Resource.Error -> {
+                    _spondonState.update { it.copy(isPostsLoading = false) }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    private fun loadSpondonMembers(memberIds: List<String>) {
+        viewModelScope.launch {
+            when (val result = communityRepository.getCommunityMembers(memberIds)) {
+                is Resource.Success -> {
+                    _spondonState.update { it.copy(members = result.data) }
+                }
+                is Resource.Error -> {}
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun setSpondonTab(tab: Int) {
+        _spondonState.update { it.copy(selectedTab = tab) }
+    }
+
+    // ─── Create Post ──────────────────────────────────────────
+
+    fun updatePostContent(content: String) {
+        _createPostState.update { it.copy(content = content) }
+    }
+
+    fun updatePostImageUri(uri: Uri?) {
+        _createPostState.update { it.copy(imageUri = uri) }
+    }
+
+    fun createPost() {
+        viewModelScope.launch {
+            val state = _createPostState.value
+            if (state.content.isBlank()) {
+                _createPostState.update { it.copy(error = "Post content cannot be empty") }
+                return@launch
+            }
+
+            val spondonId = _spondonState.value.community?.id ?: return@launch
+            _createPostState.update { it.copy(isLoading = true, error = null) }
+
+            // Fetch author info
+            val authorName: String
+            val authorAvatarUrl: String
+            val userResult = communityRepository.getCommunityMembers(listOf(currentUserId))
+            if (userResult is Resource.Success && userResult.data.isNotEmpty()) {
+                val user = userResult.data.first()
+                authorName = user.name
+                authorAvatarUrl = user.avatarUrl
+            } else {
+                authorName = "Admin"
+                authorAvatarUrl = ""
+            }
+
+            when (val result = communityRepository.createCommunityPost(
+                communityId = spondonId,
+                authorId = currentUserId,
+                authorName = authorName,
+                authorAvatarUrl = authorAvatarUrl,
+                content = state.content,
+                imageUri = state.imageUri,
+            )) {
+                is Resource.Success -> {
+                    _createPostState.update {
+                        it.copy(isLoading = false, isCreated = true)
+                    }
+                    _events.emit(CommunityEvent.ShowSnackbar("Post published!"))
+                    // Refresh posts
+                    loadSpondonPosts(spondonId)
+                }
+                is Resource.Error -> {
+                    _createPostState.update {
+                        it.copy(error = result.message, isLoading = false)
+                    }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun resetCreatePostState() {
+        _createPostState.value = CreatePostState()
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            when (communityRepository.deleteCommunityPost(postId)) {
+                is Resource.Success -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Post deleted"))
+                    _spondonState.value.community?.id?.let { loadSpondonPosts(it) }
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to delete post"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
 }
+
+// ─── Spondon UI State ─────────────────────────────────────────────
+
+data class SpondonCommunityState(
+    val community: Community? = null,
+    val posts: List<CommunityPost> = emptyList(),
+    val members: List<User> = emptyList(),
+    val isLoading: Boolean = false,
+    val isPostsLoading: Boolean = false,
+    val error: String? = null,
+    val currentUserRole: CommunityRole? = null,
+    val selectedTab: Int = 0, // 0 = Feed, 1 = Members, 2 = About
+)
+
+data class CreatePostState(
+    val content: String = "",
+    val imageUri: Uri? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isCreated: Boolean = false,
+)

@@ -18,5 +18,6 @@ data class Community(
     val memberCount: Int = 0,
     val donationCount: Int = 0,
     val isVerified: Boolean = false,
+    val isSpondon: Boolean = false,
     val createdAt: Date? = null,
 )

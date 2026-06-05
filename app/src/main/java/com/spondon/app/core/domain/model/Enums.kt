@@ -13,7 +13,7 @@ enum class BloodGroup(val display: String) {
 
 enum class Urgency { CRITICAL, MODERATE, NORMAL }
 enum class RequestStatus { ACTIVE, FULFILLED, EXPIRED, CANCELLED }
-enum class CommunityType { PUBLIC, PRIVATE }
+enum class CommunityType { PUBLIC, PRIVATE, SPONDON }
 enum class CommunityRole { ADMIN, MODERATOR, MEMBER }
 enum class DonationStatus { CONFIRMED, PENDING }
 enum class NotificationType { REQUEST, JOIN, DONATION, ADMIN, REMINDER }
