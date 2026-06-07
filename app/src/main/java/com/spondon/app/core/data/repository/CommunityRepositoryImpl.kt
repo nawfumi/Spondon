@@ -7,8 +7,6 @@ import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.remote.FirestoreService
 import com.spondon.app.core.data.remote.StorageService
 import com.spondon.app.core.domain.model.*
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -116,8 +114,7 @@ class CommunityRepositoryImpl @Inject constructor(
             "status" to "PENDING",
             "createdAt" to Timestamp.now(),
         )
-        val createResult = firestoreService.createJoinRequest(communityId, data)
-        return when (createResult) {
+        return when (val createResult = firestoreService.createJoinRequest(communityId, data)) {
             is Resource.Success -> Resource.Success(Unit)
             is Resource.Error -> Resource.Error(createResult.message)
             is Resource.Loading -> Resource.Loading
@@ -229,15 +226,6 @@ class CommunityRepositoryImpl @Inject constructor(
             is Resource.Success -> Resource.Success(result.data.map { mapToUser(it) })
             is Resource.Error -> Resource.Error(result.message)
             is Resource.Loading -> Resource.Loading
-        }
-    }
-
-    /**
-     * Observes a community in real time.
-     */
-    fun observeCommunity(communityId: String): Flow<Community?> {
-        return firestoreService.observeCommunity(communityId).map { data ->
-            data?.let { mapToCommunity(it) }
         }
     }
 
@@ -391,7 +379,12 @@ class CommunityRepositoryImpl @Inject constructor(
      * Returns the Spondon community ID from config, or null if not created yet.
      */
     suspend fun getSpondonCommunityId(): String? {
-        return firestoreService.getSpondonCommunityId()
+        val id = firestoreService.getSpondonCommunityId()
+        if (id != null) return id
+        
+        // Auto-create Spondon community if not exists
+        val result = firestoreService.ensureSpondonCommunity()
+        return if (result is Resource.Success) result.data else null
     }
 
     /**

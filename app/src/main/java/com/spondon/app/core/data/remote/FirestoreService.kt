@@ -384,45 +384,6 @@ class FirestoreService @Inject constructor(
     }
 
     /**
-     * Demotes a member from a role.
-     */
-    suspend fun demoteMember(
-        communityId: String,
-        userId: String,
-        roleField: String,
-    ): Resource<Unit> {
-        return try {
-            firestore.collection(Constants.COMMUNITIES_COLLECTION)
-                .document(communityId)
-                .update(roleField, FieldValue.arrayRemove(userId))
-                .await()
-            Resource.Success(Unit)
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to demote member", e)
-        }
-    }
-
-    /**
-     * Observes a single community document in real-time.
-     */
-    fun observeCommunity(communityId: String): Flow<Map<String, Any>?> = callbackFlow {
-        val listener = firestore.collection(Constants.COMMUNITIES_COLLECTION)
-            .document(communityId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
-                if (snapshot != null && snapshot.exists()) {
-                    trySend((snapshot.data ?: emptyMap()) + ("id" to snapshot.id))
-                } else {
-                    trySend(null)
-                }
-            }
-        awaitClose { listener.remove() }
-    }
-
-    /**
      * Updates a member's donation status and last donation date.
      */
     suspend fun updateMemberDonationStatus(
@@ -488,18 +449,6 @@ class FirestoreService @Inject constructor(
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to get request", e)
-        }
-    }
-
-    suspend fun updateRequest(requestId: String, data: Map<String, Any?>): Resource<Unit> {
-        return try {
-            firestore.collection(Constants.REQUESTS_COLLECTION)
-                .document(requestId)
-                .set(data, SetOptions.merge())
-                .await()
-            Resource.Success(Unit)
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to update request", e)
         }
     }
 
@@ -636,20 +585,6 @@ class FirestoreService @Inject constructor(
 
     // ─── Notifications ───────────────────────────────────────────
 
-    suspend fun createNotification(userId: String, data: Map<String, Any?>): Resource<String> {
-        return try {
-            // Ensure userId is included in the data for the top-level collection
-            val notifData = data.toMutableMap()
-            notifData["userId"] = userId
-            val docRef = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
-                .add(notifData)
-                .await()
-            Resource.Success(docRef.id)
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to create notification", e)
-        }
-    }
-
     // ─── Donations ───────────────────────────────────────────────
 
     suspend fun createDonation(data: Map<String, Any?>): Resource<String> {
@@ -700,7 +635,7 @@ class FirestoreService @Inject constructor(
         availableOnly: Boolean,
     ): Resource<List<Map<String, Any>>> {
         return try {
-            var query: com.google.firebase.firestore.Query =
+            var query: Query =
                 firestore.collection(Constants.USERS_COLLECTION)
                     .whereEqualTo("isDonor", true)
 
@@ -749,21 +684,6 @@ class FirestoreService @Inject constructor(
             Resource.Success(results)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to search donors", e)
-        }
-    }
-
-    /**
-     * Updates user badges list.
-     */
-    suspend fun updateUserBadges(userId: String, badges: List<String>): Resource<Unit> {
-        return try {
-            firestore.collection(Constants.USERS_COLLECTION)
-                .document(userId)
-                .update("badges", badges)
-                .await()
-            Resource.Success(Unit)
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to update badges", e)
         }
     }
 
@@ -903,11 +823,16 @@ class FirestoreService @Inject constructor(
      * Creates the Spondon community if it doesn't already exist,
      * and stores its ID in the config document.
      */
-    suspend fun ensureSpondonCommunity(superAdminId: String): Resource<String> {
+    suspend fun ensureSpondonCommunity(): Resource<String> {
         return try {
             // Check if already created
             val existingId = getSpondonCommunityId()
             if (existingId != null) return Resource.Success(existingId)
+
+            // Fetch super admin ID
+            val saDoc = firestore.document("config/superadmin").get().await()
+            val superAdminId =
+                saDoc.getString("uid") ?: return Resource.Error("Super Admin not registered yet")
 
             // Create the community
             val data = mapOf<String, Any?>(
