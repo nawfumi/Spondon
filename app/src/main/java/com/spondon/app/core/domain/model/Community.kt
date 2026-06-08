@@ -19,5 +19,6 @@ data class Community(
     val donationCount: Int = 0,
     val isVerified: Boolean = false,
     val isSpondon: Boolean = false,
+    val isSerialEnabled: Boolean = false,
     val createdAt: Date? = null,
 )

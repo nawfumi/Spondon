@@ -11,7 +11,7 @@ interface CommunityRepository {
     suspend fun createCommunity(community: Community): Resource<String>
     suspend fun updateCommunity(community: Community): Resource<Unit>
     suspend fun joinCommunity(communityId: String, userId: String): Resource<Unit>
-    suspend fun requestToJoin(communityId: String, userId: String, message: String): Resource<Unit>
+    suspend fun requestToJoin(communityId: String, userId: String, message: String, serialId: String? = null): Resource<Unit>
     suspend fun approveMember(communityId: String, userId: String): Resource<Unit>
     suspend fun rejectMember(communityId: String, userId: String): Resource<Unit>
     suspend fun removeMember(communityId: String, userId: String): Resource<Unit>

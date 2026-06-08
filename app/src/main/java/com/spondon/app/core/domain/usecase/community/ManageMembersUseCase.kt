@@ -17,8 +17,9 @@ class ManageMembersUseCase @Inject constructor(
         communityId: String,
         userId: String,
         message: String,
+        serialId: String? = null,
     ): Resource<Unit> {
-        return repository.requestToJoin(communityId, userId, message)
+        return repository.requestToJoin(communityId, userId, message, serialId)
     }
 
     suspend fun approveMember(communityId: String, userId: String): Resource<Unit> {

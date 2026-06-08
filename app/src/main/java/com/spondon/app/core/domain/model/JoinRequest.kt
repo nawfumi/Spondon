@@ -14,6 +14,7 @@ data class JoinRequest(
     val userDistrict: String = "",
     val userUpazila: String = "",
     val message: String = "",
+    val serialId: String? = null,
     val status: JoinRequestStatus = JoinRequestStatus.PENDING,
     val rejectionNote: String? = null,
     val createdAt: Date? = null,

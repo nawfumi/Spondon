@@ -58,6 +58,7 @@ class CommunityRepositoryImpl @Inject constructor(
             "memberCount" to community.memberCount,
             "donationCount" to community.donationCount,
             "isVerified" to community.isVerified,
+            "isSerialEnabled" to community.isSerialEnabled,
             "createdAt" to Timestamp.now(),
         )
         val result = firestoreService.createCommunity(data)
@@ -94,6 +95,7 @@ class CommunityRepositoryImpl @Inject constructor(
         communityId: String,
         userId: String,
         message: String,
+        serialId: String?,
     ): Resource<Unit> {
         // Add user to pending list
         val pendingResult = firestoreService.addPendingMember(communityId, userId)
@@ -111,6 +113,7 @@ class CommunityRepositoryImpl @Inject constructor(
             "userDistrict" to (userData["district"] as? String ?: ""),
             "userUpazila" to (userData["upazila"] as? String ?: ""),
             "message" to message,
+            "serialId" to serialId,
             "status" to "PENDING",
             "createdAt" to Timestamp.now(),
         )
@@ -265,6 +268,39 @@ class CommunityRepositoryImpl @Inject constructor(
         return firestoreService.removePendingMember(communityId, userId)
     }
 
+    /**
+     * Assigns or updates a serial ID for a community member.
+     * Stores the serial in the community's members subcollection or join request.
+     */
+    suspend fun assignSerialId(communityId: String, userId: String, serialId: String): Resource<Unit> {
+        return try {
+            firestoreService.updateCommunity(
+                communityId,
+                mapOf("memberSerials.$userId" to serialId),
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to assign serial ID", e)
+        }
+    }
+
+    /**
+     * Gets the member serial IDs map for a community.
+     */
+    suspend fun getMemberSerials(communityId: String): Map<String, String> {
+        return try {
+            val result = firestoreService.getCommunity(communityId)
+            if (result is Resource.Success) {
+                @Suppress("UNCHECKED_CAST")
+                (result.data["memberSerials"] as? Map<String, String>) ?: emptyMap()
+            } else {
+                emptyMap()
+            }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
     // ─── Mappers ─────────────────────────────────────────────────
 
     private fun mapToCommunity(data: Map<String, Any>): Community {
@@ -294,6 +330,7 @@ class CommunityRepositoryImpl @Inject constructor(
             donationCount = (data["donationCount"] as? Number)?.toInt() ?: 0,
             isVerified = data["isVerified"] as? Boolean ?: false,
             isSpondon = data["isSpondon"] as? Boolean ?: false,
+            isSerialEnabled = data["isSerialEnabled"] as? Boolean ?: false,
             createdAt = createdAt,
         )
     }
@@ -312,6 +349,7 @@ class CommunityRepositoryImpl @Inject constructor(
             userDistrict = data["userDistrict"] as? String ?: "",
             userUpazila = data["userUpazila"] as? String ?: "",
             message = data["message"] as? String ?: "",
+            serialId = data["serialId"] as? String,
             status = try {
                 JoinRequestStatus.valueOf(data["status"] as? String ?: "PENDING")
             } catch (_: Exception) {

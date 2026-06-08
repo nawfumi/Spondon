@@ -61,6 +61,7 @@ data class CreateCommunityState(
 data class JoinRequestState(
     val community: Community? = null,
     val message: String = "",
+    val serialInput: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSubmitted: Boolean = false,
@@ -71,6 +72,7 @@ data class AdminDashboardState(
     val community: Community? = null,
     val pendingRequests: List<JoinRequest> = emptyList(),
     val members: List<User> = emptyList(),
+    val memberSerials: Map<String, String> = emptyMap(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val actionSuccess: String? = null,
@@ -144,6 +146,17 @@ class CommunityViewModel @Inject constructor(
     fun loadCommunities() {
         viewModelScope.launch {
             _listState.update { it.copy(isLoading = true, error = null) }
+
+            // Ensure Spondon community exists and user is enrolled
+            // This must happen before fetching community lists so Spondon appears
+            try {
+                val spondonId = communityRepository.getSpondonCommunityId()
+                if (spondonId != null && currentUserId.isNotEmpty()) {
+                    communityRepository.ensureUserInSpondonCommunity(currentUserId)
+                }
+            } catch (_: Exception) {
+                // Non-critical — continue loading communities even if Spondon setup fails
+            }
 
             // Load current user's blood group for eligibility checks
             val userBloodGroup = getCurrentUserBloodGroup()
@@ -464,6 +477,10 @@ class CommunityViewModel @Inject constructor(
         _joinState.update { it.copy(message = message) }
     }
 
+    fun updateJoinSerialInput(serial: String) {
+        _joinState.update { it.copy(serialInput = serial) }
+    }
+
     fun submitJoinRequest(communityId: String) {
         viewModelScope.launch {
             _joinState.update { it.copy(isLoading = true, error = null) }
@@ -487,6 +504,7 @@ class CommunityViewModel @Inject constructor(
 
             val result = manageMembersUseCase.requestToJoin(
                 communityId, currentUserId, _joinState.value.message,
+                serialId = _joinState.value.serialInput.trim().ifBlank { null },
             )
             when (result) {
                 is Resource.Success -> {
