@@ -316,6 +316,44 @@ fun JoinRequestScreen(
 
                         Spacer(Modifier.height(8.dp))
 
+                        // Serial ID input (only if community requires serial)
+                        if (state.community?.isSerialEnabled == true) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Your Serial / ID Number",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "This community requires a serial ID for members",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = state.serialInput,
+                                onValueChange = { viewModel.updateJoinSerialInput(it) },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text(
+                                        "Enter your serial / ID number",
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    )
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Tag,
+                                        contentDescription = null,
+                                        tint = BloodRed.copy(alpha = 0.6f),
+                                    )
+                                },
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+
                         // Privacy note
                         Card(
                             modifier = Modifier.fillMaxWidth(),

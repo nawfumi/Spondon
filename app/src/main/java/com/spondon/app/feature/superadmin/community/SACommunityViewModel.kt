@@ -29,6 +29,7 @@ data class SACommunityItem(
     val createdBy: String = "",
     val totalDonations: Int = 0,
     val avatarUrl: String = "",
+    val isSerialEnabled: Boolean = false,
 )
 
 /** Full detail for a single community. */
@@ -344,6 +345,38 @@ class SACommunityViewModel @Inject constructor(
                 is Resource.Error -> {
                     _detailState.update {
                         it.copy(isRemovingMember = false, actionMessage = "Failed to remove member")
+                    }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    // ─── Serial Toggle ────────────────────────────────────
+
+    fun toggleSerialForCommunity() {
+        val community = _detailState.value.detail.community
+        val newValue = !community.isSerialEnabled
+        viewModelScope.launch {
+            _detailState.update { it.copy(isPerformingAction = true) }
+            when (saRepository.enableSerialForCommunity(community.id, newValue)) {
+                is Resource.Success -> {
+                    _detailState.update {
+                        it.copy(
+                            isPerformingAction = false,
+                            detail = it.detail.copy(
+                                community = it.detail.community.copy(isSerialEnabled = newValue),
+                            ),
+                            actionMessage = if (newValue) "Serial IDs enabled" else "Serial IDs disabled",
+                        )
+                    }
+                }
+                is Resource.Error -> {
+                    _detailState.update {
+                        it.copy(
+                            isPerformingAction = false,
+                            actionMessage = "Failed to toggle serial",
+                        )
                     }
                 }
                 is Resource.Loading -> {}

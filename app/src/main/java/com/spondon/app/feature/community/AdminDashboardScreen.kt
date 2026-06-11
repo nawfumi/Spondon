@@ -35,6 +35,9 @@ import com.spondon.app.core.ui.components.AvailabilityIndicator
 import com.spondon.app.core.ui.components.BloodGroupBadge
 import com.spondon.app.core.ui.components.RoleBadge
 import com.spondon.app.core.ui.theme.*
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,9 +54,31 @@ fun AdminDashboardScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
-            if (event is CommunityEvent.ShowSnackbar) snackbarHostState.showSnackbar(event.message)
+            when (event) {
+                is CommunityEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is CommunityEvent.SharePdf -> {
+                    try {
+                        val uri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.provider",
+                            event.file,
+                        )
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/pdf"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Member List"))
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Failed to share PDF: ${e.message}")
+                    }
+                }
+                else -> {}
+            }
         }
     }
 
@@ -62,6 +87,18 @@ fun AdminDashboardScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            // Show PDF Export FAB on Members tab
+            if (selectedTab == 1 && state.members.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = { viewModel.exportMembersPdf(context, communityId) },
+                    containerColor = BloodRed,
+                    contentColor = Color.White,
+                ) {
+                    Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -350,6 +387,7 @@ fun AdminDashboardScreen(
                                             community = state.community!!,
                                             viewModel = viewModel,
                                             communityId = communityId,
+                                            serialId = state.memberSerials[member.uid],
                                         )
                                     }
                                 }
@@ -556,6 +594,21 @@ private fun JoinRequestCard(
                                 )
                             }
                         }
+                        if (!request.serialId.isNullOrBlank()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Tag, null,
+                                    modifier = Modifier.size(11.dp),
+                                    tint = BloodRed.copy(alpha = 0.5f),
+                                )
+                                Text(
+                                    request.serialId,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = BloodRed.copy(alpha = 0.7f),
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -622,6 +675,7 @@ private fun AdminMemberCard(
     community: Community,
     viewModel: CommunityViewModel,
     communityId: String,
+    serialId: String? = null,
 ) {
     val role = when {
         community.adminIds.contains(user.uid) -> CommunityRole.ADMIN
@@ -701,6 +755,70 @@ private fun AdminMemberCard(
                 ) {
                     if (user.bloodGroup.isNotEmpty()) BloodGroupBadge(bloodGroup = user.bloodGroup)
                     AvailabilityIndicator(isAvailable = isAvailable, daysRemaining = daysRemaining)
+                }
+
+                // Serial ID display
+                if (community.isSerialEnabled) {
+                    var showSerialEdit by remember { mutableStateOf(false) }
+                    var editSerial by remember { mutableStateOf(serialId ?: "") }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 2.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Tag,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        if (showSerialEdit) {
+                            OutlinedTextField(
+                                value = editSerial,
+                                onValueChange = { editSerial = it },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(36.dp),
+                                textStyle = MaterialTheme.typography.labelSmall,
+                                singleLine = true,
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = {
+                                            if (editSerial.isNotBlank()) {
+                                                viewModel.assignSerialId(communityId, user.uid, editSerial.trim())
+                                            }
+                                            showSerialEdit = false
+                                        },
+                                        modifier = Modifier.size(20.dp),
+                                    ) {
+                                        Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp), tint = AvailableGreen)
+                                    }
+                                },
+                            )
+                        } else {
+                            Text(
+                                text = if (serialId.isNullOrBlank()) "No serial" else serialId,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (serialId.isNullOrBlank())
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                else
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            IconButton(
+                                onClick = { showSerialEdit = true },
+                                modifier = Modifier.size(18.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Edit serial",
+                                    modifier = Modifier.size(12.dp),
+                                    tint = BloodRed.copy(alpha = 0.5f),
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

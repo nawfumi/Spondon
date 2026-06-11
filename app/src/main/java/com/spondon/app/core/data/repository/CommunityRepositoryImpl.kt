@@ -153,6 +153,13 @@ class CommunityRepositoryImpl @Inject constructor(
     }
 
     /**
+     * Demotes a member back to regular member (removes from admin/moderator roles).
+     */
+    suspend fun demoteMember(communityId: String, userId: String): Resource<Unit> {
+        return firestoreService.demoteMember(communityId, userId)
+    }
+
+    /**
      * Fetches pending join requests for the admin panel.
      */
     suspend fun getPendingJoinRequests(communityId: String): Resource<List<JoinRequest>> {

@@ -57,13 +57,17 @@ fun SpondonCommunityScreen(
         }
     }
 
-    val isAdmin = state.currentUserRole == CommunityRole.ADMIN ||
+    // canPost: both admin and moderator can create posts
+    val canPost = state.currentUserRole == CommunityRole.ADMIN ||
             state.currentUserRole == CommunityRole.MODERATOR
+    // isCommunityAdmin: only admin can delete any post & manage members
+    val isCommunityAdmin = state.currentUserRole == CommunityRole.ADMIN
+    val currentUserId = viewModel.fetchCurrentUserId()
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (isAdmin && state.community != null) {
+            if (canPost && state.community != null) {
                 FloatingActionButton(
                     onClick = { navController.navigate(Routes.CreateSpondonPost.route) },
                     containerColor = BloodRed,
@@ -327,9 +331,12 @@ fun SpondonCommunityScreen(
                                 }
                             } else {
                                 items(state.posts, key = { it.id }) { post ->
+                                    // Admin can delete any post; moderator can only delete own posts
+                                    val canDelete = isCommunityAdmin ||
+                                            (canPost && post.authorId == currentUserId)
                                     PostCard(
                                         post = post,
-                                        isAdmin = isAdmin,
+                                        isAdmin = canDelete,
                                         onDelete = { viewModel.deletePost(post.id) },
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                     )
@@ -358,6 +365,7 @@ fun SpondonCommunityScreen(
                                         user = user,
                                         community = community,
                                         viewModel = viewModel,
+                                        isAdmin = isCommunityAdmin,
                                         onProfileClick = {
                                             navController.navigate("donor_profile/${user.uid}")
                                         },
@@ -414,7 +422,7 @@ fun SpondonCommunityScreen(
                                             SpondonAboutRow(
                                                 icon = Icons.Outlined.Edit,
                                                 label = "Who Can Post",
-                                                value = "Admin Only",
+                                                value = "Admin & Sub-Admin",
                                                 chipColor = BloodRed,
                                                 chipBg = BloodRed.copy(alpha = 0.1f),
                                             )
@@ -643,6 +651,7 @@ private fun SpondonMemberRow(
     user: User,
     community: Community,
     viewModel: CommunityViewModel,
+    isAdmin: Boolean,
     onProfileClick: () -> Unit,
 ) {
     val role = when {
@@ -650,6 +659,10 @@ private fun SpondonMemberRow(
         community.moderatorIds.contains(user.uid) -> CommunityRole.MODERATOR
         else -> CommunityRole.MEMBER
     }
+
+    // Don't show admin actions for yourself
+    val isSelf = user.uid == viewModel.fetchCurrentUserId()
+    var showMenu by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -725,12 +738,101 @@ private fun SpondonMemberRow(
                 }
             }
 
-            Icon(
-                Icons.Filled.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                modifier = Modifier.size(20.dp),
-            )
+            // Admin actions menu or simple chevron
+            if (isAdmin && !isSelf) {
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Member actions",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                    ) {
+                        // Promote to Moderator (sub-admin) if currently a regular member
+                        if (role == CommunityRole.MEMBER) {
+                            DropdownMenuItem(
+                                text = { Text("Make Sub-Admin") },
+                                onClick = {
+                                    viewModel.promoteSpondonMember(user.uid, CommunityRole.MODERATOR)
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Star,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = PendingAmber,
+                                    )
+                                },
+                            )
+                        }
+                        // Promote to Admin if currently a moderator
+                        if (role == CommunityRole.MODERATOR) {
+                            DropdownMenuItem(
+                                text = { Text("Promote to Admin") },
+                                onClick = {
+                                    viewModel.promoteSpondonMember(user.uid, CommunityRole.ADMIN)
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.AdminPanelSettings,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = BloodRed,
+                                    )
+                                },
+                            )
+                            // Demote back to member
+                            DropdownMenuItem(
+                                text = { Text("Remove Sub-Admin") },
+                                onClick = {
+                                    viewModel.demoteSpondonMember(user.uid)
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.PersonRemove,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                },
+                            )
+                        }
+                        // View profile
+                        DropdownMenuItem(
+                            text = { Text("View Profile") },
+                            onClick = {
+                                onProfileClick()
+                                showMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            },
+                        )
+                    }
+                }
+            } else {
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }

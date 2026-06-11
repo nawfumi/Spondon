@@ -10,6 +10,7 @@ import com.spondon.app.feature.superadmin.auth.SuperAdminRegisterScreen
 import com.spondon.app.feature.superadmin.broadcast.SABroadcastScreen
 import com.spondon.app.feature.superadmin.community.SACommunityDetailScreen
 import com.spondon.app.feature.superadmin.community.SACommunityListScreen
+import com.spondon.app.feature.superadmin.community.SASpondonCommunityScreen
 import com.spondon.app.feature.superadmin.dashboard.SADashboardScreen
 import com.spondon.app.feature.superadmin.feedback.SAFeedbackScreen
 import com.spondon.app.feature.superadmin.forceupdate.SAForceUpdateScreen
@@ -69,6 +70,11 @@ fun NavGraphBuilder.superAdminGraph(
     ) { backStackEntry ->
         val communityId = backStackEntry.arguments?.getString("communityId") ?: return@composable
         SACommunityDetailScreen(navController = navController, communityId = communityId)
+    }
+
+    // ─── Spondon Community (SA admin view) ───────────────────
+    composable("sa_spondon_community") {
+        SASpondonCommunityScreen(navController)
     }
 
     // ─── Phase 3: Broadcast ──────────────────────────────────

@@ -301,6 +301,12 @@ fun SADashboardScreen(
                             modifier = Modifier.weight(1f),
                             onClick = { navController.navigate("sa_analytics") },
                         )
+                        SAQuickAction(
+                            icon = Icons.Outlined.Favorite,
+                            label = "Spondon",
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate("sa_spondon_community") },
+                        )
                     }
                 }
 

@@ -384,6 +384,30 @@ class FirestoreService @Inject constructor(
     }
 
     /**
+     * Demotes a member back to regular member by removing them from
+     * both adminIds and moderatorIds.
+     */
+    suspend fun demoteMember(
+        communityId: String,
+        userId: String,
+    ): Resource<Unit> {
+        return try {
+            firestore.collection(Constants.COMMUNITIES_COLLECTION)
+                .document(communityId)
+                .update(
+                    mapOf(
+                        "adminIds" to FieldValue.arrayRemove(userId),
+                        "moderatorIds" to FieldValue.arrayRemove(userId),
+                    )
+                )
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to demote member", e)
+        }
+    }
+
+    /**
      * Updates a member's donation status and last donation date.
      */
     suspend fun updateMemberDonationStatus(

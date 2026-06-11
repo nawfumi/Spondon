@@ -1,0 +1,342 @@
+package com.spondon.app.feature.community
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.pdf.PdfDocument
+import com.spondon.app.core.domain.model.Community
+import com.spondon.app.core.domain.model.CommunityRole
+import com.spondon.app.core.domain.model.User
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/**
+ * Generates a PDF member list for a community.
+ * Uses Android's native PdfDocument API (no third-party dependencies).
+ *
+ * Layout: A4-ish page (595 × 842 pt) with a branded header,
+ * table columns: #, Serial (if enabled), Name, Blood Group, District, Role
+ */
+class CommunityPdfGenerator {
+
+    companion object {
+        private const val PAGE_WIDTH = 595
+        private const val PAGE_HEIGHT = 842
+        private const val MARGIN_LEFT = 36f
+        private const val MARGIN_RIGHT = 36f
+        private const val MARGIN_TOP = 36f
+        private const val MARGIN_BOTTOM = 40f
+        private const val ROW_HEIGHT = 22f
+        private const val HEADER_HEIGHT = 80f
+    }
+
+    /**
+     * Data class for a single table row.
+     */
+    data class MemberRow(
+        val index: Int,
+        val serialId: String,
+        val name: String,
+        val bloodGroup: String,
+        val district: String,
+        val role: String,
+    )
+
+    /**
+     * Generate the PDF and return the file.
+     */
+    fun generate(
+        context: Context,
+        communityName: String,
+        members: List<User>,
+        community: Community,
+        serials: Map<String, String>,
+    ): File {
+        val isSerialEnabled = community.isSerialEnabled
+        val rows = toSortedRows(members, community, serials)
+
+        val document = PdfDocument()
+        val usableWidth = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
+
+        // Define column widths
+        val columns = buildColumns(isSerialEnabled, usableWidth)
+
+        // Calculate rows per page (accounting for header on first page)
+        val contentAreaFirstPage = PAGE_HEIGHT - MARGIN_TOP - HEADER_HEIGHT - MARGIN_BOTTOM - ROW_HEIGHT // table header
+        val contentAreaOtherPages = PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM - ROW_HEIGHT // table header
+        val rowsFirstPage = (contentAreaFirstPage / ROW_HEIGHT).toInt()
+        val rowsOtherPages = (contentAreaOtherPages / ROW_HEIGHT).toInt()
+
+        var pageIndex = 0
+        var rowIndex = 0
+        val totalRows = rows.size
+
+        while (rowIndex < totalRows || pageIndex == 0) {
+            pageIndex++
+            val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageIndex).create()
+            val page = document.startPage(pageInfo)
+            val canvas = page.canvas
+
+            var y: Float
+
+            if (pageIndex == 1) {
+                // Draw branded header on first page
+                y = drawHeader(canvas, communityName, members.size, isSerialEnabled)
+            } else {
+                y = MARGIN_TOP
+            }
+
+            // Draw table header
+            y = drawTableHeader(canvas, columns, y)
+
+            // Draw rows
+            val maxRows = if (pageIndex == 1) rowsFirstPage else rowsOtherPages
+            var rowsOnPage = 0
+            while (rowIndex < totalRows && rowsOnPage < maxRows) {
+                val row = rows[rowIndex]
+                y = drawTableRow(canvas, columns, row, y, rowIndex % 2 == 1)
+                rowIndex++
+                rowsOnPage++
+            }
+
+            // Footer
+            drawFooter(canvas, pageIndex)
+
+            document.finishPage(page)
+        }
+
+        // Write to cache directory
+        val dir = File(context.cacheDir, "pdf_exports")
+        if (!dir.exists()) dir.mkdirs()
+        val dateStr = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val sanitizedName = communityName.replace(Regex("[^A-Za-z0-9_\\- ]"), "").take(30).trim()
+        val file = File(dir, "${sanitizedName}_Members_$dateStr.pdf")
+        FileOutputStream(file).use { document.writeTo(it) }
+        document.close()
+
+        return file
+    }
+
+    /**
+     * Convert members to sorted rows — admins first, then moderators, then members.
+     * Within each role, sort by serial ID (if present), then by name.
+     */
+    private fun toSortedRows(
+        members: List<User>,
+        community: Community,
+        serials: Map<String, String>,
+    ): List<MemberRow> {
+        val roleOrder = mapOf(
+            CommunityRole.ADMIN to 0,
+            CommunityRole.MODERATOR to 1,
+            CommunityRole.MEMBER to 2,
+        )
+
+        return members.mapIndexed { _, user ->
+            val role = when {
+                community.adminIds.contains(user.uid) -> CommunityRole.ADMIN
+                community.moderatorIds.contains(user.uid) -> CommunityRole.MODERATOR
+                else -> CommunityRole.MEMBER
+            }
+            val serial = serials[user.uid] ?: ""
+            MemberRow(
+                index = 0, // Will be set after sorting
+                serialId = serial,
+                name = user.name.ifEmpty { "Unknown" },
+                bloodGroup = user.bloodGroup.ifEmpty { "—" },
+                district = user.district.ifEmpty { "—" },
+                role = role.name.lowercase().replaceFirstChar { it.uppercase() },
+            ) to role
+        }.sortedWith(compareBy<Pair<MemberRow, CommunityRole>> { roleOrder[it.second] ?: 2 }
+            .thenBy { it.first.serialId.ifEmpty { "zzz" } }
+            .thenBy { it.first.name })
+            .mapIndexed { idx, pair ->
+                pair.first.copy(index = idx + 1)
+            }
+    }
+
+    // ─── Column definitions ──────────────────────────────────────
+
+    data class Column(val header: String, val width: Float, val align: Paint.Align)
+
+    private fun buildColumns(isSerialEnabled: Boolean, usableWidth: Float): List<Column> {
+        return if (isSerialEnabled) {
+            listOf(
+                Column("#", usableWidth * 0.06f, Paint.Align.CENTER),
+                Column("Serial", usableWidth * 0.16f, Paint.Align.LEFT),
+                Column("Name", usableWidth * 0.30f, Paint.Align.LEFT),
+                Column("Blood", usableWidth * 0.12f, Paint.Align.CENTER),
+                Column("District", usableWidth * 0.22f, Paint.Align.LEFT),
+                Column("Role", usableWidth * 0.14f, Paint.Align.CENTER),
+            )
+        } else {
+            listOf(
+                Column("#", usableWidth * 0.08f, Paint.Align.CENTER),
+                Column("Name", usableWidth * 0.35f, Paint.Align.LEFT),
+                Column("Blood", usableWidth * 0.14f, Paint.Align.CENTER),
+                Column("District", usableWidth * 0.25f, Paint.Align.LEFT),
+                Column("Role", usableWidth * 0.18f, Paint.Align.CENTER),
+            )
+        }
+    }
+
+    // ─── Drawing helpers ─────────────────────────────────────────
+
+    private val titlePaint = Paint().apply {
+        color = Color.parseColor("#C62828") // BloodRed
+        textSize = 18f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        isAntiAlias = true
+    }
+
+    private val subtitlePaint = Paint().apply {
+        color = Color.DKGRAY
+        textSize = 10f
+        isAntiAlias = true
+    }
+
+    private val headerPaint = Paint().apply {
+        color = Color.WHITE
+        textSize = 9f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        isAntiAlias = true
+    }
+
+    private val headerBgPaint = Paint().apply {
+        color = Color.parseColor("#C62828")
+        style = Paint.Style.FILL
+    }
+
+    private val cellPaint = Paint().apply {
+        color = Color.parseColor("#212121")
+        textSize = 9f
+        isAntiAlias = true
+    }
+
+    private val stripePaint = Paint().apply {
+        color = Color.parseColor("#FFF3F3")
+        style = Paint.Style.FILL
+    }
+
+    private val linePaint = Paint().apply {
+        color = Color.parseColor("#E0E0E0")
+        strokeWidth = 0.5f
+    }
+
+    private val footerPaint = Paint().apply {
+        color = Color.GRAY
+        textSize = 8f
+        isAntiAlias = true
+    }
+
+    private fun drawHeader(
+        canvas: Canvas,
+        communityName: String,
+        memberCount: Int,
+        isSerialEnabled: Boolean,
+    ): Float {
+        var y = MARGIN_TOP + 20f
+
+        // Community name
+        canvas.drawText(communityName, MARGIN_LEFT, y, titlePaint)
+        y += 16f
+
+        // Member count and date
+        val dateStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
+        canvas.drawText("Members: $memberCount  •  Generated: $dateStr", MARGIN_LEFT, y, subtitlePaint)
+        y += 10f
+
+        if (isSerialEnabled) {
+            canvas.drawText("Serial IDs: Enabled", MARGIN_LEFT, y, subtitlePaint)
+            y += 10f
+        }
+
+        // Divider line
+        y += 6f
+        canvas.drawLine(MARGIN_LEFT, y, PAGE_WIDTH - MARGIN_RIGHT, y, linePaint)
+        y += 10f
+
+        return y
+    }
+
+    private fun drawTableHeader(canvas: Canvas, columns: List<Column>, startY: Float): Float {
+        // Background
+        canvas.drawRect(
+            MARGIN_LEFT, startY,
+            PAGE_WIDTH - MARGIN_RIGHT, startY + ROW_HEIGHT,
+            headerBgPaint,
+        )
+
+        var x = MARGIN_LEFT
+        columns.forEach { col ->
+            val textX = when (col.align) {
+                Paint.Align.CENTER -> x + col.width / 2f
+                Paint.Align.RIGHT -> x + col.width - 4f
+                else -> x + 4f
+            }
+            headerPaint.textAlign = col.align
+            canvas.drawText(col.header, textX, startY + 15f, headerPaint)
+            x += col.width
+        }
+
+        return startY + ROW_HEIGHT
+    }
+
+    private fun drawTableRow(
+        canvas: Canvas,
+        columns: List<Column>,
+        row: MemberRow,
+        startY: Float,
+        isStripe: Boolean,
+    ): Float {
+        if (isStripe) {
+            canvas.drawRect(
+                MARGIN_LEFT, startY,
+                PAGE_WIDTH - MARGIN_RIGHT, startY + ROW_HEIGHT,
+                stripePaint,
+            )
+        }
+
+        // Bottom line
+        canvas.drawLine(
+            MARGIN_LEFT, startY + ROW_HEIGHT,
+            PAGE_WIDTH - MARGIN_RIGHT, startY + ROW_HEIGHT,
+            linePaint,
+        )
+
+        val values = if (columns.size == 6) {
+            // Serial enabled
+            listOf("${row.index}", row.serialId.ifEmpty { "—" }, row.name, row.bloodGroup, row.district, row.role)
+        } else {
+            listOf("${row.index}", row.name, row.bloodGroup, row.district, row.role)
+        }
+
+        var x = MARGIN_LEFT
+        columns.forEachIndexed { idx, col ->
+            val value = values.getOrElse(idx) { "" }
+            val textX = when (col.align) {
+                Paint.Align.CENTER -> x + col.width / 2f
+                Paint.Align.RIGHT -> x + col.width - 4f
+                else -> x + 4f
+            }
+            cellPaint.textAlign = col.align
+            // Truncate long text
+            val truncated = if (value.length > 25) value.take(22) + "…" else value
+            canvas.drawText(truncated, textX, startY + 15f, cellPaint)
+            x += col.width
+        }
+
+        return startY + ROW_HEIGHT
+    }
+
+    private fun drawFooter(canvas: Canvas, pageNumber: Int) {
+        val text = "Page $pageNumber  •  Spondon"
+        footerPaint.textAlign = Paint.Align.CENTER
+        canvas.drawText(text, PAGE_WIDTH / 2f, PAGE_HEIGHT - 20f, footerPaint)
+    }
+}

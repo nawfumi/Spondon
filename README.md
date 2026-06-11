@@ -38,12 +38,13 @@
 - 🔴 **Community-Scoped Blood Requests** — Post and browse urgent/moderate/normal blood requests filtered by your communities
 - 🔍 **Smart Donor Search** — Filter by blood group, location, availability, and community with map view
 - 👥 **Community System** — Public & private communities with role-based access (Super Admin / Community Admin / Moderator / Member)
+- 🔢 **Custom Member Serial IDs** — SuperAdmin enabled serial numbers for private communities
 - 🔔 **Real-time Push Notifications** — FCM alerts for CRITICAL requests, join approvals, donor acceptance
 - 📞 **Direct Call Integration** — One-tap phone dialer for accepted donor↔requester contact
 - 🏅 **Donation Badges & History** — Gamified achievement system with a verifiable donation log
 - 🌙 **Dark / Light Mode** — Full adaptive theming with Bangla + English language support
 - 🔒 **Biometric Login** & OTP Phone Verification
-- 📄 **PDF Donation Certificate** export
+- 📄 **PDF Export** — Export Community Member list & Donation Certificates
 - 🗺️ **Offline Caching** with Room for resilience on low connectivity
 
 ---
@@ -153,8 +154,8 @@ Splash → Auth Check → Onboarding (first launch) → Sign Up / Login → Prof
 
 | Role | Capabilities |
 |------|-------------|
-| **Super Admin** | Platform-wide moderation, verify/ban communities, global announcements |
-| **Community Admin** | Accept/reject joins, remove members, promote, pin requests, override donor availability (≥ 90 days) |
+| **Super Admin** | Platform-wide moderation, verify/ban communities, global announcements, enable custom serial numbers |
+| **Community Admin** | Accept/reject joins, remove members, promote, pin requests, override donor availability, assign serial IDs, export member list to PDF |
 | **Moderator** | Accept/reject joins, flag/remove requests |
 | **Member (Donor)** | View feed, post requests, respond, search donors |
 
@@ -171,7 +172,7 @@ Splash → Auth Check → Onboarding (first launch) → Sign Up / Login → Prof
 communities/{communityId}
   id, name, description, coverUrl, type (PUBLIC|PRIVATE),
   adminIds, moderatorIds, memberIds, pendingIds,
-  area (GeoPoint + String), bloodGroups,
+  area (GeoPoint + String), bloodGroups, isSerialEnabled,
   memberCount, donationCount, isVerified, createdAt
 ```
 

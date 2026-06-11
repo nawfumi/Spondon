@@ -1005,6 +1005,172 @@ class SARepository @Inject constructor(
     }
 
     // ════════════════════════════════════════════════════════════
+    // Spondon Community Management
+    // ════════════════════════════════════════════════════════════
+
+    /** Find the Spondon community document (isSpondon == true). */
+    suspend fun getSpondonCommunityId(): String? {
+        return try {
+            val snapshot = firestore.collection("communities")
+                .whereEqualTo("isSpondon", true)
+                .limit(1)
+                .get().await()
+            snapshot.documents.firstOrNull()?.id
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Fetch all posts for the Spondon community, newest first. */
+    suspend fun getSpondonPosts(communityId: String): Resource<List<SASpondonPost>> {
+        return try {
+            val snapshot = firestore.collection("communityPosts")
+                .whereEqualTo("communityId", communityId)
+                .get().await()
+            val posts = snapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                val createdAt = when (val d = data["createdAt"]) {
+                    is Timestamp -> d.toDate()
+                    is Date -> d
+                    else -> null
+                }
+                SASpondonPost(
+                    id = doc.id,
+                    authorId = data["authorId"] as? String ?: "",
+                    authorName = data["authorName"] as? String ?: "",
+                    authorAvatarUrl = data["authorAvatarUrl"] as? String ?: "",
+                    content = data["content"] as? String ?: "",
+                    imageUrl = data["imageUrl"] as? String,
+                    createdAt = createdAt,
+                )
+            }.sortedByDescending { it.createdAt }
+            Resource.Success(posts)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to load posts", e)
+        }
+    }
+
+    /** Create a post as super admin with optional image upload. */
+    suspend fun createSpondonPost(
+        communityId: String,
+        content: String,
+        imageUri: android.net.Uri?,
+        storageService: com.spondon.app.core.data.remote.StorageService,
+    ): Resource<Unit> {
+        return try {
+            // Upload image if provided
+            var imageUrl: String? = null
+            if (imageUri != null) {
+                val tempId = System.currentTimeMillis().toString()
+                when (val uploadResult = storageService.uploadPostImage(tempId, imageUri)) {
+                    is Resource.Success -> imageUrl = uploadResult.data
+                    is Resource.Error -> return Resource.Error("Image upload failed: ${uploadResult.message}")
+                    is Resource.Loading -> {}
+                }
+            }
+
+            val data = hashMapOf<String, Any?>(
+                "communityId" to communityId,
+                "authorId" to (auth.currentUser?.uid ?: ""),
+                "authorName" to "SuperAdmin",
+                "authorAvatarUrl" to "",
+                "content" to content,
+                "imageUrl" to imageUrl,
+                "createdAt" to Timestamp.now(),
+            )
+            firestore.collection("communityPosts").add(data).await()
+            auditLogger.log(SAAction.BROADCAST, metadata = mapOf("action" to "SPONDON_POST", "content" to content.take(50)))
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to create post", e)
+        }
+    }
+
+    /** Delete a Spondon community post. */
+    suspend fun deleteSpondonPost(postId: String): Resource<Unit> {
+        return try {
+            firestore.collection("communityPosts").document(postId).delete().await()
+            auditLogger.log(SAAction.BROADCAST, metadata = mapOf("action" to "SPONDON_POST_DELETE", "postId" to postId))
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to delete post", e)
+        }
+    }
+
+    /** Fetch all members of the Spondon community with role info. */
+    suspend fun getSpondonMembers(communityId: String): Resource<List<SASpondonMember>> {
+        return try {
+            val cDoc = firestore.collection("communities").document(communityId).get().await()
+            val cData = cDoc.data ?: return Resource.Error("Community not found")
+            val memberIds = (cData["memberIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+            val adminIds = (cData["adminIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+            val moderatorIds = (cData["moderatorIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+            val members = mutableListOf<SASpondonMember>()
+            for (mid in memberIds) {
+                try {
+                    val uDoc = firestore.collection("users").document(mid).get().await()
+                    val uData = uDoc.data ?: continue
+                    val role = when {
+                        mid in adminIds -> "ADMIN"
+                        mid in moderatorIds -> "MODERATOR"
+                        else -> "MEMBER"
+                    }
+                    members.add(
+                        SASpondonMember(
+                            uid = mid,
+                            name = uData["name"] as? String ?: "",
+                            bloodGroup = uData["bloodGroup"] as? String ?: "",
+                            avatarUrl = uData["avatarUrl"] as? String ?: "",
+                            role = role,
+                        ),
+                    )
+                } catch (_: Exception) { /* skip */ }
+            }
+            // Sort: admins first, then moderators, then members
+            val sorted = members.sortedBy {
+                when (it.role) {
+                    "ADMIN" -> 0
+                    "MODERATOR" -> 1
+                    else -> 2
+                }
+            }
+            Resource.Success(sorted)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to load members", e)
+        }
+    }
+
+    /** Promote a member to moderator (sub-admin) in the Spondon community. */
+    suspend fun promoteSpondonMember(communityId: String, uid: String): Resource<Unit> {
+        return try {
+            firestore.collection("communities").document(communityId)
+                .update("moderatorIds", FieldValue.arrayUnion(uid)).await()
+            auditLogger.log(SAAction.BROADCAST, metadata = mapOf("action" to "SPONDON_PROMOTE", "uid" to uid))
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to promote member", e)
+        }
+    }
+
+    /** Demote a moderator back to regular member in the Spondon community. */
+    suspend fun demoteSpondonMember(communityId: String, uid: String): Resource<Unit> {
+        return try {
+            firestore.collection("communities").document(communityId)
+                .update(
+                    mapOf(
+                        "adminIds" to FieldValue.arrayRemove(uid),
+                        "moderatorIds" to FieldValue.arrayRemove(uid),
+                    )
+                ).await()
+            auditLogger.log(SAAction.BROADCAST, metadata = mapOf("action" to "SPONDON_DEMOTE", "uid" to uid))
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to demote member", e)
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
     // Utility
     // ════════════════════════════════════════════════════════════
 

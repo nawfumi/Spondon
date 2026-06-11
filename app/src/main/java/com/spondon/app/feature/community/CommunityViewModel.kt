@@ -89,6 +89,7 @@ data class AdminDashboardState(
 sealed class CommunityEvent {
     data class ShowSnackbar(val message: String) : CommunityEvent()
     data class NavigateToCommunity(val communityId: String) : CommunityEvent()
+    data class SharePdf(val file: java.io.File) : CommunityEvent()
     data object NavigateBack : CommunityEvent()
 }
 
@@ -562,6 +563,11 @@ class CommunityViewModel @Inject constructor(
                     if (community.memberIds.isNotEmpty()) {
                         loadAdminMembers(community.memberIds)
                     }
+
+                    // Load member serials if serial is enabled
+                    if (community.isSerialEnabled) {
+                        loadMemberSerials(communityId)
+                    }
                 }
                 is Resource.Error -> {
                     _adminState.update { it.copy(error = result.message, isLoading = false) }
@@ -762,6 +768,62 @@ class CommunityViewModel @Inject constructor(
 
     fun resetBroadcastSuccess() {
         _adminState.update { it.copy(broadcastSuccess = false) }
+    }
+
+    // ─── Member Serial Assignment ────────────────────────────
+
+    private fun loadMemberSerials(communityId: String) {
+        viewModelScope.launch {
+            val serials = communityRepository.getMemberSerials(communityId)
+            _adminState.update { it.copy(memberSerials = serials) }
+        }
+    }
+
+    fun assignSerialId(communityId: String, userId: String, serialId: String) {
+        viewModelScope.launch {
+            when (val result = communityRepository.assignSerialId(communityId, userId, serialId)) {
+                is Resource.Success -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Serial ID assigned: $serialId"))
+                    loadMemberSerials(communityId)
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to assign serial: ${result.message}"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    // ─── PDF Export ──────────────────────────────────────────
+
+    fun exportMembersPdf(
+        context: android.content.Context,
+        communityId: String,
+    ) {
+        viewModelScope.launch {
+            val state = _adminState.value
+            val community = state.community ?: return@launch
+            val members = state.members
+            if (members.isEmpty()) {
+                _events.emit(CommunityEvent.ShowSnackbar("No members to export"))
+                return@launch
+            }
+
+            try {
+                val serials = if (community.isSerialEnabled) state.memberSerials else emptyMap()
+                val generator = CommunityPdfGenerator()
+                val file = generator.generate(
+                    context = context,
+                    communityName = community.name,
+                    members = members,
+                    community = community,
+                    serials = serials,
+                )
+                _events.emit(CommunityEvent.SharePdf(file))
+            } catch (e: Exception) {
+                _events.emit(CommunityEvent.ShowSnackbar("PDF export failed: ${e.message}"))
+            }
+        }
     }
 
     // ─── Helpers ─────────────────────────────────────────────
@@ -999,6 +1061,46 @@ class CommunityViewModel @Inject constructor(
                 }
                 is Resource.Error -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Failed to delete post"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    /**
+     * Promotes a member within the Spondon community to the given role
+     * (MODERATOR = sub-admin, ADMIN = full admin).
+     */
+    fun promoteSpondonMember(userId: String, role: CommunityRole) {
+        viewModelScope.launch {
+            val communityId = _spondonState.value.community?.id ?: return@launch
+            when (manageMembersUseCase.promoteMember(communityId, userId, role)) {
+                is Resource.Success -> {
+                    val label = if (role == CommunityRole.MODERATOR) "Sub-Admin" else "Admin"
+                    _events.emit(CommunityEvent.ShowSnackbar("Member promoted to $label"))
+                    loadSpondonCommunity() // refresh community + members
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to promote member"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    /**
+     * Demotes a moderator/admin back to a regular member in the Spondon community.
+     */
+    fun demoteSpondonMember(userId: String) {
+        viewModelScope.launch {
+            val communityId = _spondonState.value.community?.id ?: return@launch
+            when (communityRepository.demoteMember(communityId, userId)) {
+                is Resource.Success -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Member role removed"))
+                    loadSpondonCommunity() // refresh community + members
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to demote member"))
                 }
                 is Resource.Loading -> {}
             }
