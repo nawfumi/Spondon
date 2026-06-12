@@ -1170,6 +1170,27 @@ class SARepository @Inject constructor(
         }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // Serial Toggle
+    // ═══════════════════════════════════════════════════════════
+
+    /** Enable or disable serial IDs for a community. */
+    suspend fun enableSerialForCommunity(communityId: String, enabled: Boolean): Resource<Unit> {
+        return try {
+            firestore.collection("communities").document(communityId)
+                .update("isSerialEnabled", enabled)
+                .await()
+            auditLogger.log(
+                SAAction.TOGGLE_SERIAL,
+                targetId = communityId,
+                metadata = mapOf("enabled" to enabled.toString()),
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to toggle serial", e)
+        }
+    }
+
     // ════════════════════════════════════════════════════════════
     // Utility
     // ════════════════════════════════════════════════════════════
@@ -1233,6 +1254,7 @@ class SARepository @Inject constructor(
             createdBy = data["createdBy"] as? String ?: "",
             totalDonations = (data["totalDonations"] as? Number)?.toInt() ?: 0,
             avatarUrl = data["avatarUrl"] as? String ?: "",
+            isSerialEnabled = data["isSerialEnabled"] as? Boolean ?: false,
         )
     }
 }

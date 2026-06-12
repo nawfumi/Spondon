@@ -233,6 +233,61 @@ fun SACommunityDetailScreen(
                     }
                 }
 
+                // ─── Serial Toggle ──────────────────────────
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = SADarkCard),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Card(
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = SAGold.copy(alpha = 0.1f),
+                                ),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Tag,
+                                    null,
+                                    tint = SAGold,
+                                    modifier = Modifier.padding(8.dp).size(18.dp),
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Serial IDs",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White,
+                                )
+                                Text(
+                                    if (community.isSerialEnabled) "Enabled — members can have serial numbers"
+                                    else "Disabled — no serial tracking",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.4f),
+                                )
+                            }
+                            Switch(
+                                checked = community.isSerialEnabled,
+                                onCheckedChange = { viewModel.toggleSerialForCommunity() },
+                                enabled = !state.isPerformingAction,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = SAGold,
+                                    checkedTrackColor = SAGold.copy(alpha = 0.3f),
+                                    uncheckedThumbColor = Color.White.copy(alpha = 0.5f),
+                                    uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                                ),
+                            )
+                        }
+                    }
+                }
+
                 // ─── Members ─────────────────────────────────
                 item {
                     Text(

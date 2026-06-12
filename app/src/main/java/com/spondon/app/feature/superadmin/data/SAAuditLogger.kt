@@ -22,6 +22,7 @@ enum class SAAction {
     MAINTENANCE_ON,
     MAINTENANCE_OFF,
     FORCE_UPDATE_SET,
+    TOGGLE_SERIAL,
 }
 
 /** Immutable audit trail for all superadmin actions. */
