@@ -397,6 +397,11 @@ class CommunityRepositoryImpl @Inject constructor(
             isPhoneVisible = data["isPhoneVisible"] as? Boolean ?: true,
             communityIds = (data["communityIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             badges = (data["badges"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            role = try {
+                UserRole.valueOf(data["role"] as? String ?: "USER")
+            } catch (_: Exception) {
+                UserRole.USER
+            },
         )
     }
 

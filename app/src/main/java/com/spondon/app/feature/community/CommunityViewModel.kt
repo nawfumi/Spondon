@@ -924,6 +924,17 @@ class CommunityViewModel @Inject constructor(
             // Ensure user is a member
             communityRepository.ensureUserInSpondonCommunity(currentUserId)
 
+            // Fetch the current user's platform-wide role (SUPER_ADMIN / USER) and profile
+            var platformRole = UserRole.USER
+            var currentUser: User? = null
+            try {
+                val userResult = communityRepository.getCommunityMembers(listOf(currentUserId))
+                if (userResult is Resource.Success && userResult.data.isNotEmpty()) {
+                    currentUser = userResult.data.first()
+                    platformRole = currentUser.role
+                }
+            } catch (_: Exception) { /* use defaults */ }
+
             // Load community details
             when (val result = getCommunitiesUseCase.getCommunity(spondonId)) {
                 is Resource.Success -> {
@@ -937,6 +948,8 @@ class CommunityViewModel @Inject constructor(
                         it.copy(
                             community = community,
                             currentUserRole = role,
+                            currentUserPlatformRole = platformRole,
+                            currentUser = currentUser,
                             isLoading = false,
                         )
                     }
@@ -988,6 +1001,10 @@ class CommunityViewModel @Inject constructor(
         _spondonState.update { it.copy(selectedTab = tab) }
     }
 
+    fun updateSpondonMemberSearchQuery(query: String) {
+        _spondonState.update { it.copy(memberSearchQuery = query) }
+    }
+
     // ─── Create Post ──────────────────────────────────────────
 
     fun updatePostContent(content: String) {
@@ -1006,7 +1023,14 @@ class CommunityViewModel @Inject constructor(
                 return@launch
             }
 
-            val spondonId = _spondonState.value.community?.id ?: return@launch
+            // Use the cached community ID, or fetch it from repo if state not loaded
+            val spondonId = _spondonState.value.community?.id
+                ?: communityRepository.getSpondonCommunityId()
+            if (spondonId == null) {
+                _createPostState.update { it.copy(error = "Spondon community not found", isLoading = false) }
+                return@launch
+            }
+
             _createPostState.update { it.copy(isLoading = true, error = null) }
 
             // Fetch author info
@@ -1118,7 +1142,10 @@ data class SpondonCommunityState(
     val isPostsLoading: Boolean = false,
     val error: String? = null,
     val currentUserRole: CommunityRole? = null,
-    val selectedTab: Int = 0, // 0 = Feed, 1 = Members, 2 = About
+    val currentUserPlatformRole: UserRole = UserRole.USER,
+    val currentUser: User? = null,
+    val memberSearchQuery: String = "",
+    val selectedTab: Int = 0, // 0 = Feed, 1 = Members, 2 = About, 3 = Manage
 )
 
 data class CreatePostState(
