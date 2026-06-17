@@ -157,7 +157,9 @@ class RequestViewModel @Inject constructor(
                     communities = communities,
                     requests = activeRequests,
                     urgentRequests = urgent,
-                    totalDonors = communities.sumOf { c -> c.memberCount },
+                    totalDonors = communities.flatMap { c ->
+                        c.memberIds + c.adminIds + c.moderatorIds
+                    }.toSet().size,
                     fulfilledRequests = allRequests.count { r -> r.status == RequestStatus.FULFILLED },
                     pendingRequests = activeRequests.size,
                     isLoading = false,
@@ -313,11 +315,6 @@ class RequestViewModel @Inject constructor(
                 is Resource.Loading -> {}
             }
         }
-    }
-
-    fun resetCreateForm() {
-        _createState.value = CreateRequestState()
-        loadCreateForm()
     }
 
     // ═══════════════════════════════════════════════════════════

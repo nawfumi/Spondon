@@ -85,13 +85,76 @@ fun AdminDashboardScreen(
     // Tab state (0 = Join Requests, 1 = Members, 2 = Broadcast)
     var selectedTab by remember { mutableIntStateOf(0) }
 
+    // PDF sort picker dialog state
+    var showSortDialog by remember { mutableStateOf(false) }
+
+    // Sort picker dialog
+    if (showSortDialog) {
+        AlertDialog(
+            onDismissRequest = { showSortDialog = false },
+            title = {
+                Text("Export PDF", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        "Choose sort order:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    PdfSortOption.entries.forEach { option ->
+                        Surface(
+                            onClick = {
+                                showSortDialog = false
+                                viewModel.exportMembersPdf(context, communityId, option)
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.Transparent,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Icon(
+                                    imageVector = when (option) {
+                                        PdfSortOption.ALPHABETICAL -> Icons.Default.SortByAlpha
+                                        PdfSortOption.BLOOD_GROUP -> Icons.Default.Bloodtype
+                                        PdfSortOption.SERIAL_ID -> Icons.Default.Tag
+                                        PdfSortOption.TIME -> Icons.Default.Schedule
+                                    },
+                                    contentDescription = null,
+                                    tint = BloodRed,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Text(
+                                    option.label,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSortDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             // Show PDF Export FAB on Members tab
             if (selectedTab == 1 && state.members.isNotEmpty()) {
                 FloatingActionButton(
-                    onClick = { viewModel.exportMembersPdf(context, communityId) },
+                    onClick = { showSortDialog = true },
                     containerColor = BloodRed,
                     contentColor = Color.White,
                 ) {
@@ -779,9 +842,23 @@ private fun AdminMemberCard(
                                 onValueChange = { editSerial = it },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(36.dp),
-                                textStyle = MaterialTheme.typography.labelSmall,
+                                    .heightIn(min = 44.dp),
+                                textStyle = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                ),
                                 singleLine = true,
+                                placeholder = {
+                                    Text(
+                                        "Enter serial ID",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = BloodRed,
+                                    cursorColor = BloodRed,
+                                ),
                                 trailingIcon = {
                                     IconButton(
                                         onClick = {
@@ -790,9 +867,9 @@ private fun AdminMemberCard(
                                             }
                                             showSerialEdit = false
                                         },
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier.size(28.dp),
                                     ) {
-                                        Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp), tint = AvailableGreen)
+                                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp), tint = AvailableGreen)
                                     }
                                 },
                             )

@@ -281,7 +281,9 @@ class CommunityRepositoryImpl @Inject constructor(
      */
     suspend fun assignSerialId(communityId: String, userId: String, serialId: String): Resource<Unit> {
         return try {
-            firestoreService.updateCommunity(
+            // Use updateCommunityFields (Firestore .update()) so dot-notation
+            // "memberSerials.$userId" is treated as a nested field path.
+            firestoreService.updateCommunityFields(
                 communityId,
                 mapOf("memberSerials.$userId" to serialId),
             )

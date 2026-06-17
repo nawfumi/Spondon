@@ -163,6 +163,23 @@ class FirestoreService @Inject constructor(
     }
 
     /**
+     * Updates specific fields on a community document using Firestore's `.update()`.
+     * Unlike [updateCommunity] (which uses `set/merge`), this correctly interprets
+     * dot-notation keys (e.g. `"memberSerials.userId123"`) as nested field paths.
+     */
+    suspend fun updateCommunityFields(communityId: String, data: Map<String, Any?>): Resource<Unit> {
+        return try {
+            firestore.collection(Constants.COMMUNITIES_COLLECTION)
+                .document(communityId)
+                .update(data)
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to update community fields", e)
+        }
+    }
+
+    /**
      * Fetches all public communities, ordered by creation date.
      */
     suspend fun getAllCommunities(): Resource<List<Map<String, Any>>> {

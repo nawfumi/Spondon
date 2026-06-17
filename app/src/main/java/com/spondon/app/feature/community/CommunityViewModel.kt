@@ -799,6 +799,7 @@ class CommunityViewModel @Inject constructor(
     fun exportMembersPdf(
         context: android.content.Context,
         communityId: String,
+        sortOption: PdfSortOption = PdfSortOption.ALPHABETICAL,
     ) {
         viewModelScope.launch {
             val state = _adminState.value
@@ -818,6 +819,7 @@ class CommunityViewModel @Inject constructor(
                     members = members,
                     community = community,
                     serials = serials,
+                    sortOption = sortOption,
                 )
                 _events.emit(CommunityEvent.SharePdf(file))
             } catch (e: Exception) {

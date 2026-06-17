@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import com.spondon.app.core.domain.model.Community
-import com.spondon.app.core.domain.model.CommunityRole
 import com.spondon.app.core.domain.model.User
 import java.io.File
 import java.io.FileOutputStream
@@ -16,11 +15,21 @@ import java.util.Date
 import java.util.Locale
 
 /**
+ * Sorting options for the PDF member list.
+ */
+enum class PdfSortOption(val label: String) {
+    ALPHABETICAL("Alphabetical (A-Z)"),
+    BLOOD_GROUP("Blood Group"),
+    SERIAL_ID("Serial ID"),
+    TIME("Registration Time"),
+}
+
+/**
  * Generates a PDF member list for a community.
  * Uses Android's native PdfDocument API (no third-party dependencies).
  *
- * Layout: A4-ish page (595 × 842 pt) with a branded header,
- * table columns: #, Serial (if enabled), Name, Blood Group, District, Role
+ * Columns: Serial (#), ID (if serial enabled), Name, Blood Group,
+ *          Total Donations, Last Donated
  */
 class CommunityPdfGenerator {
 
@@ -43,8 +52,8 @@ class CommunityPdfGenerator {
         val serialId: String,
         val name: String,
         val bloodGroup: String,
-        val district: String,
-        val role: String,
+        val totalDonations: Int,
+        val lastDonation: String,
     )
 
     /**
@@ -56,9 +65,10 @@ class CommunityPdfGenerator {
         members: List<User>,
         community: Community,
         serials: Map<String, String>,
+        sortOption: PdfSortOption = PdfSortOption.ALPHABETICAL,
     ): File {
         val isSerialEnabled = community.isSerialEnabled
-        val rows = toSortedRows(members, community, serials)
+        val rows = toSortedRows(members, community, serials, sortOption)
 
         val document = PdfDocument()
         val usableWidth = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
@@ -86,7 +96,7 @@ class CommunityPdfGenerator {
 
             if (pageIndex == 1) {
                 // Draw branded header on first page
-                y = drawHeader(canvas, communityName, members.size, isSerialEnabled)
+                y = drawHeader(canvas, communityName, members.size, isSerialEnabled, sortOption)
             } else {
                 y = MARGIN_TOP
             }
@@ -99,7 +109,7 @@ class CommunityPdfGenerator {
             var rowsOnPage = 0
             while (rowIndex < totalRows && rowsOnPage < maxRows) {
                 val row = rows[rowIndex]
-                y = drawTableRow(canvas, columns, row, y, rowIndex % 2 == 1)
+                y = drawTableRow(canvas, columns, row, y, rowIndex % 2 == 1, isSerialEnabled)
                 rowIndex++
                 rowsOnPage++
             }
@@ -123,41 +133,64 @@ class CommunityPdfGenerator {
     }
 
     /**
-     * Convert members to sorted rows — admins first, then moderators, then members.
-     * Within each role, sort by serial ID (if present), then by name.
+     * Convert members to sorted rows based on the selected sort option.
      */
     private fun toSortedRows(
         members: List<User>,
         community: Community,
         serials: Map<String, String>,
+        sortOption: PdfSortOption,
     ): List<MemberRow> {
-        val roleOrder = mapOf(
-            CommunityRole.ADMIN to 0,
-            CommunityRole.MODERATOR to 1,
-            CommunityRole.MEMBER to 2,
-        )
+        val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
-        return members.mapIndexed { _, user ->
-            val role = when {
-                community.adminIds.contains(user.uid) -> CommunityRole.ADMIN
-                community.moderatorIds.contains(user.uid) -> CommunityRole.MODERATOR
-                else -> CommunityRole.MEMBER
-            }
+        val unsortedRows = members.map { user ->
             val serial = serials[user.uid] ?: ""
             MemberRow(
                 index = 0, // Will be set after sorting
                 serialId = serial,
                 name = user.name.ifEmpty { "Unknown" },
                 bloodGroup = user.bloodGroup.ifEmpty { "—" },
-                district = user.district.ifEmpty { "—" },
-                role = role.name.lowercase().replaceFirstChar { it.uppercase() },
-            ) to role
-        }.sortedWith(compareBy<Pair<MemberRow, CommunityRole>> { roleOrder[it.second] ?: 2 }
-            .thenBy { it.first.serialId.ifEmpty { "zzz" } }
-            .thenBy { it.first.name })
-            .mapIndexed { idx, pair ->
-                pair.first.copy(index = idx + 1)
-            }
+                totalDonations = user.totalDonations,
+                lastDonation = user.lastDonationDate?.let { dateFormat.format(it) } ?: "—",
+            ) to user // pair with User for sorting by createdAt
+        }
+
+        val sorted = when (sortOption) {
+            PdfSortOption.ALPHABETICAL -> unsortedRows.sortedBy { it.first.name.lowercase() }
+
+            PdfSortOption.BLOOD_GROUP -> unsortedRows.sortedWith(
+                compareBy<Pair<MemberRow, User>> { bloodGroupOrder(it.first.bloodGroup) }
+                    .thenBy { it.first.name.lowercase() },
+            )
+
+            PdfSortOption.SERIAL_ID -> unsortedRows.sortedWith(
+                compareBy<Pair<MemberRow, User>> { it.first.serialId.ifEmpty { "zzz" } }
+                    .thenBy { it.first.name.lowercase() },
+            )
+
+            PdfSortOption.TIME -> unsortedRows.sortedBy { it.second.createdAt?.time ?: Long.MAX_VALUE }
+        }
+
+        return sorted.mapIndexed { idx, pair ->
+            pair.first.copy(index = idx + 1)
+        }
+    }
+
+    /**
+     * Returns an ordering value so blood groups sort in a natural order.
+     */
+    private fun bloodGroupOrder(bg: String): Int {
+        return when (bg.trim().uppercase()) {
+            "A+" -> 0
+            "A-" -> 1
+            "B+" -> 2
+            "B-" -> 3
+            "O+" -> 4
+            "O-" -> 5
+            "AB+" -> 6
+            "AB-" -> 7
+            else -> 8
+        }
     }
 
     // ─── Column definitions ──────────────────────────────────────
@@ -168,19 +201,19 @@ class CommunityPdfGenerator {
         return if (isSerialEnabled) {
             listOf(
                 Column("#", usableWidth * 0.06f, Paint.Align.CENTER),
-                Column("Serial", usableWidth * 0.16f, Paint.Align.LEFT),
-                Column("Name", usableWidth * 0.30f, Paint.Align.LEFT),
+                Column("ID", usableWidth * 0.14f, Paint.Align.LEFT),
+                Column("Name", usableWidth * 0.28f, Paint.Align.LEFT),
                 Column("Blood", usableWidth * 0.12f, Paint.Align.CENTER),
-                Column("District", usableWidth * 0.22f, Paint.Align.LEFT),
-                Column("Role", usableWidth * 0.14f, Paint.Align.CENTER),
+                Column("Donations", usableWidth * 0.16f, Paint.Align.CENTER),
+                Column("Last Donated", usableWidth * 0.24f, Paint.Align.LEFT),
             )
         } else {
             listOf(
-                Column("#", usableWidth * 0.08f, Paint.Align.CENTER),
-                Column("Name", usableWidth * 0.35f, Paint.Align.LEFT),
-                Column("Blood", usableWidth * 0.14f, Paint.Align.CENTER),
-                Column("District", usableWidth * 0.25f, Paint.Align.LEFT),
-                Column("Role", usableWidth * 0.18f, Paint.Align.CENTER),
+                Column("#", usableWidth * 0.07f, Paint.Align.CENTER),
+                Column("Name", usableWidth * 0.32f, Paint.Align.LEFT),
+                Column("Blood", usableWidth * 0.13f, Paint.Align.CENTER),
+                Column("Donations", usableWidth * 0.18f, Paint.Align.CENTER),
+                Column("Last Donated", usableWidth * 0.30f, Paint.Align.LEFT),
             )
         }
     }
@@ -239,6 +272,7 @@ class CommunityPdfGenerator {
         communityName: String,
         memberCount: Int,
         isSerialEnabled: Boolean,
+        sortOption: PdfSortOption,
     ): Float {
         var y = MARGIN_TOP + 20f
 
@@ -249,6 +283,10 @@ class CommunityPdfGenerator {
         // Member count and date
         val dateStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
         canvas.drawText("Members: $memberCount  •  Generated: $dateStr", MARGIN_LEFT, y, subtitlePaint)
+        y += 12f
+
+        // Sort order
+        canvas.drawText("Sorted by: ${sortOption.label}", MARGIN_LEFT, y, subtitlePaint)
         y += 10f
 
         if (isSerialEnabled) {
@@ -293,6 +331,7 @@ class CommunityPdfGenerator {
         row: MemberRow,
         startY: Float,
         isStripe: Boolean,
+        isSerialEnabled: Boolean,
     ): Float {
         if (isStripe) {
             canvas.drawRect(
@@ -309,11 +348,25 @@ class CommunityPdfGenerator {
             linePaint,
         )
 
-        val values = if (columns.size == 6) {
-            // Serial enabled
-            listOf("${row.index}", row.serialId.ifEmpty { "—" }, row.name, row.bloodGroup, row.district, row.role)
+        val values = if (isSerialEnabled) {
+            // With serial ID column
+            listOf(
+                "${row.index}",
+                row.serialId.ifEmpty { "—" },
+                row.name,
+                row.bloodGroup,
+                row.totalDonations.toString(),
+                row.lastDonation,
+            )
         } else {
-            listOf("${row.index}", row.name, row.bloodGroup, row.district, row.role)
+            // Without serial ID column
+            listOf(
+                "${row.index}",
+                row.name,
+                row.bloodGroup,
+                row.totalDonations.toString(),
+                row.lastDonation,
+            )
         }
 
         var x = MARGIN_LEFT
