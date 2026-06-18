@@ -310,6 +310,22 @@ fun SADashboardScreen(
                     }
                 }
 
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        SAQuickAction(
+                            icon = Icons.Outlined.VisibilityOff,
+                            label = "Privacy",
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate("sa_privacy") },
+                        )
+                        // Placeholder for future actions
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+
                 item { Spacer(Modifier.height(16.dp)) }
 
                 // ─── System Status ───────────────────────────
@@ -352,6 +368,12 @@ fun SADashboardScreen(
                                 "System Health",
                                 "Operational",
                                 SAGreen,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            SAStatusRow(
+                                "Privacy Mode",
+                                if (state.isPrivacyOn) "ON" else "OFF",
+                                if (state.isPrivacyOn) SAOrange else SAGreen,
                             )
                         }
                     }

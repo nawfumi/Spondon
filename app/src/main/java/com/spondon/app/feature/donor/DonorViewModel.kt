@@ -9,6 +9,7 @@ import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.repository.CommunityRepository
 import com.spondon.app.core.data.repository.DonorRepository
+import com.spondon.app.core.data.repository.PrivacyConfigRepository
 import com.spondon.app.core.data.repository.UserRepository
 import com.spondon.app.core.domain.model.Community
 import com.spondon.app.core.domain.model.Donation
@@ -93,6 +94,7 @@ class DonorViewModel @Inject constructor(
     private val donorRepository: DonorRepository,
     private val userRepository: UserRepository,
     private val communityRepository: CommunityRepository,
+    private val privacyConfigRepository: PrivacyConfigRepository,
     private val auth: FirebaseAuth,
 ) : ViewModel() {
 
@@ -103,6 +105,20 @@ class DonorViewModel @Inject constructor(
 
     /** True once the real-time observer has delivered at least one emission. */
     private var observerHasEmitted = false
+
+    // ─── Privacy State ───────────────────────────────────────
+    private val _hideSensitiveData = MutableStateFlow(false)
+    val hideSensitiveData: StateFlow<Boolean> = _hideSensitiveData.asStateFlow()
+
+    init {
+        checkPrivacySettings()
+    }
+
+    private fun checkPrivacySettings() {
+        viewModelScope.launch {
+            _hideSensitiveData.value = privacyConfigRepository.shouldHideSensitiveData()
+        }
+    }
 
     // ─── Find Donor State ────────────────────────────────────
     private val _findState = MutableStateFlow(FindDonorState())

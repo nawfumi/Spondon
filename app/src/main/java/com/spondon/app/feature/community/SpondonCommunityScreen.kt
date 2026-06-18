@@ -120,6 +120,7 @@ fun SpondonCommunityScreen(
     viewModel: CommunityViewModel = hiltViewModel(),
 ) {
     val state by viewModel.spondonState.collectAsState()
+    val hideSensitiveData by viewModel.hideSensitiveData.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) { viewModel.loadSpondonCommunity() }
@@ -570,6 +571,7 @@ fun SpondonCommunityScreen(
                                             community = community,
                                             viewModel = viewModel,
                                             isAdmin = isCommunityAdmin,
+                                            hideSensitiveData = hideSensitiveData,
                                             onProfileClick = {
                                                 navController.navigate("donor_profile/${user.uid}")
                                             },
@@ -1156,6 +1158,7 @@ private fun SpondonMemberRow(
     community: Community,
     viewModel: CommunityViewModel,
     isAdmin: Boolean,
+    hideSensitiveData: Boolean = false,
     onProfileClick: () -> Unit,
 ) {
     val role = when {
@@ -1235,10 +1238,12 @@ private fun SpondonMemberRow(
                     if (user.bloodGroup.isNotEmpty()) {
                         BloodGroupBadge(bloodGroup = user.bloodGroup)
                     }
-                    AvailabilityIndicator(
-                        isAvailable = viewModel.isUserAvailable(user),
-                        daysRemaining = viewModel.getDaysUntilAvailable(user),
-                    )
+                    if (!hideSensitiveData) {
+                        AvailabilityIndicator(
+                            isAvailable = viewModel.isUserAvailable(user),
+                            daysRemaining = viewModel.getDaysUntilAvailable(user),
+                        )
+                    }
                 }
             }
 

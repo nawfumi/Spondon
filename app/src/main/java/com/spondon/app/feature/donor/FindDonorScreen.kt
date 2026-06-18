@@ -85,6 +85,7 @@ fun FindDonorScreen(
     viewModel: DonorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.findState.collectAsState()
+    val hideSensitiveData by viewModel.hideSensitiveData.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.loadFindDonor() }
 
@@ -182,35 +183,37 @@ fun FindDonorScreen(
             }
 
             // ─── Available Now Toggle ────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(AvailableGreen),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Available Now",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onBackground,
+            if (!hideSensitiveData) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(AvailableGreen),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Available Now",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    Switch(
+                        checked = state.availableOnly,
+                        onCheckedChange = { viewModel.toggleAvailableOnly() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = AvailableGreen,
+                            checkedThumbColor = Color.White,
+                        ),
                     )
                 }
-                Switch(
-                    checked = state.availableOnly,
-                    onCheckedChange = { viewModel.toggleAvailableOnly() },
-                    colors = SwitchDefaults.colors(
-                        checkedTrackColor = AvailableGreen,
-                        checkedThumbColor = Color.White,
-                    ),
-                )
             }
 
             // ─── Blood Group Filter Chips ────────────────────
@@ -345,6 +348,7 @@ fun FindDonorScreen(
                         items(state.donors, key = { it.uid }) { donor ->
                             DonorCard(
                                 donor = donor,
+                                hideSensitiveData = hideSensitiveData,
                                 onClick = {
                                     navController.navigate("donor_profile/${donor.uid}")
                                 },
@@ -365,6 +369,7 @@ fun FindDonorScreen(
 @Composable
 private fun DonorCard(
     donor: User,
+    hideSensitiveData: Boolean = false,
     onClick: () -> Unit,
 ) {
     val isAvailable = donor.lastDonationDate?.let {
@@ -465,14 +470,25 @@ private fun DonorCard(
                     modifier = Modifier.weight(1f),
                 )
                 // Availability chip
-                DonorInfoChip(
-                    icon = if (isAvailable) Icons.Filled.CheckCircle else Icons.Filled.Lock,
-                    label = "Status",
-                    value = if (isAvailable) "Available" else "$cooldownDays days",
-                    chipColor = if (isAvailable) AvailableGreen else UnavailableGrey,
-                    chipBg = if (isAvailable) AvailableGreen.copy(alpha = 0.1f) else UnavailableGrey.copy(alpha = 0.1f),
-                    modifier = Modifier.weight(1f),
-                )
+                if (!hideSensitiveData) {
+                    DonorInfoChip(
+                        icon = if (isAvailable) Icons.Filled.CheckCircle else Icons.Filled.Lock,
+                        label = "Status",
+                        value = if (isAvailable) "Available" else "$cooldownDays days",
+                        chipColor = if (isAvailable) AvailableGreen else UnavailableGrey,
+                        chipBg = if (isAvailable) AvailableGreen.copy(alpha = 0.1f) else UnavailableGrey.copy(alpha = 0.1f),
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    DonorInfoChip(
+                        icon = Icons.Filled.Lock,
+                        label = "Status",
+                        value = "Private",
+                        chipColor = UnavailableGrey,
+                        chipBg = UnavailableGrey.copy(alpha = 0.1f),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }

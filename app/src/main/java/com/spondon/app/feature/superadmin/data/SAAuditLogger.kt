@@ -23,6 +23,9 @@ enum class SAAction {
     MAINTENANCE_OFF,
     FORCE_UPDATE_SET,
     TOGGLE_SERIAL,
+    TOGGLE_PRIVACY,
+    PRIVACY_ACCESS_GRANT,
+    PRIVACY_ACCESS_REVOKE,
 }
 
 /** Immutable audit trail for all superadmin actions. */

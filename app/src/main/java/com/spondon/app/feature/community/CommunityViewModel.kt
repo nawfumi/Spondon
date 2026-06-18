@@ -9,6 +9,7 @@ import com.spondon.app.core.common.Resource
 import com.spondon.app.core.common.daysSince
 import com.spondon.app.core.data.repository.CommunityRepositoryImpl
 import com.spondon.app.core.data.repository.NotificationRepository
+import com.spondon.app.core.data.repository.PrivacyConfigRepository
 import com.spondon.app.core.data.repository.RequestRepository
 import com.spondon.app.core.domain.model.*
 import com.spondon.app.core.domain.usecase.community.CreateCommunityUseCase
@@ -102,6 +103,7 @@ class CommunityViewModel @Inject constructor(
     private val communityRepository: CommunityRepositoryImpl,
     private val notificationRepository: NotificationRepository,
     private val requestRepository: RequestRepository,
+    private val privacyConfigRepository: PrivacyConfigRepository,
 ) : ViewModel() {
 
     private val currentUserId: String
@@ -109,6 +111,16 @@ class CommunityViewModel @Inject constructor(
 
     /** Expose current user ID for UI pending-status checks */
     fun fetchCurrentUserId(): String = currentUserId
+
+    // ─── Privacy State ───────────────────────────────────────
+    private val _hideSensitiveData = MutableStateFlow(false)
+    val hideSensitiveData: StateFlow<Boolean> = _hideSensitiveData.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _hideSensitiveData.value = privacyConfigRepository.shouldHideSensitiveData()
+        }
+    }
 
     // ─── Community List ──────────────────────────────────────
 

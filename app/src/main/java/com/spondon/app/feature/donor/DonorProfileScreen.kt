@@ -37,6 +37,7 @@ fun DonorProfileScreen(
     viewModel: DonorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.profileState.collectAsState()
+    val hideSensitiveData by viewModel.hideSensitiveData.collectAsState()
     val userId = navController.currentBackStackEntry
         ?.arguments?.getString("userId") ?: ""
 
@@ -243,77 +244,140 @@ fun DonorProfileScreen(
                     }
 
                     // ─── Availability Status ─────────────────
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface,
-                            ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                    if (!hideSensitiveData) {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                             ) {
-                                // Status icon in colored circle
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    // Status icon in colored circle
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (state.isAvailable)
+                                                    AvailableGreen.copy(alpha = 0.1f)
+                                                else
+                                                    UnavailableGrey.copy(alpha = 0.1f)
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            if (state.isAvailable) Icons.Filled.CheckCircle else Icons.Filled.Lock,
+                                            null,
+                                            tint = if (state.isAvailable) AvailableGreen else UnavailableGrey,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
+                                    Spacer(Modifier.width(14.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            if (state.isAvailable) "Available to Donate" else "Unavailable",
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                            ),
+                                            color = if (state.isAvailable) AvailableGreen else UnavailableGrey,
+                                        )
+                                        Text(
                                             if (state.isAvailable)
-                                                AvailableGreen.copy(alpha = 0.1f)
+                                                "This donor is ready to help"
                                             else
-                                                UnavailableGrey.copy(alpha = 0.1f)
-                                        ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        if (state.isAvailable) Icons.Filled.CheckCircle else Icons.Filled.Lock,
-                                        null,
-                                        tint = if (state.isAvailable) AvailableGreen else UnavailableGrey,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-                                Spacer(Modifier.width(14.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        if (state.isAvailable) "Available to Donate" else "Unavailable",
-                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                            fontWeight = FontWeight.Bold,
-                                        ),
-                                        color = if (state.isAvailable) AvailableGreen else UnavailableGrey,
-                                    )
-                                    Text(
-                                        if (state.isAvailable)
-                                            "This donor is ready to help"
-                                        else
-                                            "${state.cooldownDaysRemaining} days remaining in cooldown",
-                                        style = MaterialTheme.typography.bodySmall,
+                                                "${state.cooldownDaysRemaining} days remaining in cooldown",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (state.isAvailable)
+                                                AvailableGreen.copy(alpha = 0.7f)
+                                            else
+                                                UnavailableGrey.copy(alpha = 0.7f),
+                                        )
+                                    }
+                                    // Status badge
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
                                         color = if (state.isAvailable)
-                                            AvailableGreen.copy(alpha = 0.7f)
+                                            AvailableGreen.copy(alpha = 0.1f)
                                         else
-                                            UnavailableGrey.copy(alpha = 0.7f),
-                                    )
+                                            UnavailableGrey.copy(alpha = 0.1f),
+                                    ) {
+                                        Text(
+                                            text = if (state.isAvailable) "READY" else "COOLDOWN",
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (state.isAvailable) AvailableGreen else UnavailableGrey,
+                                        )
+                                    }
                                 }
-                                // Status badge
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = if (state.isAvailable)
-                                        AvailableGreen.copy(alpha = 0.1f)
-                                    else
-                                        UnavailableGrey.copy(alpha = 0.1f),
+                            }
+                        }
+                    } else {
+                        // Privacy mode - show a private notice
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(
-                                        text = if (state.isAvailable) "READY" else "COOLDOWN",
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = if (state.isAvailable) AvailableGreen else UnavailableGrey,
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(UnavailableGrey.copy(alpha = 0.1f)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Lock,
+                                            null,
+                                            tint = UnavailableGrey,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
+                                    Spacer(Modifier.width(14.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Private",
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                            ),
+                                            color = UnavailableGrey,
+                                        )
+                                        Text(
+                                            "Availability status is hidden by admin",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = UnavailableGrey.copy(alpha = 0.7f),
+                                        )
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = UnavailableGrey.copy(alpha = 0.1f),
+                                    ) {
+                                        Text(
+                                            text = "PRIVATE",
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = UnavailableGrey,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -397,7 +461,7 @@ fun DonorProfileScreen(
                     }
 
                     // ─── Donation History (public) ────────────
-                    if (state.donationHistory.isNotEmpty()) {
+                    if (state.donationHistory.isNotEmpty() && !hideSensitiveData) {
                         item {
                             Text(
                                 "Recent Donations",

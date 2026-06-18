@@ -18,6 +18,7 @@ import com.spondon.app.feature.superadmin.maintenance.SAMaintenanceScreen
 import com.spondon.app.feature.superadmin.users.SAUserDetailScreen
 import com.spondon.app.feature.superadmin.users.SAUserListScreen
 import com.spondon.app.feature.superadmin.analytics.SAAnalyticsScreen
+import com.spondon.app.feature.superadmin.privacy.SAPrivacyScreen
 
 /**
  * SuperAdmin navigation graph. Plugged into SpondonNavGraph conditionally.
@@ -100,5 +101,10 @@ fun NavGraphBuilder.superAdminGraph(
     // ─── Phase 5: Analytics ──────────────────────────────────
     composable("sa_analytics") {
         SAAnalyticsScreen(navController)
+    }
+
+    // ─── Privacy Control ─────────────────────────────────────
+    composable("sa_privacy") {
+        SAPrivacyScreen(navController)
     }
 }

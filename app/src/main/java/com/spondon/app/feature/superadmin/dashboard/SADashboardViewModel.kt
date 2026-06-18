@@ -20,6 +20,7 @@ data class SADashboardState(
     val pendingFeedback: Int = 0,
     val newUsersToday: Int = 0,
     val isMaintenanceOn: Boolean = false,
+    val isPrivacyOn: Boolean = false,
     val forceUpdateVersion: String? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -51,6 +52,7 @@ class SADashboardViewModel @Inject constructor(
                 val newUsersToday = saRepository.getNewUsersTodayCount()
                 val maintenanceStatus = saRepository.getMaintenanceStatus()
                 val forceUpdateVersion = saRepository.getForceUpdateVersion()
+                val privacyStatus = saRepository.isPrivacyEnabled()
 
                 _state.update {
                     it.copy(
@@ -62,6 +64,7 @@ class SADashboardViewModel @Inject constructor(
                         pendingFeedback = pendingFeedback,
                         newUsersToday = newUsersToday,
                         isMaintenanceOn = maintenanceStatus,
+                        isPrivacyOn = privacyStatus,
                         forceUpdateVersion = forceUpdateVersion,
                         isLoading = false,
                     )

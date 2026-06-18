@@ -1192,6 +1192,81 @@ class SARepository @Inject constructor(
     }
 
     // ════════════════════════════════════════════════════════════
+    // Privacy Config
+    // ════════════════════════════════════════════════════════════
+
+    /** Check if the member privacy mode is enabled. */
+    suspend fun isPrivacyEnabled(): Boolean {
+        return try {
+            val doc = firestore.document("config/privacy_settings").get().await()
+            doc.getBoolean("enabled") ?: false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** Enable or disable member privacy mode. */
+    suspend fun setPrivacyEnabled(enabled: Boolean): Resource<Unit> {
+        return try {
+            val data = hashMapOf<String, Any>(
+                "enabled" to enabled,
+                "updatedAt" to FieldValue.serverTimestamp(),
+                "updatedBy" to (auth.currentUser?.uid ?: ""),
+            )
+            firestore.document("config/privacy_settings").set(data, com.google.firebase.firestore.SetOptions.merge()).await()
+            auditLogger.log(
+                SAAction.TOGGLE_PRIVACY,
+                metadata = mapOf("enabled" to enabled.toString()),
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to update privacy setting", e)
+        }
+    }
+
+    /** Get the list of admin UIDs authorized to bypass privacy. */
+    suspend fun getPrivacyAuthorizedAdmins(): List<String> {
+        return try {
+            val doc = firestore.document("config/privacy_settings").get().await()
+            (doc.data?.get("authorizedAdmins") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Grant a user access to view private member data. */
+    suspend fun grantPrivacyAccess(uid: String): Resource<Unit> {
+        return try {
+            firestore.document("config/privacy_settings")
+                .update("authorizedAdmins", FieldValue.arrayUnion(uid))
+                .await()
+            auditLogger.log(
+                SAAction.PRIVACY_ACCESS_GRANT,
+                targetId = uid,
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to grant access", e)
+        }
+    }
+
+    /** Revoke a user's access to view private member data. */
+    suspend fun revokePrivacyAccess(uid: String): Resource<Unit> {
+        return try {
+            firestore.document("config/privacy_settings")
+                .update("authorizedAdmins", FieldValue.arrayRemove(uid))
+                .await()
+            auditLogger.log(
+                SAAction.PRIVACY_ACCESS_REVOKE,
+                targetId = uid,
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to revoke access", e)
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
     // Utility
     // ════════════════════════════════════════════════════════════
 
