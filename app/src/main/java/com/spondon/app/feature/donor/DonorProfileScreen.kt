@@ -37,7 +37,6 @@ fun DonorProfileScreen(
     viewModel: DonorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.profileState.collectAsState()
-    val hideSensitiveData by viewModel.hideSensitiveData.collectAsState()
     val userId = navController.currentBackStackEntry
         ?.arguments?.getString("userId") ?: ""
 
@@ -244,7 +243,7 @@ fun DonorProfileScreen(
                     }
 
                     // ─── Availability Status ─────────────────
-                    if (!hideSensitiveData) {
+                    if (!viewModel.shouldHideForUser(userId)) {
                         item {
                             Card(
                                 modifier = Modifier
@@ -461,7 +460,7 @@ fun DonorProfileScreen(
                     }
 
                     // ─── Donation History (public) ────────────
-                    if (state.donationHistory.isNotEmpty() && !hideSensitiveData) {
+                    if (state.donationHistory.isNotEmpty() && !viewModel.shouldHideForUser(userId)) {
                         item {
                             Text(
                                 "Recent Donations",

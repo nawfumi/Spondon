@@ -348,7 +348,7 @@ fun FindDonorScreen(
                         items(state.donors, key = { it.uid }) { donor ->
                             DonorCard(
                                 donor = donor,
-                                hideSensitiveData = hideSensitiveData,
+                                hideSensitiveData = viewModel.shouldHideForUser(donor.uid),
                                 onClick = {
                                     navController.navigate("donor_profile/${donor.uid}")
                                 },

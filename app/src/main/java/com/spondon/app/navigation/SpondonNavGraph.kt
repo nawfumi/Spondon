@@ -237,6 +237,17 @@ fun SpondonNavGraph(
                 CreateSpondonPostScreen(navController)
             }
 
+            // ─── Info Screens (Members/About/Manage) ────────────
+            composable(
+                route = Routes.CommunityInfo.route,
+                arguments = listOf(navArgument("communityId") { type = NavType.StringType }),
+            ) {
+                CommunityInfoScreen(navController)
+            }
+            composable(Routes.SpondonInfo.route) {
+                SpondonInfoScreen(navController)
+            }
+
             // ─── Blood Request Sub-screens ───────────────────
             composable(
                 route = Routes.RequestDetail.route,

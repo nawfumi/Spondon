@@ -30,6 +30,7 @@ private val SAGreen = Color(0xFF4CAF50)
 private val SARed = Color(0xFFEF5350)
 private val SABlue = Color(0xFF42A5F5)
 private val SAOrange = Color(0xFFFFA726)
+private val SAPurple = Color(0xFFAB47BC)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +40,10 @@ fun SAPrivacyScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showAddUserDialog by remember { mutableStateOf(false) }
+    var showAddAdminDialog by remember { mutableStateOf(false) }
+    var showCommunityDialog by remember { mutableStateOf(false) }
+    var showClearConfirm by remember { mutableStateOf(false) }
 
     // Show success messages
     LaunchedEffect(state.successMessage) {
@@ -110,7 +114,7 @@ fun SAPrivacyScreen(
                 contentPadding = PaddingValues(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // ─── Privacy Toggle Card ─────────────────────
+                // ─── Status Card ─────────────────────────────
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -122,26 +126,25 @@ fun SAPrivacyScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                // Icon
                                 Card(
                                     shape = RoundedCornerShape(50),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = if (state.isPrivacyEnabled)
+                                        containerColor = if (state.protectedUserIds.isNotEmpty())
                                             SAOrange.copy(alpha = 0.15f)
                                         else
                                             SAGreen.copy(alpha = 0.15f),
                                     ),
                                 ) {
                                     Icon(
-                                        if (state.isPrivacyEnabled)
-                                            Icons.Filled.VisibilityOff
+                                        if (state.protectedUserIds.isNotEmpty())
+                                            Icons.Filled.Shield
                                         else
-                                            Icons.Filled.Visibility,
+                                            Icons.Outlined.ShieldMoon,
                                         null,
                                         modifier = Modifier
                                             .padding(12.dp)
                                             .size(28.dp),
-                                        tint = if (state.isPrivacyEnabled) SAOrange else SAGreen,
+                                        tint = if (state.protectedUserIds.isNotEmpty()) SAOrange else SAGreen,
                                     )
                                 }
 
@@ -149,33 +152,21 @@ fun SAPrivacyScreen(
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "Member Privacy Mode",
+                                        "Per-User Privacy",
                                         style = MaterialTheme.typography.titleMedium.copy(
                                             fontWeight = FontWeight.Bold,
                                         ),
                                         color = Color.White,
                                     )
                                     Text(
-                                        if (state.isPrivacyEnabled)
-                                            "Sensitive data is hidden from members"
+                                        if (state.protectedUserIds.isNotEmpty())
+                                            "${state.protectedUserIds.size} user${if (state.protectedUserIds.size > 1) "s" else ""} protected"
                                         else
-                                            "All members can see each other's data",
+                                            "No users are currently protected",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color.White.copy(alpha = 0.5f),
                                     )
                                 }
-
-                                Switch(
-                                    checked = state.isPrivacyEnabled,
-                                    onCheckedChange = { viewModel.togglePrivacy() },
-                                    enabled = !state.isToggling,
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = SAOrange,
-                                        checkedTrackColor = SAOrange.copy(alpha = 0.3f),
-                                        uncheckedThumbColor = Color.White.copy(alpha = 0.6f),
-                                        uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
-                                    ),
-                                )
                             }
 
                             Spacer(Modifier.height(16.dp))
@@ -201,7 +192,8 @@ fun SAPrivacyScreen(
                                     )
                                     Spacer(Modifier.width(10.dp))
                                     Text(
-                                        "When enabled, regular members cannot see:\n" +
+                                        "Select specific users or entire communities to protect. " +
+                                                "Protected users' data is hidden:\n" +
                                                 "• Availability status\n" +
                                                 "• Last donation date\n" +
                                                 "• Contact number\n\n" +
@@ -216,210 +208,274 @@ fun SAPrivacyScreen(
                     }
                 }
 
-                // ─── Status Badge ────────────────────────────
+                // ─── Action Buttons ──────────────────────────
                 item {
-                    Card(
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (state.isPrivacyEnabled)
-                                SAOrange.copy(alpha = 0.1f)
-                            else
-                                SAGreen.copy(alpha = 0.1f),
-                        ),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        // Add individual user
+                        FilledTonalButton(
+                            onClick = { showAddUserDialog = true },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = SAGold.copy(alpha = 0.15f),
+                                contentColor = SAGold,
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f),
                         ) {
-                            Icon(
-                                if (state.isPrivacyEnabled) Icons.Filled.Shield else Icons.Outlined.ShieldMoon,
-                                null,
-                                tint = if (state.isPrivacyEnabled) SAOrange else SAGreen,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Spacer(Modifier.width(10.dp))
+                            Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Add User", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                        }
+
+                        // Protect community
+                        FilledTonalButton(
+                            onClick = { showCommunityDialog = true },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = SAPurple.copy(alpha = 0.15f),
+                                contentColor = SAPurple,
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(Icons.Default.Groups, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Community", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                        }
+                    }
+                }
+
+                // ─── Protected Users Section ─────────────────
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "PROTECTED USERS (${state.protectedUserIds.size})",
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                            color = SAOrange.copy(alpha = 0.6f),
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (state.protectedUserIds.isNotEmpty()) {
+                            TextButton(onClick = { showClearConfirm = true }) {
+                                Text(
+                                    "Clear All",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SARed.copy(alpha = 0.7f),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (state.protectedUsers.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = SADarkCard),
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Shield,
+                                    null,
+                                    tint = Color.White.copy(alpha = 0.2f),
+                                    modifier = Modifier.size(40.dp),
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "No protected users",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White.copy(alpha = 0.3f),
+                                )
+                                Text(
+                                    "Add users or communities to protect their data",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.2f),
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(state.protectedUsers, key = { it.uid }) { user ->
+                        ProtectedUserCard(
+                            user = user,
+                            onRemove = { viewModel.removeProtectedUser(user.uid) },
+                        )
+                    }
+                }
+
+                // ─── Authorized Admins Section ───────────────
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "AUTHORIZED ADMINS",
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                            color = SAGold.copy(alpha = 0.4f),
+                            modifier = Modifier.weight(1f),
+                        )
+                        FilledTonalButton(
+                            onClick = { showAddAdminDialog = true },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = SAGold.copy(alpha = 0.15f),
+                                contentColor = SAGold,
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        ) {
+                            Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
                             Text(
-                                if (state.isPrivacyEnabled)
-                                    "PRIVACY MODE ACTIVE"
-                                else
-                                    "PRIVACY MODE OFF",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = 1.sp,
-                                ),
-                                color = if (state.isPrivacyEnabled) SAOrange else SAGreen,
+                                "Add Admin",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             )
                         }
                     }
                 }
 
-                // ─── Authorized Admins Section ───────────────
-                if (state.isPrivacyEnabled) {
+                if (state.authorizedAdmins.isEmpty()) {
                     item {
-                        Row(
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = SADarkCard),
                         ) {
-                            Text(
-                                "AUTHORIZED ADMINS",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    letterSpacing = 1.sp,
-                                ),
-                                color = SAGold.copy(alpha = 0.4f),
-                                modifier = Modifier.weight(1f),
-                            )
-                            FilledTonalButton(
-                                onClick = { showAddDialog = true },
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = SAGold.copy(alpha = 0.15f),
-                                    contentColor = SAGold,
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 Icon(
-                                    Icons.Default.PersonAdd,
+                                    Icons.Outlined.AdminPanelSettings,
                                     null,
-                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.White.copy(alpha = 0.2f),
+                                    modifier = Modifier.size(40.dp),
                                 )
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.height(8.dp))
                                 Text(
-                                    "Add Admin",
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                    ),
+                                    "No authorized admins yet",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White.copy(alpha = 0.3f),
+                                )
+                                Text(
+                                    "Add admins who can view protected member data",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.2f),
                                 )
                             }
                         }
                     }
-
-                    if (state.authorizedAdmins.isEmpty()) {
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = SADarkCard),
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(32.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.AdminPanelSettings,
-                                        null,
-                                        tint = Color.White.copy(alpha = 0.2f),
-                                        modifier = Modifier.size(40.dp),
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        "No authorized admins yet",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White.copy(alpha = 0.3f),
-                                    )
-                                    Text(
-                                        "Add admins who can view private member data",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.2f),
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        items(state.authorizedAdmins, key = { it.uid }) { admin ->
-                            AuthorizedAdminCard(
-                                admin = admin,
-                                onRevoke = { viewModel.revokeAccess(admin.uid) },
-                            )
-                        }
+                } else {
+                    items(state.authorizedAdmins, key = { it.uid }) { admin ->
+                        AuthorizedAdminCard(
+                            admin = admin,
+                            onRevoke = { viewModel.revokeAccess(admin.uid) },
+                        )
                     }
                 }
             }
         }
     }
 
-    // ─── Add Admin Dialog ────────────────────────────────────
-    if (showAddDialog) {
-        val filteredUsers = viewModel.getFilteredUsers()
+    // ─── Add Protected User Dialog ───────────────────────────
+    if (showAddUserDialog) {
+        val filteredUsers = viewModel.getFilteredUsersForProtection()
 
         AlertDialog(
             onDismissRequest = {
-                showAddDialog = false
+                showAddUserDialog = false
                 viewModel.updateSearchQuery("")
             },
             containerColor = SADarkCard,
             title = {
-                Text(
-                    "Grant Privacy Access",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                )
+                Text("Protect User", fontWeight = FontWeight.Bold, color = Color.White)
             },
             text = {
                 Column {
-                    OutlinedTextField(
+                    Text(
+                        "Select a user to hide their availability, donation date, and contact from non-authorized members.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.4f),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    SearchField(
                         value = state.searchQuery,
                         onValueChange = { viewModel.updateSearchQuery(it) },
-                        placeholder = {
-                            Text(
-                                "Search by name, email, or phone…",
-                                color = Color.White.copy(alpha = 0.3f),
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true,
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Search,
-                                null,
-                                tint = Color.White.copy(alpha = 0.3f),
-                            )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SAGold,
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            cursorColor = SAGold,
-                        ),
+                        placeholder = "Search by name, email, or phone…",
                     )
+                    Spacer(Modifier.height(12.dp))
+                    UserSearchResults(
+                        users = filteredUsers,
+                        emptyText = if (state.searchQuery.isNotBlank()) "No users found" else "Type to search users",
+                        onUserClick = { user ->
+                            viewModel.addProtectedUser(user.uid)
+                            showAddUserDialog = false
+                            viewModel.updateSearchQuery("")
+                        },
+                        actionIcon = Icons.Default.Shield,
+                        actionColor = SAOrange,
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    showAddUserDialog = false
+                    viewModel.updateSearchQuery("")
+                }) {
+                    Text("Close", color = Color.White.copy(alpha = 0.5f))
+                }
+            },
+        )
+    }
 
+    // ─── Community Protection Dialog ─────────────────────────
+    if (showCommunityDialog) {
+        AlertDialog(
+            onDismissRequest = { showCommunityDialog = false },
+            containerColor = SADarkCard,
+            title = {
+                Text("Protect by Community", fontWeight = FontWeight.Bold, color = Color.White)
+            },
+            text = {
+                Column {
+                    Text(
+                        "Add or remove all members of a community from the protected list.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.4f),
+                    )
                     Spacer(Modifier.height(12.dp))
 
-                    if (filteredUsers.isEmpty()) {
+                    if (state.communities.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(100.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                if (state.searchQuery.isNotBlank()) "No users found"
-                                else "Type to search users",
-                                color = Color.White.copy(alpha = 0.3f),
-                            )
+                            Text("No communities found", color = Color.White.copy(alpha = 0.3f))
                         }
                     } else {
                         LazyColumn(
-                            modifier = Modifier.heightIn(max = 300.dp),
+                            modifier = Modifier.heightIn(max = 350.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            items(
-                                filteredUsers.take(20),
-                                key = { it.uid },
-                            ) { user ->
+                            items(state.communities, key = { it.id }) { community ->
                                 Card(
-                                    onClick = {
-                                        viewModel.grantAccess(user.uid)
-                                        showAddDialog = false
-                                        viewModel.updateSearchQuery("")
-                                    },
                                     shape = RoundedCornerShape(10.dp),
                                     colors = CardDefaults.cardColors(
                                         containerColor = Color.White.copy(alpha = 0.05f),
@@ -431,19 +487,18 @@ fun SAPrivacyScreen(
                                             .padding(12.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        // Avatar
                                         Box(
                                             modifier = Modifier
                                                 .size(36.dp)
                                                 .clip(CircleShape)
-                                                .background(SAGold.copy(alpha = 0.1f)),
+                                                .background(SAPurple.copy(alpha = 0.1f)),
                                             contentAlignment = Alignment.Center,
                                         ) {
-                                            Text(
-                                                user.name.firstOrNull()?.uppercase() ?: "?",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = SAGold,
+                                            Icon(
+                                                Icons.Default.Groups,
+                                                null,
+                                                tint = SAPurple,
+                                                modifier = Modifier.size(18.dp),
                                             )
                                         }
 
@@ -451,7 +506,7 @@ fun SAPrivacyScreen(
 
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                user.name.ifEmpty { "Unknown" },
+                                                community.name,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = Color.White,
@@ -459,20 +514,47 @@ fun SAPrivacyScreen(
                                                 overflow = TextOverflow.Ellipsis,
                                             )
                                             Text(
-                                                user.email.ifEmpty { user.phone },
+                                                "${community.memberCount} members",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = Color.White.copy(alpha = 0.4f),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
                                             )
                                         }
 
-                                        Icon(
-                                            Icons.Default.Add,
-                                            null,
-                                            tint = SAGreen,
-                                            modifier = Modifier.size(20.dp),
-                                        )
+                                        // Protect / Unprotect buttons
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    viewModel.protectCommunity(community.id)
+                                                    showCommunityDialog = false
+                                                },
+                                                colors = ButtonDefaults.filledTonalButtonColors(
+                                                    containerColor = SAOrange.copy(alpha = 0.15f),
+                                                    contentColor = SAOrange,
+                                                ),
+                                                shape = RoundedCornerShape(8.dp),
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                            ) {
+                                                Icon(Icons.Default.Shield, null, modifier = Modifier.size(14.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("Add", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                            }
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    viewModel.unprotectCommunity(community.id)
+                                                    showCommunityDialog = false
+                                                },
+                                                colors = ButtonDefaults.filledTonalButtonColors(
+                                                    containerColor = SARed.copy(alpha = 0.15f),
+                                                    contentColor = SARed,
+                                                ),
+                                                shape = RoundedCornerShape(8.dp),
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                            ) {
+                                                Icon(Icons.Default.RemoveCircleOutline, null, modifier = Modifier.size(14.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("Remove", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -482,14 +564,301 @@ fun SAPrivacyScreen(
             },
             confirmButton = {},
             dismissButton = {
+                TextButton(onClick = { showCommunityDialog = false }) {
+                    Text("Close", color = Color.White.copy(alpha = 0.5f))
+                }
+            },
+        )
+    }
+
+    // ─── Add Admin Dialog ────────────────────────────────────
+    if (showAddAdminDialog) {
+        val filteredUsers = viewModel.getFilteredUsersForAuthorization()
+
+        AlertDialog(
+            onDismissRequest = {
+                showAddAdminDialog = false
+                viewModel.updateSearchQuery("")
+            },
+            containerColor = SADarkCard,
+            title = {
+                Text("Grant Privacy Access", fontWeight = FontWeight.Bold, color = Color.White)
+            },
+            text = {
+                Column {
+                    SearchField(
+                        value = state.searchQuery,
+                        onValueChange = { viewModel.updateSearchQuery(it) },
+                        placeholder = "Search by name, email, or phone…",
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    UserSearchResults(
+                        users = filteredUsers,
+                        emptyText = if (state.searchQuery.isNotBlank()) "No users found" else "Type to search users",
+                        onUserClick = { user ->
+                            viewModel.grantAccess(user.uid)
+                            showAddAdminDialog = false
+                            viewModel.updateSearchQuery("")
+                        },
+                        actionIcon = Icons.Default.Add,
+                        actionColor = SAGreen,
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
                 TextButton(onClick = {
-                    showAddDialog = false
+                    showAddAdminDialog = false
                     viewModel.updateSearchQuery("")
                 }) {
                     Text("Close", color = Color.White.copy(alpha = 0.5f))
                 }
             },
         )
+    }
+
+    // ─── Clear All Confirmation ──────────────────────────────
+    if (showClearConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirm = false },
+            containerColor = SADarkCard,
+            title = { Text("Clear All Protected Users?", fontWeight = FontWeight.Bold, color = Color.White) },
+            text = {
+                Text(
+                    "This will remove all ${state.protectedUserIds.size} users from the protected list. " +
+                            "Their data will become visible to all members again.",
+                    color = Color.White.copy(alpha = 0.6f),
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearAllProtected()
+                        showClearConfirm = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SARed),
+                ) {
+                    Text("Clear All")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirm = false }) {
+                    Text("Cancel", color = Color.White.copy(alpha = 0.5f))
+                }
+            },
+        )
+    }
+}
+
+// ─── Reusable Components ─────────────────────────────────────
+
+@Composable
+private fun SearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = {
+            Text(placeholder, color = Color.White.copy(alpha = 0.3f))
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        singleLine = true,
+        leadingIcon = {
+            Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.3f))
+        },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = SAGold,
+            unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            cursorColor = SAGold,
+        ),
+    )
+}
+
+@Composable
+private fun UserSearchResults(
+    users: List<com.spondon.app.feature.superadmin.users.SAUserItem>,
+    emptyText: String,
+    onUserClick: (com.spondon.app.feature.superadmin.users.SAUserItem) -> Unit,
+    actionIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    actionColor: Color,
+) {
+    if (users.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(emptyText, color = Color.White.copy(alpha = 0.3f))
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.heightIn(max = 300.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            items(users.take(20), key = { it.uid }) { user ->
+                Card(
+                    onClick = { onUserClick(user) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.05f),
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(SAGold.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                user.name.firstOrNull()?.uppercase() ?: "?",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = SAGold,
+                            )
+                        }
+
+                        Spacer(Modifier.width(10.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                user.name.ifEmpty { "Unknown" },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                user.email.ifEmpty { user.phone },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.4f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+
+                        Icon(actionIcon, null, tint = actionColor, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProtectedUserCard(
+    user: com.spondon.app.feature.superadmin.users.SAUserItem,
+    onRemove: () -> Unit,
+) {
+    var showConfirm by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SADarkCard),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(SAOrange.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    user.name.firstOrNull()?.uppercase() ?: "?",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = SAOrange,
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    user.name.ifEmpty { "Unknown" },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (user.bloodGroup.isNotEmpty()) {
+                        Card(
+                            shape = RoundedCornerShape(4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = SARed.copy(alpha = 0.15f),
+                            ),
+                        ) {
+                            Text(
+                                user.bloodGroup,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = SARed,
+                            )
+                        }
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        user.email.ifEmpty { user.phone },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.4f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            // Unprotect button
+            if (showConfirm) {
+                Row {
+                    TextButton(onClick = { showConfirm = false }) {
+                        Text("Cancel", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.4f))
+                    }
+                    Button(
+                        onClick = {
+                            onRemove()
+                            showConfirm = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SARed),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        Text("Remove", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                IconButton(onClick = { showConfirm = true }) {
+                    Icon(
+                        Icons.Default.RemoveCircleOutline,
+                        contentDescription = "Remove protection",
+                        tint = SARed.copy(alpha = 0.7f),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -511,7 +880,6 @@ private fun AuthorizedAdminCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Avatar
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -566,7 +934,6 @@ private fun AuthorizedAdminCard(
                 }
             }
 
-            // Revoke button
             if (showConfirm) {
                 Row {
                     TextButton(onClick = { showConfirm = false }) {

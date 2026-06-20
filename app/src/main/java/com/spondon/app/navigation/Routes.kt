@@ -58,4 +58,8 @@ sealed class Routes(val route: String) {
     // Spondon Global Community
     data object SpondonCommunity : Routes("spondon_community")
     data object CreateSpondonPost : Routes("create_spondon_post")
+
+    // Info Screens (Members/About/Manage extracted from detail screens)
+    data object CommunityInfo : Routes("community_info/{communityId}")
+    data object SpondonInfo : Routes("spondon_info")
 }

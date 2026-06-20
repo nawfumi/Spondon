@@ -1,6 +1,7 @@
 package com.spondon.app.feature.community
 
 import com.spondon.app.core.common.formatDisplay
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,20 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.spondon.app.core.domain.model.*
-import com.spondon.app.core.ui.components.AvailabilityIndicator
-import com.spondon.app.core.ui.components.BloodGroupBadge
-import com.spondon.app.core.ui.components.RoleBadge
-import com.spondon.app.core.ui.components.StatCard
 import com.spondon.app.core.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,14 +112,14 @@ fun CommunityDetailScreen(
                         .fillMaxSize()
                         .padding(padding),
                 ) {
-                    // ─── Cover Header ────────────────────
+                    // ─── Cover Banner ────────────────────
                     item {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(220.dp),
+                                .height(280.dp),
                         ) {
-                            // Cover image
+                            // Cover image or gradient fallback
                             if (community.coverUrl.isNotEmpty()) {
                                 AsyncImage(
                                     model = community.coverUrl,
@@ -131,39 +127,37 @@ fun CommunityDetailScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
                                 )
+                                // Gradient overlay on top of image
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                                                startY = 80f,
+                                            )
+                                        ),
+                                )
                             } else {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .background(
-                                            Brush.linearGradient(
-                                                listOf(BloodRed, DarkRose, BloodRed.copy(alpha = 0.6f)),
+                                            Brush.verticalGradient(
+                                                listOf(Color(0xFF7A1212), Color(0xFF2B0606))
                                             )
                                         ),
                                 )
                             }
 
-                            // Gradient overlay
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                                            startY = 80f,
-                                        )
-                                    ),
-                            )
-
                             // Back button
                             IconButton(
                                 onClick = { navController.popBackStack() },
                                 modifier = Modifier
+                                    .padding(16.dp)
                                     .align(Alignment.TopStart)
-                                    .padding(8.dp),
-                                colors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = Color.Black.copy(alpha = 0.4f),
-                                ),
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.28f)),
                             ) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowBack,
@@ -176,49 +170,88 @@ fun CommunityDetailScreen(
                             Surface(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(12.dp),
-                                shape = RoundedCornerShape(20.dp),
+                                    .padding(16.dp),
+                                shape = RoundedCornerShape(50),
                                 color = when (state.membershipStatus) {
-                                    MembershipStatus.JOINED -> AvailableGreen
+                                    MembershipStatus.JOINED -> Color(0xFF3C9B56)
                                     MembershipStatus.PENDING -> PendingAmber
                                     MembershipStatus.NONE -> MaterialTheme.colorScheme.surfaceVariant
                                 },
                             ) {
-                                Text(
-                                    text = when (state.membershipStatus) {
-                                        MembershipStatus.JOINED -> "✓ Member"
-                                        MembershipStatus.PENDING -> "⏳ Pending"
-                                        MembershipStatus.NONE -> "Not Joined"
-                                    },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = when (state.membershipStatus) {
-                                        MembershipStatus.JOINED -> Color.White
-                                        MembershipStatus.PENDING -> Color.Black
-                                        MembershipStatus.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    when (state.membershipStatus) {
+                                        MembershipStatus.JOINED -> {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                "Member",
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                        }
+                                        MembershipStatus.PENDING -> {
+                                            Text(
+                                                "⏳ Pending",
+                                                color = Color.Black,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                        }
+                                        MembershipStatus.NONE -> {
+                                            Text(
+                                                "Not Joined",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                        }
+                                    }
+                                }
                             }
 
-                            // Community info at bottom of header
+                            // Community info at bottom of banner
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
-                                    .padding(16.dp),
+                                    .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
                             ) {
-                                Text(
-                                    text = community.name,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                )
+                                // Clickable community name → navigates to Info screen
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable {
+                                        navController.navigate("community_info/$communityId")
+                                    },
+                                ) {
+                                    Text(
+                                        text = community.name,
+                                        color = Color.White,
+                                        fontSize = 27.sp,
+                                        fontWeight = FontWeight.Black,
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.ChevronRight,
+                                        contentDescription = "Open community details",
+                                        tint = Color.White.copy(alpha = 0.85f),
+                                    )
+                                }
+
+                                Spacer(Modifier.height(8.dp))
+
+                                // District row
                                 if (community.district.isNotEmpty()) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                             Icons.Default.LocationOn,
                                             contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                            tint = Color.White.copy(alpha = 0.7f),
+                                            tint = Color.White.copy(alpha = 0.85f),
+                                            modifier = Modifier.size(15.dp),
                                         )
                                         Spacer(Modifier.width(4.dp))
                                         Text(
@@ -226,59 +259,31 @@ fun CommunityDetailScreen(
                                                 append(community.district)
                                                 if (community.upazila.isNotEmpty()) append(" · ${community.upazila}")
                                             },
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.7f),
+                                            color = Color.White.copy(alpha = 0.85f),
+                                            fontSize = 14.5.sp,
                                         )
                                     }
+                                    Spacer(Modifier.height(6.dp))
                                 }
-                            }
-                        }
-                    }
 
-                    // ─── Stats Row ───────────────────────
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                                .height(IntrinsicSize.Max),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            CommunityStatCard(
-                                icon = Icons.Outlined.People,
-                                label = "Members",
-                                value = "${community.memberCount}",
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                            )
-                            CommunityStatCard(
-                                icon = Icons.Outlined.VolunteerActivism,
-                                label = "Donations",
-                                value = "${community.donationCount}",
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                            )
-                            CommunityStatCard(
-                                icon = Icons.Outlined.Pending,
-                                label = "Active",
-                                value = "${state.requests.count { it.status == RequestStatus.ACTIVE }}",
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                            )
+                                // Inline stats
+                                Text(
+                                    text = "${community.memberCount} Members  •  ${community.donationCount} Donations  •  ${state.requests.size} Requests",
+                                    color = Color.White.copy(alpha = 0.65f),
+                                    fontSize = 13.sp,
+                                )
+                            }
                         }
                     }
 
                     // ─── Action Buttons (hidden for Spondon) ──────────────────
                     if (!community.isSpondon) {
                         item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                // Join / Leave button
-                                when (state.membershipStatus) {
-                                    MembershipStatus.NONE -> {
-                                        val isEligible = viewModel.isBloodGroupEligible(community)
-                                        Button(
+                            when (state.membershipStatus) {
+                                MembershipStatus.NONE -> {
+                                    val isEligible = viewModel.isBloodGroupEligible(community)
+                                    if (isEligible) {
+                                        OutlinedButton(
                                             onClick = {
                                                 if (community.type == CommunityType.PUBLIC) {
                                                     viewModel.joinPublicCommunity(communityId)
@@ -286,434 +291,135 @@ fun CommunityDetailScreen(
                                                     navController.navigate("join_request/$communityId")
                                                 }
                                             },
-                                            modifier = Modifier.weight(1f),
-                                            enabled = isEligible,
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = BloodRed,
-                                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                                disabledContentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
-                                            ),
-                                            shape = RoundedCornerShape(16.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(20.dp)
+                                                .height(50.dp),
+                                            shape = RoundedCornerShape(50),
+                                            border = BorderStroke(1.4.dp, BloodRed),
                                         ) {
                                             Icon(Icons.Default.GroupAdd, contentDescription = null, Modifier.size(18.dp))
                                             Spacer(Modifier.width(6.dp))
                                             Text(
-                                                if (!isEligible) "Blood Group Mismatch"
-                                                else if (community.type == CommunityType.PUBLIC) "Join"
-                                                else "Request to Join"
+                                                if (community.type == CommunityType.PUBLIC) "Join Community"
+                                                else "Request to Join",
+                                                fontSize = 16.sp,
+                                                color = BloodRed,
                                             )
                                         }
-                                    }
-                                    MembershipStatus.JOINED -> {
-                                        OutlinedButton(
-                                            onClick = { viewModel.leaveCommunity(communityId) },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(16.dp),
-                                        ) {
-                                            Text("Leave Community")
-                                        }
-                                    }
-                                    MembershipStatus.PENDING -> {
+                                    } else {
                                         OutlinedButton(
                                             onClick = {},
-                                            modifier = Modifier.weight(1f),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(20.dp)
+                                                .height(50.dp),
                                             enabled = false,
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = RoundedCornerShape(50),
+                                            border = BorderStroke(1.4.dp, Color(0xFFC9C5C2)),
                                         ) {
-                                            Text("⏳ Pending Approval")
+                                            Text(
+                                                "Blood Group Mismatch",
+                                                fontSize = 16.sp,
+                                                color = Color(0xFF3A3A3A),
+                                            )
                                         }
+                                    }
+                                }
+                                MembershipStatus.JOINED -> {
+                                    OutlinedButton(
+                                        onClick = { viewModel.leaveCommunity(communityId) },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(20.dp)
+                                            .height(50.dp),
+                                        shape = RoundedCornerShape(50),
+                                        border = BorderStroke(1.4.dp, Color(0xFFC9C5C2)),
+                                    ) {
+                                        Text(
+                                            "Leave Community",
+                                            fontSize = 16.sp,
+                                            color = Color(0xFF3A3A3A),
+                                        )
+                                    }
+                                }
+                                MembershipStatus.PENDING -> {
+                                    OutlinedButton(
+                                        onClick = {},
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(20.dp)
+                                            .height(50.dp),
+                                        enabled = false,
+                                        shape = RoundedCornerShape(50),
+                                        border = BorderStroke(1.4.dp, Color(0xFFC9C5C2)),
+                                    ) {
+                                        Text(
+                                            "⏳ Pending Approval",
+                                            fontSize = 16.sp,
+                                            color = Color(0xFF3A3A3A),
+                                        )
                                     }
                                 }
                             }
                         }
                     }
 
-                    // ─── Tab Row ─────────────────────────
-                    item {
-                        Spacer(Modifier.height(8.dp))
-                        TabRow(
-                            selectedTabIndex = state.selectedTab,
-                            containerColor = MaterialTheme.colorScheme.background,
-                            contentColor = BloodRed,
-                        ) {
-                            Tab(
-                                selected = state.selectedTab == 0,
-                                onClick = { viewModel.setDetailTab(0) },
-                                text = { Text("Feed") },
-                            )
-                            Tab(
-                                selected = state.selectedTab == 1,
-                                onClick = { viewModel.setDetailTab(1) },
-                                text = { Text("Members") },
-                            )
-                            Tab(
-                                selected = state.selectedTab == 2,
-                                onClick = { viewModel.setDetailTab(2) },
-                                text = { Text("About") },
-                            )
+                    // ─── Feed Content (no tabs) ─────────────────────
+                    if (state.isRequestsLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                ContainedLoadingIndicator()
+                            }
                         }
-                    }
-
-                    // ─── Tab Content ─────────────────────
-                    when (state.selectedTab) {
-                        0 -> {
-                            // Loading state
-                            if (state.isRequestsLoading) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(32.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        ContainedLoadingIndicator()
-                                    }
-                                }
-                            } else if (state.requests.isEmpty()) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(40.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.Feed,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(48.dp),
-                                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                                            )
-                                            Spacer(Modifier.height(12.dp))
-                                            Text(
-                                                "No blood requests yet",
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                            )
-                                            Spacer(Modifier.height(4.dp))
-                                            Text(
-                                                "Requests posted to this community will appear here",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                            )
-                                        }
-                                    }
-                                }
-                            } else {
-                                items(state.requests, key = { it.id }) { request ->
-                                    com.spondon.app.feature.request.RequestCard(
-                                        request = request,
-                                        onClick = { navController.navigate("request_detail/${request.id}") },
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    } else if (state.requests.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(40.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Feed,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                                    )
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        "No blood requests yet",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Requests posted to this community will appear here",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                        textAlign = TextAlign.Center,
                                     )
                                 }
                             }
                         }
-                        1 -> {
-                            // Members tab
-                            if (state.members.isEmpty()) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(200.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            "No members found",
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                        )
-                                    }
-                                }
-                            } else {
-                                items(state.members, key = { it.uid }) { user ->
-                                    MemberRow(
-                                        user = user,
-                                        community = community,
-                                        viewModel = viewModel,
-                                        onProfileClick = {
-                                            navController.navigate("donor_profile/${user.uid}")
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                        2 -> {
-                            // About tab
-                            item {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    if (community.description.isNotEmpty()) {
-                                        Text(
-                                            "About",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(
-                                            community.description,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                        )
-                                        Spacer(Modifier.height(16.dp))
-                                    }
-
-                                    // Community info card — redesigned with chips
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surface,
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                                    ) {
-                                        Column(modifier = Modifier.padding(16.dp)) {
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.Public,
-                                                label = "Type",
-                                                value = if (community.type == CommunityType.PUBLIC) "Public" else "Private",
-                                                chipColor = if (community.type == CommunityType.PUBLIC) AvailableGreen else PendingAmber,
-                                                chipBg = if (community.type == CommunityType.PUBLIC) AvailableGreen.copy(alpha = 0.1f) else PendingAmber.copy(alpha = 0.1f),
-                                            )
-                                            Spacer(Modifier.height(10.dp))
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.LocationOn,
-                                                label = "District",
-                                                value = community.district.ifEmpty { "—" },
-                                                chipColor = MaterialTheme.colorScheme.tertiary,
-                                                chipBg = MaterialTheme.colorScheme.tertiaryContainer,
-                                            )
-                                            Spacer(Modifier.height(10.dp))
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.Map,
-                                                label = "Upazila",
-                                                value = community.upazila.ifEmpty { "—" },
-                                                chipColor = MaterialTheme.colorScheme.tertiary,
-                                                chipBg = MaterialTheme.colorScheme.tertiaryContainer,
-                                            )
-                                            Spacer(Modifier.height(10.dp))
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.CalendarMonth,
-                                                label = "Founded",
-                                                value = community.createdAt?.formatDisplay() ?: "—",
-                                                chipColor = MaterialTheme.colorScheme.secondary,
-                                                chipBg = MaterialTheme.colorScheme.secondaryContainer,
-                                            )
-                                            Spacer(Modifier.height(10.dp))
-                                            AboutInfoRow(
-                                                icon = Icons.Outlined.Verified,
-                                                label = "Verified",
-                                                value = if (community.isVerified) "Yes ✅" else "No",
-                                                chipColor = if (community.isVerified) AvailableGreen else UnavailableGrey,
-                                                chipBg = if (community.isVerified) AvailableGreen.copy(alpha = 0.1f) else UnavailableGrey.copy(alpha = 0.1f),
-                                            )
-                                        }
-                                    }
-
-                                    if (community.bloodGroups.isNotEmpty()) {
-                                        Spacer(Modifier.height(16.dp))
-                                        Text(
-                                            "Supported Blood Groups",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        Spacer(Modifier.height(8.dp))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            community.bloodGroups.forEach { group ->
-                                                BloodGroupBadge(bloodGroup = group)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                    } else {
+                        items(state.requests, key = { it.id }) { request ->
+                            com.spondon.app.feature.request.RequestCard(
+                                request = request,
+                                onClick = { navController.navigate("request_detail/${request.id}") },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun CommunityStatCard(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = BloodRed,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MemberRow(
-    user: User,
-    community: Community,
-    viewModel: CommunityViewModel,
-    onProfileClick: () -> Unit,
-) {
-    val role = when {
-        community.adminIds.contains(user.uid) -> CommunityRole.ADMIN
-        community.moderatorIds.contains(user.uid) -> CommunityRole.MODERATOR
-        else -> CommunityRole.MEMBER
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable(onClick = onProfileClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(BloodRed.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (user.avatarUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = user.avatarUrl,
-                        contentDescription = user.name,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
-                    Text(
-                        text = user.name.firstOrNull()?.uppercase() ?: "?",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = BloodRed,
-                    )
-                }
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = user.name.ifEmpty { "Unknown" },
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (role != CommunityRole.MEMBER) {
-                        Spacer(Modifier.width(6.dp))
-                        RoleBadge(role = role)
-                    }
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (user.bloodGroup.isNotEmpty()) {
-                        BloodGroupBadge(bloodGroup = user.bloodGroup)
-                    }
-                    AvailabilityIndicator(
-                        isAvailable = viewModel.isUserAvailable(user),
-                        daysRemaining = viewModel.getDaysUntilAvailable(user),
-                    )
-                }
-            }
-
-            Icon(
-                Icons.Filled.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun AboutInfoRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    chipColor: Color,
-    chipBg: Color,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = chipColor,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            modifier = Modifier.weight(1f),
-        )
-        Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = chipBg,
-        ) {
-            Text(
-                text = value,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = chipColor,
-            )
         }
     }
 }

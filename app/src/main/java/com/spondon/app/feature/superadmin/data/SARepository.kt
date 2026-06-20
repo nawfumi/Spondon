@@ -1195,32 +1195,161 @@ class SARepository @Inject constructor(
     // Privacy Config
     // ════════════════════════════════════════════════════════════
 
-    /** Check if the member privacy mode is enabled. */
+    /** Check if the member privacy mode is enabled (at least 1 protected user). */
     suspend fun isPrivacyEnabled(): Boolean {
         return try {
             val doc = firestore.document("config/privacy_settings").get().await()
-            doc.getBoolean("enabled") ?: false
+            val protectedIds = (doc.data?.get("protectedUserIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            protectedIds.isNotEmpty()
         } catch (_: Exception) {
             false
         }
     }
 
-    /** Enable or disable member privacy mode. */
-    suspend fun setPrivacyEnabled(enabled: Boolean): Resource<Unit> {
+    /** Get the list of protected user IDs. */
+    suspend fun getProtectedUserIds(): List<String> {
         return try {
-            val data = hashMapOf<String, Any>(
-                "enabled" to enabled,
-                "updatedAt" to FieldValue.serverTimestamp(),
-                "updatedBy" to (auth.currentUser?.uid ?: ""),
-            )
-            firestore.document("config/privacy_settings").set(data, com.google.firebase.firestore.SetOptions.merge()).await()
+            val doc = firestore.document("config/privacy_settings").get().await()
+            (doc.data?.get("protectedUserIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Add a user to the protected list. */
+    suspend fun addProtectedUser(uid: String): Resource<Unit> {
+        return try {
+            firestore.document("config/privacy_settings")
+                .update("protectedUserIds", FieldValue.arrayUnion(uid))
+                .await()
             auditLogger.log(
                 SAAction.TOGGLE_PRIVACY,
-                metadata = mapOf("enabled" to enabled.toString()),
+                targetId = uid,
+                metadata = mapOf("action" to "protect_user"),
             )
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to update privacy setting", e)
+            // Document might not exist yet
+            try {
+                firestore.document("config/privacy_settings")
+                    .set(
+                        hashMapOf(
+                            "protectedUserIds" to listOf(uid),
+                            "authorizedAdmins" to emptyList<String>(),
+                            "updatedAt" to FieldValue.serverTimestamp(),
+                            "updatedBy" to (auth.currentUser?.uid ?: ""),
+                        ),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    ).await()
+                auditLogger.log(
+                    SAAction.TOGGLE_PRIVACY,
+                    targetId = uid,
+                    metadata = mapOf("action" to "protect_user"),
+                )
+                Resource.Success(Unit)
+            } catch (e2: Exception) {
+                Resource.Error(e2.message ?: "Failed to protect user", e2)
+            }
+        }
+    }
+
+    /** Remove a user from the protected list. */
+    suspend fun removeProtectedUser(uid: String): Resource<Unit> {
+        return try {
+            firestore.document("config/privacy_settings")
+                .update("protectedUserIds", FieldValue.arrayRemove(uid))
+                .await()
+            auditLogger.log(
+                SAAction.TOGGLE_PRIVACY,
+                targetId = uid,
+                metadata = mapOf("action" to "unprotect_user"),
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to unprotect user", e)
+        }
+    }
+
+    /** Add all members of a community to the protected list. */
+    suspend fun protectCommunityMembers(communityId: String): Resource<Int> {
+        return try {
+            val communityDoc = firestore.collection("communities").document(communityId).get().await()
+            val memberIds = (communityDoc.data?.get("memberIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val adminIds = (communityDoc.data?.get("adminIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val moderatorIds = (communityDoc.data?.get("moderatorIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val allIds = (memberIds + adminIds + moderatorIds).distinct()
+
+            if (allIds.isEmpty()) return Resource.Success(0)
+
+            // Firestore arrayUnion can handle adding existing values (no duplicates)
+            firestore.document("config/privacy_settings")
+                .set(
+                    hashMapOf(
+                        "protectedUserIds" to FieldValue.arrayUnion(*allIds.toTypedArray()),
+                        "updatedAt" to FieldValue.serverTimestamp(),
+                        "updatedBy" to (auth.currentUser?.uid ?: ""),
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                ).await()
+
+            auditLogger.log(
+                SAAction.TOGGLE_PRIVACY,
+                targetId = communityId,
+                metadata = mapOf("action" to "protect_community", "memberCount" to allIds.size.toString()),
+            )
+            Resource.Success(allIds.size)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to protect community members", e)
+        }
+    }
+
+    /** Remove all members of a community from the protected list. */
+    suspend fun unprotectCommunityMembers(communityId: String): Resource<Int> {
+        return try {
+            val communityDoc = firestore.collection("communities").document(communityId).get().await()
+            val memberIds = (communityDoc.data?.get("memberIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val adminIds = (communityDoc.data?.get("adminIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val moderatorIds = (communityDoc.data?.get("moderatorIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val allIds = (memberIds + adminIds + moderatorIds).distinct()
+
+            if (allIds.isEmpty()) return Resource.Success(0)
+
+            firestore.document("config/privacy_settings")
+                .update("protectedUserIds", FieldValue.arrayRemove(*allIds.toTypedArray()))
+                .await()
+
+            auditLogger.log(
+                SAAction.TOGGLE_PRIVACY,
+                targetId = communityId,
+                metadata = mapOf("action" to "unprotect_community", "memberCount" to allIds.size.toString()),
+            )
+            Resource.Success(allIds.size)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to unprotect community members", e)
+        }
+    }
+
+    /** Clear all protected users at once. */
+    suspend fun clearAllProtectedUsers(): Resource<Unit> {
+        return try {
+            firestore.document("config/privacy_settings")
+                .update("protectedUserIds", emptyList<String>())
+                .await()
+            auditLogger.log(
+                SAAction.TOGGLE_PRIVACY,
+                metadata = mapOf("action" to "clear_all_protected"),
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to clear protected users", e)
         }
     }
 

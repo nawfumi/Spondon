@@ -116,10 +116,28 @@ class CommunityViewModel @Inject constructor(
     private val _hideSensitiveData = MutableStateFlow(false)
     val hideSensitiveData: StateFlow<Boolean> = _hideSensitiveData.asStateFlow()
 
+    /** Set of user IDs whose data should be hidden (per-user privacy). */
+    private val _protectedUserIds = MutableStateFlow<Set<String>>(emptySet())
+    val protectedUserIds: StateFlow<Set<String>> = _protectedUserIds.asStateFlow()
+
+    /** Whether the current viewer is authorized to see protected data. */
+    private val _isAuthorizedViewer = MutableStateFlow(false)
+    val isAuthorizedViewer: StateFlow<Boolean> = _isAuthorizedViewer.asStateFlow()
+
     init {
         viewModelScope.launch {
-            _hideSensitiveData.value = privacyConfigRepository.shouldHideSensitiveData()
+            val protectedIds = privacyConfigRepository.loadProtectedUserIds()
+            _protectedUserIds.value = protectedIds
+            val authorized = privacyConfigRepository.isCurrentUserAuthorized()
+            _isAuthorizedViewer.value = authorized
+            // Backward-compat: global flag is true if any protected users exist and viewer is not authorized
+            _hideSensitiveData.value = protectedIds.isNotEmpty() && !authorized
         }
+    }
+
+    /** Check if a specific user's sensitive data should be hidden. */
+    fun shouldHideForUser(userId: String): Boolean {
+        return userId in _protectedUserIds.value && !_isAuthorizedViewer.value
     }
 
     // ─── Community List ──────────────────────────────────────
@@ -293,7 +311,7 @@ class CommunityViewModel @Inject constructor(
                     _detailState.update {
                         it.copy(
                             requests = result.data
-                                .filter { r -> r.status == com.spondon.app.core.domain.model.RequestStatus.ACTIVE }
+                                .filter { r -> r.status == RequestStatus.ACTIVE }
                                 .sortedWith(
                                     compareByDescending<BloodRequest> { r ->
                                         when (r.urgency) {
