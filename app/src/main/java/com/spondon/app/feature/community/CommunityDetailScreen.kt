@@ -366,7 +366,43 @@ fun CommunityDetailScreen(
                     }
 
                     // ─── Feed Content (no tabs) ─────────────────────
-                    if (state.isRequestsLoading) {
+                    // Hide requests for non-members of private communities
+                    val isPrivateAndNotMember = community.type == CommunityType.PRIVATE &&
+                            state.membershipStatus != MembershipStatus.JOINED
+
+                    if (isPrivateAndNotMember) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(40.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        Icons.Default.Lock,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                                    )
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        "Private Community",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Join this community to view blood requests",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
+                            }
+                        }
+                    } else if (state.isRequestsLoading) {
                         item {
                             Box(
                                 modifier = Modifier

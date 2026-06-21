@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonDefaults.outlinedButtonBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -763,7 +764,7 @@ private fun SACreatePostDialog(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         enabled = !state.isCreatingPost,
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                        border = outlinedButtonBorder.copy(
                             brush = androidx.compose.ui.graphics.SolidColor(
                                 Color.White.copy(alpha = 0.15f)
                             ),

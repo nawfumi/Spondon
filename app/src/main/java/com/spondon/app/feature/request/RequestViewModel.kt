@@ -62,13 +62,16 @@ data class RequestDetailState(
     val requesterName: String = "",
     val requesterPhone: String = "",
     val isCurrentUserRequester: Boolean = false,
+    val isCurrentUserAdminOrMod: Boolean = false,
     val canDonate: Boolean = false,
     val bloodGroupMatch: Boolean = true,
     val cooldownDaysRemaining: Int = 0,
     val hasResponded: Boolean = false,
     val respondentProfiles: Map<String, User> = emptyMap(),
+    val confirmedDonorIds: Set<String> = emptySet(),
     val isLoading: Boolean = true,
     val isResponding: Boolean = false,
+    val isConfirming: Boolean = false,
     val error: String? = null,
 )
 
@@ -344,6 +347,19 @@ class RequestViewModel @Inject constructor(
                     val requestBloodGroup = request.bloodGroup
                     val bloodGroupMatches = canBloodGroupDonate(userBloodGroup, requestBloodGroup)
 
+                    // Check if user is admin/mod for any of the request's communities
+                    var isAdminOrMod = false
+                    for (cId in request.communityIds) {
+                        val commResult = communityRepository.getCommunity(cId)
+                        if (commResult is Resource.Success) {
+                            val comm = commResult.data
+                            if (comm.adminIds.contains(currentUserId) || comm.moderatorIds.contains(currentUserId)) {
+                                isAdminOrMod = true
+                                break
+                            }
+                        }
+                    }
+
                     // Load respondent profiles
                     val respondentProfiles = mutableMapOf<String, User>()
                     request.respondents.forEach { respondentId ->
@@ -359,11 +375,13 @@ class RequestViewModel @Inject constructor(
                             requesterName = requester?.name ?: "Unknown",
                             requesterPhone = requester?.phone ?: "",
                             isCurrentUserRequester = request.requesterId == currentUserId,
+                            isCurrentUserAdminOrMod = isAdminOrMod,
                             canDonate = canDonate && bloodGroupMatches,
                             bloodGroupMatch = bloodGroupMatches,
                             cooldownDaysRemaining = cooldownDays,
                             hasResponded = request.respondents.contains(currentUserId),
                             respondentProfiles = respondentProfiles,
+                            confirmedDonorIds = request.confirmedDonors.toSet(),
                             isLoading = false,
                         )
                     }
@@ -438,6 +456,92 @@ class RequestViewModel @Inject constructor(
     }
 
     /**
+     * Confirm that selected respondents have successfully donated.
+     * Updates each donor's totalDonations + lastDonationDate, adds them to confirmedDonors,
+     * and auto-fulfills the request when confirmedDonors.size >= unitsNeeded.
+     * Can be called by the requester, community moderator, or admin.
+     */
+    fun confirmMultipleDonations(donorUserIds: List<String>) {
+        val request = _detailState.value.request ?: return
+        if (donorUserIds.isEmpty()) return
+
+        viewModelScope.launch {
+            _detailState.update { it.copy(isConfirming = true) }
+
+            // Filter out already-confirmed donors
+            val alreadyConfirmed = request.confirmedDonors.toSet()
+            val newDonors = donorUserIds.filter { it !in alreadyConfirmed }
+            if (newDonors.isEmpty()) {
+                _detailState.update { it.copy(isConfirming = false) }
+                return@launch
+            }
+
+            // 1. Update each donor's profile and record donation
+            for (donorUserId in newDonors) {
+                try {
+                    // Fetch donor and update profile
+                    val donorResult = userRepository.getUser(donorUserId)
+                    if (donorResult is Resource.Success && donorResult.data != null) {
+                        val donor = donorResult.data
+                        val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        val updates = mapOf(
+                            "totalDonations" to (donor.totalDonations + 1),
+                            "lastDonationDate" to com.google.firebase.Timestamp(Date()),
+                            "availabilityOverride" to false,
+                            "donationInterval" to 120,
+                        )
+                        firestore.collection(Constants.USERS_COLLECTION)
+                            .document(donorUserId)
+                            .update(updates)
+                            .await()
+                    }
+                } catch (_: Exception) {
+                    // Continue with other donors even if one fails
+                }
+
+                // Record donation
+                donorRepository.recordDonation(
+                    Donation(
+                        requestId = request.id,
+                        donorId = donorUserId,
+                        hospital = request.hospital,
+                        bloodGroup = request.bloodGroup,
+                        date = Date(),
+                        status = DonationStatus.CONFIRMED,
+                        confirmedBy = currentUserId,
+                    )
+                )
+
+                // Notify donor (non-critical)
+                try {
+                    notificationRepository.sendNotificationToUsers(
+                        userIds = listOf(donorUserId),
+                        type = NotificationType.DONATION,
+                        title = "\uD83C\uDF89 Donation Confirmed!",
+                        body = "Your blood donation for ${request.bloodGroup} at ${request.hospital} has been confirmed. Thank you for saving a life!",
+                        deepLink = "request_detail/${request.id}",
+                    )
+                } catch (_: Exception) { }
+            }
+
+            // 2. Add to confirmedDonors on the request document
+            requestRepository.confirmDonors(request.id, newDonors)
+
+            // 3. Calculate new total confirmed count
+            val totalConfirmed = alreadyConfirmed.size + newDonors.size
+
+            // 4. Auto-fulfill if confirmed count >= units needed
+            if (totalConfirmed >= request.unitsNeeded) {
+                requestRepository.updateRequestStatus(request.id, RequestStatus.FULFILLED)
+            }
+
+            // 5. Reload detail to get fresh state
+            _detailState.update { it.copy(isConfirming = false) }
+            loadRequestDetail(request.id)
+        }
+    }
+
+    /**
      * Updates the status of a request by ID (used from card menu).
      * After updating, refreshes the home feed.
      */
@@ -466,88 +570,6 @@ class RequestViewModel @Inject constructor(
                 }
                 else -> {}
             }
-        }
-    }
-
-    /**
-     * Confirm that a specific respondent has successfully donated.
-     * Updates the donor's totalDonations + lastDonationDate, marks request fulfilled,
-     * and sends a notification to the donor.
-     * Can be called by the requester, community moderator, or admin.
-     */
-    fun confirmDonation(donorUserId: String) {
-        val request = _detailState.value.request ?: return
-        viewModelScope.launch {
-            // 1. Fetch donor and update profile
-            val donorResult = userRepository.getUser(donorUserId)
-            if (donorResult !is Resource.Success || donorResult.data == null) {
-                _detailState.update { it.copy(error = "Donor not found") }
-                return@launch
-            }
-
-            val donor = donorResult.data
-            val updatedDonor = donor.copy(
-                totalDonations = donor.totalDonations + 1,
-                lastDonationDate = Date(),
-                availabilityOverride = false,
-                donationInterval = 120,
-            )
-
-            // Update donor profile using direct Firestore update (most reliable)
-            try {
-                val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                val updates = mapOf(
-                    "totalDonations" to updatedDonor.totalDonations,
-                    "lastDonationDate" to com.google.firebase.Timestamp(updatedDonor.lastDonationDate!!),
-                    "availabilityOverride" to false,
-                    "donationInterval" to 120,
-                )
-                firestore.collection(Constants.USERS_COLLECTION)
-                    .document(donorUserId)
-                    .update(updates)
-                    .await()
-            } catch (_: Exception) {
-                // Proceed with recording the donation and fulfilling the request even if profile update fails
-            }
-
-            // 2. Record donation
-            val recordResult = donorRepository.recordDonation(
-                Donation(
-                    requestId = request.id,
-                    donorId = donorUserId,
-                    hospital = request.hospital,
-                    bloodGroup = request.bloodGroup,
-                    date = Date(),
-                    status = DonationStatus.CONFIRMED,
-                    confirmedBy = currentUserId,
-                )
-            )
-
-            if (recordResult is Resource.Error) {
-                _detailState.update { it.copy(error = "Failed to record donation: ${recordResult.message}") }
-                return@launch
-            }
-
-            // 3. Mark request fulfilled
-            requestRepository.updateRequestStatus(request.id, RequestStatus.FULFILLED)
-            _detailState.update {
-                it.copy(request = it.request?.copy(status = RequestStatus.FULFILLED))
-            }
-
-            // 4. Notify donor (non-critical)
-            try {
-                notificationRepository.sendNotificationToUsers(
-                    userIds = listOf(donorUserId),
-                    type = NotificationType.DONATION,
-                    title = "🎉 Donation Confirmed!",
-                    body = "Your blood donation for ${request.bloodGroup} at ${request.hospital} has been confirmed. Thank you for saving a life!",
-                    deepLink = "request_detail/${request.id}",
-                )
-            } catch (_: Exception) {
-            }
-
-            // 5. Reload detail
-            loadRequestDetail(request.id)
         }
     }
 

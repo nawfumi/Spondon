@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.spondon.app.core.domain.model.RequestStatus
+import com.spondon.app.core.domain.model.User
 import com.spondon.app.core.domain.model.Urgency
 import com.spondon.app.core.ui.theme.*
 import java.text.SimpleDateFormat
@@ -373,9 +375,42 @@ fun RequestDetailScreen(
 
                     // ─── Respondents ─────────────────────────
                     item {
+                        val confirmedCount = state.confirmedDonorIds.size
+                        val unitsNeeded = request.unitsNeeded
+
                         DetailSection(
                             title = "Respondents (${request.respondents.size})",
                         ) {
+                            // ── Donation progress indicator ──
+                            if (confirmedCount > 0 || request.respondents.isNotEmpty()) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (confirmedCount >= unitsNeeded) AvailableGreen.copy(alpha = 0.12f)
+                                            else BloodRed.copy(alpha = 0.1f),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            if (confirmedCount >= unitsNeeded) Icons.Filled.CheckCircle
+                                            else Icons.Filled.VolunteerActivism,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = if (confirmedCount >= unitsNeeded) AvailableGreen else BloodRed,
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            text = "$confirmedCount / $unitsNeeded bag${if (unitsNeeded > 1) "s" else ""} confirmed",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (confirmedCount >= unitsNeeded) AvailableGreen else BloodRed,
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(10.dp))
+                            }
+
                             if (request.respondents.isEmpty()) {
                                 Text(
                                     text = "No one has responded yet. Be the first!",
@@ -388,11 +423,13 @@ fun RequestDetailScreen(
                                         val profile = state.respondentProfiles[respondentId]
                                         val donorName = profile?.name?.takeIf { it.isNotBlank() } ?: "Donor"
                                         val donorPhone = if (profile?.isPhoneVisible == true) profile.phone else ""
+                                        val isConfirmed = respondentId in state.confirmedDonorIds
 
                                         Surface(
                                             modifier = Modifier.fillMaxWidth(),
                                             shape = RoundedCornerShape(12.dp),
-                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            color = if (isConfirmed) AvailableGreen.copy(alpha = 0.08f)
+                                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                         ) {
                                             Row(
                                                 modifier = Modifier.padding(12.dp),
@@ -402,25 +439,54 @@ fun RequestDetailScreen(
                                                     modifier = Modifier
                                                         .size(40.dp)
                                                         .clip(CircleShape)
-                                                        .background(BloodRed.copy(alpha = 0.1f)),
+                                                        .background(
+                                                            if (isConfirmed) AvailableGreen.copy(alpha = 0.15f)
+                                                            else BloodRed.copy(alpha = 0.1f)
+                                                        ),
                                                     contentAlignment = Alignment.Center,
                                                 ) {
-                                                    Text(
-                                                        text = donorName.first().uppercase(),
-                                                        style = MaterialTheme.typography.titleSmall,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = BloodRed,
-                                                    )
+                                                    if (isConfirmed) {
+                                                        Icon(
+                                                            Icons.Filled.CheckCircle,
+                                                            contentDescription = "Confirmed",
+                                                            tint = AvailableGreen,
+                                                            modifier = Modifier.size(22.dp),
+                                                        )
+                                                    } else {
+                                                        Text(
+                                                            text = donorName.first().uppercase(),
+                                                            style = MaterialTheme.typography.titleSmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = BloodRed,
+                                                        )
+                                                    }
                                                 }
                                                 Spacer(Modifier.width(12.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        donorName,
-                                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                                            fontWeight = FontWeight.SemiBold,
-                                                        ),
-                                                        color = MaterialTheme.colorScheme.onSurface,
-                                                    )
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Text(
+                                                            donorName,
+                                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                                fontWeight = FontWeight.SemiBold,
+                                                            ),
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                        )
+                                                        if (isConfirmed) {
+                                                            Spacer(Modifier.width(6.dp))
+                                                            Surface(
+                                                                shape = RoundedCornerShape(4.dp),
+                                                                color = AvailableGreen.copy(alpha = 0.15f),
+                                                            ) {
+                                                                Text(
+                                                                    text = "✅ Donated",
+                                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = AvailableGreen,
+                                                                )
+                                                            }
+                                                        }
+                                                    }
                                                     if (donorPhone.isNotBlank()) {
                                                         Text(
                                                             donorPhone,
@@ -471,9 +537,11 @@ fun RequestDetailScreen(
 
                     // ─── Action Buttons ──────────────────────
                     item {
+                        var showConfirmDialog by remember { mutableStateOf(false) }
+
                         when {
-                            // Requester's view: manage actions
-                            state.isCurrentUserRequester -> {
+                            // Requester's or Admin/Mod view: manage actions
+                            state.isCurrentUserRequester || state.isCurrentUserAdminOrMod -> {
                                 if (request.status == RequestStatus.ACTIVE) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -501,71 +569,37 @@ fun RequestDetailScreen(
                                         }
                                     }
 
-                                    // ── Confirm Donation per respondent ──
+                                    // ── Confirm Donations Button (opens dialog) ──
                                     if (request.respondents.isNotEmpty()) {
-                                        Spacer(Modifier.height(12.dp))
-                                        Text(
-                                            "Confirm a successful donation:",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                        )
-                                        Spacer(Modifier.height(6.dp))
-                                        request.respondents.forEach { donorId ->
-                                            val donorProfile = state.respondentProfiles[donorId]
-                                            val donorName = donorProfile?.name?.takeIf { it.isNotBlank() } ?: "this donor"
-                                            val donorPhone = if (donorProfile?.isPhoneVisible == true) donorProfile.phone else ""
-                                            var showConfirmDialog by remember { mutableStateOf(false) }
-
-                                            FilledTonalButton(
+                                        val unconfirmedCount = request.respondents.count { it !in state.confirmedDonorIds }
+                                        if (unconfirmedCount > 0) {
+                                            Spacer(Modifier.height(12.dp))
+                                            Button(
                                                 onClick = { showConfirmDialog = true },
-                                                modifier = Modifier.fillMaxWidth(),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(48.dp),
                                                 shape = RoundedCornerShape(16.dp),
-                                                colors = ButtonDefaults.filledTonalButtonColors(
-                                                    containerColor = AvailableGreen.copy(alpha = 0.12f),
-                                                    contentColor = AvailableGreen,
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = AvailableGreen,
                                                 ),
+                                                enabled = !state.isConfirming,
                                             ) {
-                                                Icon(Icons.Filled.VolunteerActivism, null, Modifier.size(18.dp))
-                                                Spacer(Modifier.width(8.dp))
-                                                Text(
-                                                    "Confirm: $donorName",
-                                                    fontWeight = FontWeight.SemiBold,
-                                                )
-                                            }
-                                            Spacer(Modifier.height(4.dp))
-
-                                            if (showConfirmDialog) {
-                                                AlertDialog(
-                                                    onDismissRequest = { showConfirmDialog = false },
-                                                    confirmButton = {
-                                                        Button(
-                                                            onClick = {
-                                                                viewModel.confirmDonation(donorId)
-                                                                showConfirmDialog = false
-                                                            },
-                                                            colors = ButtonDefaults.buttonColors(containerColor = AvailableGreen),
-                                                        ) {
-                                                            Text("Confirm")
-                                                        }
-                                                    },
-                                                    dismissButton = {
-                                                        TextButton(onClick = { showConfirmDialog = false }) {
-                                                            Text("Cancel")
-                                                        }
-                                                    },
-                                                    title = { Text("Confirm $donorName's Donation") },
-                                                    text = {
-                                                        Column {
-                                                            Text("Are you sure $donorName has successfully donated? This will update their donation count and mark this request as fulfilled.")
-                                                            if (donorPhone.isNotBlank()) {
-                                                                Spacer(Modifier.height(8.dp))
-                                                                Text("📞 $donorPhone", style = MaterialTheme.typography.bodySmall, color = AvailableGreen)
-                                                            }
-                                                        }
-                                                    },
-                                                    icon = { Icon(Icons.Filled.VolunteerActivism, null, tint = AvailableGreen) },
-                                                )
+                                                if (state.isConfirming) {
+                                                    LoadingIndicator(
+                                                        color = Color.White,
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text("Confirming...", fontWeight = FontWeight.SemiBold)
+                                                } else {
+                                                    Icon(Icons.Filled.VolunteerActivism, null, Modifier.size(18.dp))
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text(
+                                                        "Confirm Donations (${state.confirmedDonorIds.size}/${request.unitsNeeded})",
+                                                        fontWeight = FontWeight.SemiBold,
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -691,12 +725,201 @@ fun RequestDetailScreen(
                                 }
                             }
                         }
+
+                        // ── Multi-select Confirm Donations Dialog ──
+                        if (showConfirmDialog) {
+                            ConfirmDonationsDialog(
+                                respondents = request.respondents,
+                                respondentProfiles = state.respondentProfiles,
+                                confirmedDonorIds = state.confirmedDonorIds,
+                                maxSelectable = request.unitsNeeded,
+                                onDismiss = { showConfirmDialog = false },
+                                onConfirm = { selectedIds ->
+                                    showConfirmDialog = false
+                                    viewModel.confirmMultipleDonations(selectedIds)
+                                },
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Multi-select Confirm Donations Dialog
+// ═══════════════════════════════════════════════════════════════
+
+@Composable
+fun ConfirmDonationsDialog(
+    respondents: List<String>,
+    respondentProfiles: Map<String, User>,
+    confirmedDonorIds: Set<String>,
+    maxSelectable: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (List<String>) -> Unit,
+) {
+    // Only show unconfirmed respondents as selectable
+    val unconfirmedRespondents = respondents.filter { it !in confirmedDonorIds }
+    val alreadyConfirmedRespondents = respondents.filter { it in confirmedDonorIds }
+    val remainingSlots = (maxSelectable - confirmedDonorIds.size).coerceAtLeast(0)
+
+    // Track which donors are checked
+    val selectedIds = remember { mutableStateListOf<String>() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.VolunteerActivism, null, tint = AvailableGreen) },
+        title = {
+            Text(
+                "Confirm Donations",
+                fontWeight = FontWeight.Bold,
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    "Select the donors who have successfully donated blood. " +
+                    "You can select up to $remainingSlots more donor${if (remainingSlots != 1) "s" else ""}.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                // Already confirmed donors (shown as disabled)
+                if (alreadyConfirmedRespondents.isNotEmpty()) {
+                    Text(
+                        "Already confirmed:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AvailableGreen,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    alreadyConfirmedRespondents.forEach { donorId ->
+                        val profile = respondentProfiles[donorId]
+                        val name = profile?.name?.takeIf { it.isNotBlank() } ?: "Donor"
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = true,
+                                onCheckedChange = null,
+                                enabled = false,
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = AvailableGreen,
+                                    disabledCheckedColor = AvailableGreen.copy(alpha = 0.5f),
+                                ),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "✅",
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // Unconfirmed donors (selectable)
+                if (unconfirmedRespondents.isNotEmpty()) {
+                    Text(
+                        "Select donors to confirm:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    unconfirmedRespondents.forEach { donorId ->
+                        val profile = respondentProfiles[donorId]
+                        val name = profile?.name?.takeIf { it.isNotBlank() } ?: "Donor"
+                        val bloodGroup = profile?.bloodGroup ?: ""
+                        val isSelected = donorId in selectedIds
+                        val canSelect = isSelected || selectedIds.size < remainingSlots
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { checked ->
+                                    if (checked && canSelect) {
+                                        selectedIds.add(donorId)
+                                    } else {
+                                        selectedIds.remove(donorId)
+                                    }
+                                },
+                                enabled = canSelect || isSelected,
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = AvailableGreen,
+                                ),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                                color = if (canSelect || isSelected) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                            )
+                            if (bloodGroup.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = BloodRed.copy(alpha = 0.1f),
+                                ) {
+                                    Text(
+                                        text = bloodGroup,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BloodRed,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        "All respondents have already been confirmed.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(selectedIds.toList()) },
+                enabled = selectedIds.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = AvailableGreen),
+            ) {
+                Text("Confirm ${selectedIds.size} Donation${if (selectedIds.size != 1) "s" else ""}")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Helper composables
+// ═══════════════════════════════════════════════════════════════
 
 @Composable
 private fun DetailSection(

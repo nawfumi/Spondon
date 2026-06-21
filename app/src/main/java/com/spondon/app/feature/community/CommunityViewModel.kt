@@ -292,8 +292,10 @@ class CommunityViewModel @Inject constructor(
                         loadMembers(community.memberIds)
                     }
 
-                    // Load blood requests for this community
-                    loadCommunityRequests(communityId)
+                    // Load blood requests for this community if it's public or the user is a member
+                    if (community.type == CommunityType.PUBLIC || membershipStatus == MembershipStatus.JOINED) {
+                        loadCommunityRequests(communityId)
+                    }
                 }
                 is Resource.Error -> {
                     _detailState.update { it.copy(error = result.message, isLoading = false) }

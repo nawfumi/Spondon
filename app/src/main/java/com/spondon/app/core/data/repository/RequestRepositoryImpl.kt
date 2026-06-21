@@ -1,11 +1,14 @@
 package com.spondon.app.core.data.repository
 
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
+import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.remote.FirestoreService
 import com.spondon.app.core.domain.model.BloodRequest
 import com.spondon.app.core.domain.model.RequestStatus
 import com.spondon.app.core.domain.model.Urgency
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.Date
@@ -33,6 +36,7 @@ class RequestRepositoryImpl @Inject constructor(
             "contactNumber" to request.contactNumber,
             "patientCondition" to request.patientCondition,
             "respondents" to request.respondents,
+            "confirmedDonors" to request.confirmedDonors,
             "status" to request.status.name,
             "isPinned" to request.isPinned,
             "createdAt" to Timestamp.now(),
@@ -84,6 +88,19 @@ class RequestRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun confirmDonors(requestId: String, donorIds: List<String>): Resource<Unit> {
+        return try {
+            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            firestore.collection(Constants.REQUESTS_COLLECTION)
+                .document(requestId)
+                .update("confirmedDonors", FieldValue.arrayUnion(*donorIds.toTypedArray()))
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to confirm donors")
+        }
+    }
+
     override suspend fun deleteRequest(requestId: String): Resource<Unit> {
         return firestoreService.deleteRequest(requestId)
     }
@@ -122,6 +139,7 @@ class RequestRepositoryImpl @Inject constructor(
             contactNumber = data["contactNumber"] as? String ?: "",
             patientCondition = data["patientCondition"] as? String ?: "",
             respondents = (data["respondents"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            confirmedDonors = (data["confirmedDonors"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             status = try {
                 RequestStatus.valueOf(data["status"] as? String ?: "ACTIVE")
             } catch (_: Exception) { RequestStatus.ACTIVE },

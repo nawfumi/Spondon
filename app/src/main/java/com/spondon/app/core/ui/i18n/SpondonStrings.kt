@@ -44,6 +44,9 @@ data class SpondonStrings(
     val myRequests: String,
     val donationHistory: String,
     val achievements: String,
+    val discover: String,
+    val feed: String,
+
 
     // ─── Profile ─────────────────────────
     val myProfile: String,
@@ -111,6 +114,7 @@ data class SpondonStrings(
     val delete: String,
     val cancel: String,
     val languageChangeRestart: String,
+    val about: String,
 
     // ─── Feedback ────────────────────────
     val sendFeedback: String,
@@ -268,6 +272,8 @@ val Bn = SpondonStrings(
     bloodRequests = "রক্তের অনুরোধ",
     nearbyDonors = "কাছের ডোনার",
     myCommunities = "আমার কমিউনিটি",
+    feed = "ফিড",
+    discover = "ডিসকভার",
     quickActions = "দ্রুত কাজ",
     donateBlood = "রক্ত দিন",
     myRequests = "আমার অনুরোধ",
@@ -340,6 +346,7 @@ val Bn = SpondonStrings(
     delete = "মুছুন",
     cancel = "বাতিল",
     languageChangeRestart = "ভাষা পরিবর্তন হয়েছে। পরিবর্তন কার্যকর হবে।",
+    about = "সম্পর্কে",
 
     // Feedback
     sendFeedback = "মতামত দিন",
@@ -502,6 +509,8 @@ val En = SpondonStrings(
     myRequests = "My Requests",
     donationHistory = "Donation History",
     achievements = "Achievements",
+    discover = "Discover",
+    feed = "Feed",
 
     // Profile
     myProfile = "My Profile",
@@ -569,6 +578,7 @@ val En = SpondonStrings(
     delete = "Delete",
     cancel = "Cancel",
     languageChangeRestart = "Language changed. Changes will take effect.",
+    about = "About",
 
     // Feedback
     sendFeedback = "Send Feedback",

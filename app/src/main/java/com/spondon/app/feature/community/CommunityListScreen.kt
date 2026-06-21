@@ -171,7 +171,7 @@ fun CommunityListScreen(
                     onClick = { viewModel.setListTab(1) },
                     text = {
                         Text(
-                            "Discover",
+                            s.discover,
                             fontWeight = if (state.selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
                         )
                     },
