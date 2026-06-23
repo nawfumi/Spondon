@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,6 +44,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -113,6 +116,29 @@ fun SpondonCommunityScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.3f))
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                ),
+                windowInsets = WindowInsets(0.dp),
+            )
+        },
     ) { padding ->
         when {
             // ─── Shimmer Loading ─────────────────────────────────
@@ -120,7 +146,7 @@ fun SpondonCommunityScreen(
                 ShimmerLoadingPlaceholder(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .padding(bottom = padding.calculateBottomPadding()),
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -158,7 +184,7 @@ fun SpondonCommunityScreen(
                     state = pullRefreshState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .padding(bottom = padding.calculateBottomPadding()),
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -198,22 +224,6 @@ fun SpondonCommunityScreen(
                                                     listOf(Color(0xFF7A1212), Color(0xFF2B0606))
                                                 )
                                             ),
-                                    )
-                                }
-
-                                // Back button
-                                IconButton(
-                                    onClick = { navController.popBackStack() },
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .align(Alignment.TopStart)
-                                        .clip(CircleShape)
-                                        .background(Color.Black.copy(alpha = 0.28f)),
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back",
-                                        tint = Color.White,
                                     )
                                 }
 

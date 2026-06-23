@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -68,6 +69,11 @@ fun SACommunityDetailScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         @Suppress("DEPRECATION")
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { navController.navigate("edit_community/$communityId") }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Community", tint = Color.White)
                     }
                 },
                 windowInsets = WindowInsets(0.dp),

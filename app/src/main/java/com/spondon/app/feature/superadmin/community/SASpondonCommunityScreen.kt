@@ -136,6 +136,13 @@ fun SASpondonCommunityScreen(
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
+                actions = {
+                    if (state.communityId != null) {
+                        IconButton(onClick = { navController.navigate("edit_community/${state.communityId}") }) {
+                            Icon(Icons.Outlined.Edit, contentDescription = "Edit Community", tint = Color.White)
+                        }
+                    }
+                },
                 windowInsets = WindowInsets(0.dp),
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SADark),
             )

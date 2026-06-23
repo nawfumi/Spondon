@@ -203,7 +203,8 @@ class RequestViewModel @Inject constructor(
             val user = (userResult as? Resource.Success)?.data
 
             val commResult = communityRepository.getMyCommunities(currentUserId)
-            val communities = (commResult as? Resource.Success)?.data ?: emptyList()
+            val communities = (commResult as? Resource.Success)?.data
+                ?.filter { !it.isSpondon } ?: emptyList()
 
             _createState.update {
                 it.copy(

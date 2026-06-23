@@ -59,6 +59,21 @@ data class CreateCommunityState(
     val isCreated: Boolean = false,
 )
 
+data class EditCommunityState(
+    val communityId: String = "",
+    val name: String = "",
+    val description: String = "",
+    val coverUri: Uri? = null,
+    val coverUrl: String = "",
+    val type: CommunityType = CommunityType.PUBLIC,
+    val district: String = "",
+    val upazila: String = "",
+    val selectedBloodGroups: Set<String> = emptySet(),
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isUpdated: Boolean = false,
+)
+
 data class JoinRequestState(
     val community: Community? = null,
     val message: String = "",
@@ -154,6 +169,11 @@ class CommunityViewModel @Inject constructor(
 
     private val _createState = MutableStateFlow(CreateCommunityState())
     val createState: StateFlow<CreateCommunityState> = _createState.asStateFlow()
+
+    // ─── Edit Community ──────────────────────────────────────
+
+    private val _editState = MutableStateFlow(EditCommunityState())
+    val editState: StateFlow<EditCommunityState> = _editState.asStateFlow()
 
     // ─── Join Request ────────────────────────────────────────
 
@@ -477,6 +497,113 @@ class CommunityViewModel @Inject constructor(
 
     fun resetCreateState() {
         _createState.value = CreateCommunityState()
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Edit Community Actions
+    // ═══════════════════════════════════════════════════════════
+
+    fun loadCommunityForEdit(communityId: String) {
+        viewModelScope.launch {
+            _editState.update { it.copy(isLoading = true, error = null, isUpdated = false) }
+            when (val result = getCommunitiesUseCase.getCommunity(communityId)) {
+                is Resource.Success -> {
+                    val community = result.data
+                    _editState.update {
+                        it.copy(
+                            communityId = community.id,
+                            name = community.name,
+                            description = community.description,
+                            coverUrl = community.coverUrl,
+                            type = community.type,
+                            district = community.district,
+                            upazila = community.upazila,
+                            selectedBloodGroups = community.bloodGroups.toSet(),
+                            isLoading = false
+                        )
+                    }
+                }
+                is Resource.Error -> {
+                    _editState.update { it.copy(error = result.message, isLoading = false) }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun updateEditName(name: String) { _editState.update { it.copy(name = name) } }
+    fun updateEditDescription(desc: String) { _editState.update { it.copy(description = desc) } }
+    fun updateEditType(type: CommunityType) { _editState.update { it.copy(type = type) } }
+    fun updateEditDistrict(district: String) { _editState.update { it.copy(district = district) } }
+    fun updateEditUpazila(upazila: String) { _editState.update { it.copy(upazila = upazila) } }
+    fun updateEditCoverUri(uri: Uri?) { _editState.update { it.copy(coverUri = uri) } }
+
+    fun toggleEditBloodGroup(group: String) {
+        _editState.update {
+            val current = it.selectedBloodGroups.toMutableSet()
+            if (current.contains(group)) current.remove(group) else current.add(group)
+            it.copy(selectedBloodGroups = current)
+        }
+    }
+
+    fun updateCommunity() {
+        viewModelScope.launch {
+            val state = _editState.value
+            if (state.name.isBlank()) {
+                _editState.update { it.copy(error = "Community name is required") }
+                return@launch
+            }
+
+            _editState.update { it.copy(isLoading = true, error = null) }
+
+            // Fetch the existing community to retain fields we are not updating from the UI directly
+            val existingResult = getCommunitiesUseCase.getCommunity(state.communityId)
+            if (existingResult !is Resource.Success) {
+                _editState.update { it.copy(error = "Failed to load existing community", isLoading = false) }
+                return@launch
+            }
+            val existingCommunity = existingResult.data
+
+            // Upload new cover image if provided
+            var finalCoverUrl = state.coverUrl
+            if (state.coverUri != null) {
+                val tempId = System.currentTimeMillis().toString()
+                when (val uploadResult = communityRepository.uploadCoverImage(tempId, state.coverUri)) {
+                    is Resource.Success -> finalCoverUrl = uploadResult.data
+                    is Resource.Error -> {
+                        _editState.update { it.copy(error = "Cover upload failed", isLoading = false) }
+                        return@launch
+                    }
+                    is Resource.Loading -> {}
+                }
+            }
+
+            val updatedCommunity = existingCommunity.copy(
+                name = state.name,
+                description = state.description,
+                coverUrl = finalCoverUrl,
+                type = state.type,
+                district = state.district,
+                upazila = state.upazila,
+                bloodGroups = state.selectedBloodGroups.toList(),
+            )
+
+            when (val result = communityRepository.updateCommunity(updatedCommunity)) {
+                is Resource.Success -> {
+                    _editState.update { it.copy(isLoading = false, isUpdated = true) }
+                    _events.emit(CommunityEvent.ShowSnackbar("Community updated!"))
+                    loadCommunities()
+                }
+                is Resource.Error -> {
+                    _editState.update { it.copy(error = result.message, isLoading = false) }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun resetEditState() {
+        _editState.value = EditCommunityState()
     }
 
     // ═══════════════════════════════════════════════════════════

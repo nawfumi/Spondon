@@ -27,6 +27,7 @@ sealed class Routes(val route: String) {
     data object CommunityList : Routes("community_list")
     data object CommunityDetail : Routes("community_detail/{communityId}")
     data object CreateCommunity : Routes("create_community")
+    data object EditCommunity : Routes("edit_community/{communityId}")
     data object JoinRequest : Routes("join_request/{communityId}")
     data object AdminDashboard : Routes("admin_dashboard/{communityId}")
 
@@ -62,4 +63,8 @@ sealed class Routes(val route: String) {
     // Info Screens (Members/About/Manage extracted from detail screens)
     data object CommunityInfo : Routes("community_info/{communityId}")
     data object SpondonInfo : Routes("spondon_info")
+
+    // Legal
+    data object TermsOfService : Routes("terms_of_service")
+    data object PrivacyPolicy : Routes("privacy_policy")
 }

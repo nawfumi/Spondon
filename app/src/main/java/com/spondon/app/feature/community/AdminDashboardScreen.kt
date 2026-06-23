@@ -188,6 +188,9 @@ fun AdminDashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { navController.navigate("edit_community/$communityId") }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Community")
+                    }
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = BloodRed.copy(alpha = 0.12f),

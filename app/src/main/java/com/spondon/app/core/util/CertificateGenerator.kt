@@ -2,6 +2,7 @@ package com.spondon.app.core.util
 
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
@@ -18,27 +19,38 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.core.net.toUri
 
-/**
- * Generates modern, minimalistic PDF certificates for blood donors.
- * Uses Android's built-in PdfDocument API — no third-party dependencies.
- */
 object CertificateGenerator {
 
-    private const val PAGE_WIDTH = 842  // A4 landscape width in points
-    private const val PAGE_HEIGHT = 595 // A4 landscape height in points
+    private const val PAGE_WIDTH = 842
+    private const val PAGE_HEIGHT = 595
+
+    private val Crimson = Color.rgb(192, 16, 42)
+    private val CrimsonDeep = Color.rgb(140, 10, 31)
+    private val CrimsonSoft = Color.rgb(232, 83, 107)
+    private val Ink = Color.rgb(34, 20, 22)
+    private val Gold = Color.rgb(201, 150, 46)
+    private val GoldLight = Color.rgb(240, 205, 122)
+    private val GoldDark = Color.rgb(156, 113, 30)
+    private val Paper = Color.rgb(255, 253, 251)
+
+    private const val OUTER_MARGIN = 28f
+    private const val OUTER_STROKE = 4f
+    private const val BORDER_GAP = 10f
+    private const val INNER_STROKE = 1.5f
 
     data class CertificateData(
         val donorName: String,
         val bloodGroup: String,
         val totalDonations: Int,
         val lastDonationDate: Date?,
+        val hospitalName: String,
+        val signatoryName: String,
+        val appSlogan: String = "Every Drop Counts",
+        val locationAddress: String = "",
     )
 
-    /**
-     * Generates a PDF certificate and saves it to the Downloads folder.
-     * @return The file path of the saved certificate, or null on failure.
-     */
     fun generateCertificate(context: Context, data: CertificateData): String? {
         val document = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
@@ -67,19 +79,17 @@ object CertificateGenerator {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         val channelId = "certificate_downloads"
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = android.app.NotificationChannel(
-                channelId,
-                "Certificate Downloads",
-                android.app.NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Notifications for downloaded certificates"
-            }
-            manager.createNotificationChannel(channel)
+        val channel = android.app.NotificationChannel(
+            channelId,
+            "Certificate Downloads",
+            android.app.NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Notifications for downloaded certificates"
         }
+        manager.createNotificationChannel(channel)
 
         val uri = if (filePath.startsWith("content://")) {
-            android.net.Uri.parse(filePath)
+            filePath.toUri()
         } else {
             androidx.core.content.FileProvider.getUriForFile(
                 context,
@@ -102,7 +112,7 @@ object CertificateGenerator {
         )
 
         val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(com.spondon.app.R.mipmap.ic_launcher)
+            .setSmallIcon(com.spondon.app.R.mipmap.ic_spondon_round)
             .setContentTitle("Certificate Saved")
             .setContentText("Tap to view your certificate")
             .setAutoCancel(true)
@@ -114,313 +124,373 @@ object CertificateGenerator {
     }
 
     private fun drawCertificate(canvas: Canvas, data: CertificateData) {
-        val width = PAGE_WIDTH.toFloat()
-        val height = PAGE_HEIGHT.toFloat()
+        val w = PAGE_WIDTH.toFloat()
+        val h = PAGE_HEIGHT.toFloat()
 
-        // ─── Background ──────────────────────────────────────
-        val bgPaint = Paint().apply {
-            color = Color.rgb(250, 250, 252)
-        }
-        canvas.drawRect(0f, 0f, width, height, bgPaint)
+        val bgPaint = Paint().apply { color = Paper }
+        canvas.drawRect(0f, 0f, w, h, bgPaint)
 
-        // ─── Watermark blood drops ───────────────────────────
-        drawWatermarkDrops(canvas, width, height)
-
-        // ─── Top accent bar ──────────────────────────────────
-        val accentPaint = Paint().apply {
-            shader = LinearGradient(
-                0f, 0f, width, 0f,
-                Color.rgb(229, 57, 53), // BloodRed
-                Color.rgb(198, 40, 40), // DarkRose
-                Shader.TileMode.CLAMP,
-            )
-        }
-        canvas.drawRect(0f, 0f, width, 8f, accentPaint)
-
-        // ─── Bottom accent bar ───────────────────────────────
-        canvas.drawRect(0f, height - 8f, width, height, accentPaint)
-
-        // ─── Left accent stripe ──────────────────────────────
-        val leftStripePaint = Paint().apply {
-            shader = LinearGradient(
-                0f, 0f, 0f, height,
-                Color.rgb(229, 57, 53),
-                Color.rgb(198, 40, 40),
-                Shader.TileMode.CLAMP,
-            )
-        }
-        canvas.drawRect(0f, 0f, 6f, height, leftStripePaint)
-
-        // ─── Border frame ────────────────────────────────────
-        val borderPaint = Paint().apply {
-            style = Paint.Style.STROKE
-            color = Color.rgb(229, 57, 53)
-            strokeWidth = 1.5f
-            alpha = 40
-        }
-        canvas.drawRect(24f, 24f, width - 24f, height - 24f, borderPaint)
-
-        // Inner decorative border
-        val innerBorderPaint = Paint().apply {
-            style = Paint.Style.STROKE
-            color = Color.rgb(229, 57, 53)
-            strokeWidth = 0.5f
-            alpha = 20
-        }
-        canvas.drawRect(30f, 30f, width - 30f, height - 30f, innerBorderPaint)
-
-        // ─── "CERTIFICATE" label ─────────────────────────────
-        val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(229, 57, 53)
-            textSize = 12f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            letterSpacing = 0.35f
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText("CERTIFICATE OF APPRECIATION", width / 2, 70f, labelPaint)
-
-        // ─── Decorative line under label ─────────────────────
-        val linePaint = Paint().apply {
-            color = Color.rgb(229, 57, 53)
-            strokeWidth = 1f
-            alpha = 60
-        }
-        canvas.drawLine(width / 2 - 100f, 80f, width / 2 + 100f, 80f, linePaint)
-
-        // ─── Title ───────────────────────────────────────────
-        val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(33, 33, 33)
-            textSize = 36f
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText("Blood Donation", width / 2, 130f, titlePaint)
-
-        val titleBoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(229, 57, 53)
-            textSize = 36f
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText("Certificate", width / 2, 170f, titleBoldPaint)
-
-        // ─── "This certifies that" ──────────────────────────
-        val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(117, 117, 117)
-            textSize = 13f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText("This certifies that", width / 2, 210f, bodyPaint)
-
-        // ─── Donor Name ──────────────────────────────────────
-        val namePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(33, 33, 33)
-            textSize = 32f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText(data.donorName, width / 2, 255f, namePaint)
-
-        // ─── Underline ───────────────────────────────────────
-        val nameWidth = namePaint.measureText(data.donorName)
-        val underlinePaint = Paint().apply {
-            shader = LinearGradient(
-                width / 2 - nameWidth / 2, 0f,
-                width / 2 + nameWidth / 2, 0f,
-                Color.rgb(229, 57, 53),
-                Color.rgb(198, 40, 40),
-                Shader.TileMode.CLAMP,
-            )
-            strokeWidth = 2f
-        }
-        canvas.drawLine(
-            width / 2 - nameWidth / 2 - 20f, 265f,
-            width / 2 + nameWidth / 2 + 20f, 265f,
-            underlinePaint,
-        )
-
-        // ─── Description ─────────────────────────────────────
-        val descPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(97, 97, 97)
-            textSize = 13f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText(
-            "has generously donated blood and helped save lives through the Spondon community.",
-            width / 2, 300f, descPaint,
-        )
-
-        // ─── Stats cards ─────────────────────────────────────
-        val statsY = 340f
-        val cardWidth = 180f
-        val cardHeight = 80f
-        val cardGap = 40f
-        val totalCardsWidth = cardWidth * 3 + cardGap * 2
-        val startX = (width - totalCardsWidth) / 2
-
-        // Card 1: Total Donations
-        drawStatCard(
-            canvas, startX, statsY, cardWidth, cardHeight,
-            "${data.totalDonations}", "Total Donations",
-            Color.rgb(229, 57, 53),
-        )
-
-        // Card 2: Blood Group
-        drawStatCard(
-            canvas, startX + cardWidth + cardGap, statsY, cardWidth, cardHeight,
-            data.bloodGroup, "Blood Group",
-            Color.rgb(198, 40, 40),
-        )
-
-        // Card 3: Last Donation
-        val lastDonation = data.lastDonationDate?.let {
-            SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it)
-        } ?: "N/A"
-        drawStatCard(
-            canvas, startX + (cardWidth + cardGap) * 2, statsY, cardWidth, cardHeight,
-            lastDonation, "Last Donation",
-            Color.rgb(183, 28, 28),
-        )
-
-        // ─── Decorative separator ────────────────────────────
-        val sepY = statsY + cardHeight + 30f
-        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(229, 57, 53)
-            alpha = 80
-        }
-        val dotSpacing = 8f
-        val dotsCount = 15
-        val dotsWidth = (dotsCount - 1) * dotSpacing
-        val dotsStartX = (width - dotsWidth) / 2
-        for (i in 0 until dotsCount) {
-            canvas.drawCircle(dotsStartX + i * dotSpacing, sepY, 1.5f, dotPaint)
-        }
-
-        // ─── Thank you message ───────────────────────────────
-        val thankPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(229, 57, 53)
-            textSize = 14f
-            typeface = Typeface.create("sans-serif", Typeface.ITALIC)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText(
-            "\"Every drop counts. Thank you for being a hero.\"",
-            width / 2, sepY + 30f, thankPaint,
-        )
-
-        // ─── Footer ─────────────────────────────────────────
-        val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(158, 158, 158)
-            textSize = 9f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            textAlign = Paint.Align.CENTER
-        }
-        val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
-        canvas.drawText(
-            "Issued by Spondon Blood Donation Community  •  ${dateFormat.format(Date())}",
-            width / 2, height - 40f, footerPaint,
-        )
-
-        // ─── App branding ────────────────────────────────────
-        val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(229, 57, 53)
-            textSize = 18f
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
-            alpha = 25
-        }
-        canvas.drawText("SPONDON", width / 2, height - 55f, brandPaint)
+        drawBackgroundDecor(canvas, w, h)
+        drawDoubleBorder(canvas, w, h)
+        drawBrandRow(canvas, w)
+        drawHeadline(canvas, w)
+        drawBody(canvas, w, data)
+        drawFooter(canvas, w, h, data)
     }
 
-    private fun drawStatCard(
-        canvas: Canvas,
-        x: Float, y: Float,
-        w: Float, h: Float,
-        value: String,
-        label: String,
-        accentColor: Int,
-    ) {
-        // Card background
-        val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(255, 255, 255)
-            setShadowLayer(4f, 0f, 2f, Color.argb(20, 0, 0, 0))
+    private fun drawDoubleBorder(canvas: Canvas, w: Float, h: Float) {
+        val p = Paint().apply {
+            style = Paint.Style.STROKE
+            color = Crimson
         }
-        canvas.drawRoundRect(x, y, x + w, y + h, 10f, 10f, cardPaint)
 
-        // Top accent line
-        val topLinePaint = Paint().apply {
-            color = accentColor
-        }
-        canvas.drawRoundRect(x, y, x + w, y + 3f, 10f, 10f, topLinePaint)
+        p.strokeWidth = OUTER_STROKE
+        canvas.drawRect(OUTER_MARGIN, OUTER_MARGIN, w - OUTER_MARGIN, h - OUTER_MARGIN, p)
 
-        // Value text
-        val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = accentColor
-            textSize = 22f
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText(value, x + w / 2, y + h / 2 + 2f, valuePaint)
-
-        // Label text
-        val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(158, 158, 158)
-            textSize = 9f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            textAlign = Paint.Align.CENTER
-            letterSpacing = 0.1f
-        }
-        canvas.drawText(label.uppercase(Locale.getDefault()), x + w / 2, y + h - 12f, labelPaint)
+        val inset = OUTER_MARGIN + OUTER_STROKE + BORDER_GAP
+        p.strokeWidth = INNER_STROKE
+        canvas.drawRect(inset, inset, w - inset, h - inset, p)
     }
 
-    /**
-     * Draws subtle blood drop watermark shapes in the background.
-     */
-    private fun drawWatermarkDrops(canvas: Canvas, width: Float, height: Float) {
-        val dropPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(229, 57, 53)
-            alpha = 8
+    private fun drawBackgroundDecor(canvas: Canvas, w: Float, h: Float) {
+        val blurPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Crimson
+            alpha = 30
+            style = Paint.Style.STROKE
+            strokeWidth = 2.5f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            maskFilter = BlurMaskFilter(5f, BlurMaskFilter.Blur.NORMAL)
+        }
+
+        val cycleWidth = 160f
+        val amp = 24f
+        val count = (w / cycleWidth).toInt() + 2
+
+        fun drawEcg(yBase: Float) {
+            val path = Path()
+            for (i in 0 until count) {
+                val x0 = i * cycleWidth
+                path.moveTo(x0, yBase)
+                path.lineTo(x0 + 60f, yBase)
+                path.lineTo(x0 + 72f, yBase)
+                path.lineTo(x0 + 80f, yBase - amp)
+                path.lineTo(x0 + 92f, yBase + amp)
+                path.lineTo(x0 + 100f, yBase)
+                path.lineTo(x0 + cycleWidth, yBase)
+            }
+            canvas.drawPath(path, blurPaint)
+        }
+
+        drawEcg(yBase = 28f)
+        drawEcg(yBase = h - 28f)
+
+        val dropBlurPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Crimson
+            alpha = 16
             style = Paint.Style.FILL
+            maskFilter = BlurMaskFilter(12f, BlurMaskFilter.Blur.NORMAL)
         }
 
-        // Several large drops at different positions
-        val drops = listOf(
-            Triple(width * 0.1f, height * 0.3f, 60f),
-            Triple(width * 0.85f, height * 0.25f, 50f),
-            Triple(width * 0.15f, height * 0.75f, 45f),
-            Triple(width * 0.9f, height * 0.7f, 55f),
-            Triple(width * 0.5f, height * 0.85f, 40f),
-        )
-
-        for ((cx, cy, size) in drops) {
-            drawBloodDrop(canvas, cx, cy, size, dropPaint)
-        }
+        drawFaintDrop(canvas, 35f, 20f, 70f, dropBlurPaint)
+        drawFaintDrop(canvas, w - 35f, h - 20f, 70f, dropBlurPaint)
+        drawFaintDrop(canvas, 50f, h - 25f, 45f, dropBlurPaint)
+        drawFaintDrop(canvas, w - 50f, 25f, 50f, dropBlurPaint)
     }
 
-    private fun drawBloodDrop(canvas: Canvas, cx: Float, cy: Float, size: Float, paint: Paint) {
+    private fun drawFaintDrop(canvas: Canvas, cx: Float, cy: Float, size: Float, paint: Paint) {
         val path = Path().apply {
-            // Blood drop shape: a circle at the bottom with a pointed top
-            moveTo(cx, cy - size * 1.2f) // tip
+            moveTo(cx, cy - size * 0.6f)
             cubicTo(
-                cx + size * 0.6f, cy - size * 0.3f,
-                cx + size * 0.7f, cy + size * 0.3f,
-                cx, cy + size * 0.7f,
+                cx + size * 0.5f, cy - size * 0.15f,
+                cx + size * 0.55f, cy + size * 0.35f,
+                cx, cy + size * 0.6f,
             )
             cubicTo(
-                cx - size * 0.7f, cy + size * 0.3f,
-                cx - size * 0.6f, cy - size * 0.3f,
-                cx, cy - size * 1.2f,
+                cx - size * 0.55f, cy + size * 0.35f,
+                cx - size * 0.5f, cy - size * 0.15f,
+                cx, cy - size * 0.6f,
             )
             close()
         }
         canvas.drawPath(path, paint)
     }
 
+    private fun drawBrandRow(canvas: Canvas, w: Float) {
+        val dropSize = 22f
+        val dropCx = w / 2f - 150f
+        val dropCy = 55f
+
+        val dropPath = Path().apply {
+            moveTo(dropCx, dropCy - dropSize * 0.7f)
+            cubicTo(
+                dropCx + dropSize * 0.5f, dropCy - dropSize * 0.2f,
+                dropCx + dropSize * 0.55f, dropCy + dropSize * 0.3f,
+                dropCx, dropCy + dropSize * 0.55f,
+            )
+            cubicTo(
+                dropCx - dropSize * 0.55f, dropCy + dropSize * 0.3f,
+                dropCx - dropSize * 0.5f, dropCy - dropSize * 0.2f,
+                dropCx, dropCy - dropSize * 0.7f,
+            )
+            close()
+        }
+
+        val dropFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                dropCx, dropCy - dropSize, dropCx, dropCy + dropSize,
+                intArrayOf(CrimsonSoft, Crimson, CrimsonDeep),
+                floatArrayOf(0f, 0.5f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        }
+        canvas.drawPath(dropPath, dropFill)
+
+        val sPath = Path().apply {
+            moveTo(dropCx + dropSize * 0.35f, dropCy - dropSize * 0.3f)
+            cubicTo(
+                dropCx - dropSize * 0.05f, dropCy - dropSize * 0.45f,
+                dropCx - dropSize * 0.25f, dropCy - dropSize * 0.1f,
+                dropCx - dropSize * 0.05f, dropCy + dropSize * 0.05f,
+            )
+            cubicTo(
+                dropCx + dropSize * 0.15f, dropCy + dropSize * 0.2f,
+                dropCx + dropSize * 0.3f, dropCy + dropSize * 0.3f,
+                dropCx + dropSize * 0.05f, dropCy + dropSize * 0.45f,
+            )
+        }
+        val sPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Paper
+            style = Paint.Style.STROKE
+            strokeWidth = dropSize * 0.07f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        canvas.drawPath(sPath, sPaint)
+
+        val spondonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = CrimsonDeep
+            textSize = 16f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            letterSpacing = 0.12f
+        }
+        canvas.drawText("SPONDON", dropCx + 40f, dropCy + 6f, spondonPaint)
+
+        val bengaliPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = CrimsonSoft
+            textSize = 13f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        }
+        canvas.drawText("স্পন্দন", dropCx + 115f, dropCy + 20f, bengaliPaint)
+    }
+
+    private fun drawHeadline(canvas: Canvas, w: Float) {
+        val certPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Crimson
+            textSize = 52f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("CERTIFICATE", w / 2f, 112f, certPaint)
+
+        val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Ink
+            alpha = 180
+            textSize = 15f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            textAlign = Paint.Align.CENTER
+            letterSpacing = 0.15f
+        }
+        canvas.drawText("OF BLOOD DONATION", w / 2f, 142f, subPaint)
+    }
+
+    private fun drawBody(canvas: Canvas, w: Float, data: CertificateData) {
+        val cx = w / 2f
+        val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Ink
+            alpha = 200
+            textSize = 15f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("This certificate is presented to", cx, 190f, bodyPaint)
+
+        val namePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = CrimsonDeep
+            textSize = 44f
+            typeface = Typeface.create("serif", Typeface.ITALIC)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText(data.donorName, cx, 252f, namePaint)
+
+        val nw = namePaint.measureText(data.donorName)
+        val ulPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(185, 169, 169)
+            strokeWidth = 1f
+        }
+        canvas.drawLine(cx - nw / 2f - 8f, 262f, cx + nw / 2f + 8f, 262f, ulPaint)
+
+        val donationDateStr = data.lastDonationDate?.let {
+            SimpleDateFormat("dd MMMM, yyyy", Locale.getDefault()).format(it)
+        } ?: "N/A"
+
+        val bodySmallLeft = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Ink; alpha = 200; textSize = 14f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            textAlign = Paint.Align.LEFT
+        }
+        val bodySmallCenter = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Ink; alpha = 200; textSize = 14f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            textAlign = Paint.Align.CENTER
+        }
+        val accentLeft = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Crimson; textSize = 14f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            textAlign = Paint.Align.LEFT
+        }
+
+        canvas.drawText("in recognition of your generous contribution as a blood donor on", cx, 302f, bodySmallCenter)
+
+        val dateSeg = "$donationDateStr, at "
+        val hospitalSeg = data.hospitalName
+        val combinedW = accentLeft.measureText(dateSeg) + accentLeft.measureText(hospitalSeg)
+        val dateStartX = cx - combinedW / 2f
+        canvas.drawText(dateSeg, dateStartX, 328f, accentLeft)
+        canvas.drawText(hospitalSeg, dateStartX + accentLeft.measureText(dateSeg), 328f, accentLeft)
+
+        canvas.drawText("Your selfless act has helped save lives and brought hope", cx, 365f, bodySmallCenter)
+
+        val thanksPrefix = "to those in need. Thank you for being a "
+        val thanksBold = "true hero"
+        val thanksSuffix = "."
+        val thanksTotalW = bodySmallLeft.measureText(thanksPrefix) + accentLeft.measureText(thanksBold) + bodySmallLeft.measureText(thanksSuffix)
+        val thanksStartX = cx - thanksTotalW / 2f
+        canvas.drawText(thanksPrefix, thanksStartX, 390f, bodySmallLeft)
+        canvas.drawText(thanksBold, thanksStartX + bodySmallLeft.measureText(thanksPrefix), 390f, accentLeft)
+        canvas.drawText(thanksSuffix, thanksStartX + bodySmallLeft.measureText(thanksPrefix) + accentLeft.measureText(thanksBold), 390f, bodySmallLeft)
+    }
+
+    private fun drawFooter(canvas: Canvas, w: Float, h: Float, data: CertificateData) {
+        val leftCx = w * 0.25f
+        val rightCx = w * 0.75f
+        val fy = h - 145f
+
+        val medalSize = 50f
+        drawMedalSeal(canvas, leftCx, fy, medalSize)
+
+        val donationDateStr = data.lastDonationDate?.let {
+            SimpleDateFormat("dd MMMM, yyyy", Locale.getDefault()).format(it)
+        } ?: "N/A"
+
+        val smallSans = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Ink
+            alpha = 160
+            textSize = 12f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            textAlign = Paint.Align.CENTER
+        }
+        val semiBold = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Ink
+            textSize = 15f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+
+        val dateLineY = fy + medalSize + 20f
+        val dateLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(201, 185, 185)
+            strokeWidth = 1f
+        }
+        canvas.drawLine(leftCx - 60f, dateLineY, leftCx + 60f, dateLineY, dateLinePaint)
+
+        val dateTextY = dateLineY + 16f
+        canvas.drawText(donationDateStr, leftCx, dateTextY, semiBold)
+
+        canvas.drawText("Date of Donation", leftCx, dateTextY + 18f, smallSans)
+
+        if (data.locationAddress.isNotBlank()) {
+            canvas.drawText(data.locationAddress, leftCx, dateTextY + 38f, smallSans)
+        }
+
+        val appNamePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Ink
+            textSize = 16f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("Spondon App", rightCx, fy + 6f, appNamePaint)
+
+        val sloganPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = CrimsonSoft
+            textSize = 12f
+            typeface = Typeface.create("serif", Typeface.ITALIC)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText(data.appSlogan, rightCx, fy + 26f, sloganPaint)
+
+        val sigLineY = fy + 42f
+        canvas.drawLine(rightCx - 70f, sigLineY, rightCx + 70f, sigLineY, dateLinePaint)
+
+        val signatoryPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Crimson
+            textSize = 15f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText(data.signatoryName, rightCx, sigLineY + 18f, signatoryPaint)
+    }
+
+    private fun drawMedalSeal(canvas: Canvas, cx: Float, cy: Float, size: Float) {
+        val ribbonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = CrimsonDeep
+        }
+        val ribbonPath = Path().apply {
+            moveTo(cx - size * 0.4f, cy + size * 0.25f)
+            lineTo(cx - size * 0.55f, cy + size * 1.2f)
+            lineTo(cx, cy + size * 0.8f)
+            lineTo(cx + size * 0.55f, cy + size * 1.2f)
+            lineTo(cx + size * 0.4f, cy + size * 0.25f)
+            close()
+        }
+        canvas.drawPath(ribbonPath, ribbonPaint)
+
+        val starPath = Path()
+        val points = 12
+        for (i in 0 until points * 2) {
+            val angle = (Math.PI * 2 * i / (points * 2)).toFloat()
+            val radius = if (i % 2 == 0) size * 0.5f else size * 0.4f
+            val x = cx + radius * kotlin.math.cos(angle)
+            val y = cy + radius * kotlin.math.sin(angle)
+            if (i == 0) starPath.moveTo(x, y) else starPath.lineTo(x, y)
+        }
+        starPath.close()
+
+        val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                cx - size, cy - size, cx + size, cy + size,
+                intArrayOf(GoldLight, Gold),
+                floatArrayOf(0f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        }
+        canvas.drawPath(starPath, starPaint)
+
+        val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = GoldLight
+        }
+        canvas.drawCircle(cx, cy, size * 0.36f, circlePaint)
+
+        val borderCirclePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = GoldDark
+            style = Paint.Style.STROKE
+            strokeWidth = 1.5f
+        }
+        canvas.drawCircle(cx, cy, size * 0.28f, borderCirclePaint)
+    }
+
     private fun savePdf(context: Context, document: PdfDocument, fileName: String): String? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Use MediaStore for Android 10+
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
@@ -435,7 +505,6 @@ object CertificateGenerator {
             outputStream.use { document.writeTo(it) }
             uri.toString()
         } else {
-            // Fallback for older Android
             @Suppress("DEPRECATION")
             val downloadsDir = Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS,

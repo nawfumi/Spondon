@@ -45,30 +45,39 @@ private val DISTRICTS = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateCommunityScreen(
+fun EditCommunityScreen(
     navController: NavController,
     viewModel: CommunityViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.createState.collectAsState()
+    val state by viewModel.editState.collectAsState()
+    
+    val communityId = navController.currentBackStackEntry
+        ?.arguments?.getString("communityId") ?: ""
 
     // Image picker
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
-        uri?.let { viewModel.updateCreateCoverUri(it) }
+        uri?.let { viewModel.updateEditCoverUri(it) }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.resetCreateState()
+    LaunchedEffect(communityId) {
+        if (communityId.isNotEmpty()) {
+            viewModel.loadCommunityForEdit(communityId)
+        } else {
+            viewModel.resetEditState()
+        }
+    }
+
+    LaunchedEffect(state.isUpdated) {
+        if (state.isUpdated) {
+            navController.popBackStack()
+        }
     }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is CommunityEvent.NavigateToCommunity -> {
-                    navController.popBackStack()
-                    navController.navigate("community_detail/${event.communityId}")
-                }
                 is CommunityEvent.NavigateBack -> navController.popBackStack()
                 else -> {}
             }
@@ -80,7 +89,7 @@ fun CreateCommunityScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Create Community",
+                        "Edit Community",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -119,9 +128,9 @@ fun CreateCommunityScreen(
                     .clickable { imagePickerLauncher.launch("image/*") },
                 contentAlignment = Alignment.Center,
             ) {
-                if (state.coverUri != null) {
+                if (state.coverUri != null || state.coverUrl.isNotEmpty()) {
                     AsyncImage(
-                        model = state.coverUri,
+                        model = state.coverUri ?: state.coverUrl,
                         contentDescription = "Cover",
                         modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
                         contentScale = ContentScale.Crop,
@@ -163,14 +172,14 @@ fun CreateCommunityScreen(
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SpondonTextField(
                     value = state.name,
-                    onValueChange = { viewModel.updateCreateName(it) },
+                    onValueChange = { viewModel.updateEditName(it) },
                     label = "Community Name *",
                     isError = state.error?.contains("name", ignoreCase = true) == true,
                 )
                 Spacer(Modifier.height(12.dp))
                 SpondonTextField(
                     value = state.description,
-                    onValueChange = { viewModel.updateCreateDescription(it) },
+                    onValueChange = { viewModel.updateEditDescription(it) },
                     label = "Description",
                     singleLine = false,
                 )
@@ -195,14 +204,14 @@ fun CreateCommunityScreen(
                         title = "Public",
                         icon = Icons.Default.Public,
                         isSelected = state.type == CommunityType.PUBLIC,
-                        onClick = { viewModel.updateCreateType(CommunityType.PUBLIC) },
+                        onClick = { viewModel.updateEditType(CommunityType.PUBLIC) },
                         modifier = Modifier.weight(1f),
                     )
                     CommunityTypeCard(
                         title = "Private",
                         icon = Icons.Default.Lock,
                         isSelected = state.type == CommunityType.PRIVATE,
-                        onClick = { viewModel.updateCreateType(CommunityType.PRIVATE) },
+                        onClick = { viewModel.updateEditType(CommunityType.PRIVATE) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -244,7 +253,7 @@ fun CreateCommunityScreen(
                             DropdownMenuItem(
                                 text = { Text(district) },
                                 onClick = {
-                                    viewModel.updateCreateDistrict(district)
+                                    viewModel.updateEditDistrict(district)
                                     districtExpanded = false
                                 },
                             )
@@ -257,7 +266,7 @@ fun CreateCommunityScreen(
                 // Upazila text field
                 SpondonTextField(
                     value = state.upazila,
-                    onValueChange = { viewModel.updateCreateUpazila(it) },
+                    onValueChange = { viewModel.updateEditUpazila(it) },
                     label = "Upazila (optional)",
                 )
             }
@@ -281,7 +290,7 @@ fun CreateCommunityScreen(
                     items(BLOOD_GROUPS) { group ->
                         Surface(
                             modifier = Modifier
-                                .clickable { viewModel.toggleBloodGroup(group) },
+                                .clickable { viewModel.toggleEditBloodGroup(group) },
                             shape = RoundedCornerShape(8.dp),
                             color = if (state.selectedBloodGroups.contains(group)) BloodRed
                                     else MaterialTheme.colorScheme.surfaceVariant,
@@ -346,10 +355,10 @@ fun CreateCommunityScreen(
                 Spacer(Modifier.height(8.dp))
             }
 
-            // ─── Create Button ───────────────────────
+            // ─── Save Button ───────────────────────
             SpondonButton(
-                text = "Create Community",
-                onClick = { viewModel.createCommunity() },
+                text = "Save Changes",
+                onClick = { viewModel.updateCommunity() },
                 modifier = Modifier.padding(16.dp),
                 enabled = state.name.isNotBlank(),
                 isLoading = state.isLoading,

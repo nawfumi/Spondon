@@ -24,11 +24,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -308,10 +312,31 @@ fun SignUpScreen(
                         colors = CheckboxDefaults.colors(checkedColor = BloodRed),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "I agree to the Terms of Service and Privacy Policy",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                    val annotatedText = buildAnnotatedString {
+                        append("I agree to the ")
+                        pushStringAnnotation("terms", "terms")
+                        withStyle(SpanStyle(color = BloodRed, fontWeight = FontWeight.SemiBold)) {
+                            append("Terms of Service")
+                        }
+                        pop()
+                        append(" and ")
+                        pushStringAnnotation("privacy", "privacy")
+                        withStyle(SpanStyle(color = BloodRed, fontWeight = FontWeight.SemiBold)) {
+                            append("Privacy Policy")
+                        }
+                        pop()
+                    }
+                    ClickableText(
+                        text = annotatedText,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        ),
+                        onClick = { offset ->
+                            annotatedText.getStringAnnotations("terms", offset, offset)
+                                .firstOrNull()?.let { navController.navigate(Routes.TermsOfService.route) }
+                            annotatedText.getStringAnnotations("privacy", offset, offset)
+                                .firstOrNull()?.let { navController.navigate(Routes.PrivacyPolicy.route) }
+                        },
                     )
                 }
 

@@ -70,6 +70,29 @@ fun CommunityDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.3f))
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                ),
+                windowInsets = WindowInsets(0.dp),
+            )
+        },
         floatingActionButton = {
             val isAdminOrMod = state.currentUserRole == CommunityRole.ADMIN ||
                     state.currentUserRole == CommunityRole.MODERATOR
@@ -86,6 +109,7 @@ fun CommunityDetailScreen(
                 }
             }
         },
+
     ) { padding ->
         when {
             state.isLoading -> {
@@ -110,7 +134,7 @@ fun CommunityDetailScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .padding(bottom = padding.calculateBottomPadding()),
                 ) {
                     // ─── Cover Banner ────────────────────
                     item {
@@ -147,22 +171,6 @@ fun CommunityDetailScreen(
                                                 listOf(Color(0xFF7A1212), Color(0xFF2B0606))
                                             )
                                         ),
-                                )
-                            }
-
-                            // Back button
-                            IconButton(
-                                onClick = { navController.popBackStack() },
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .align(Alignment.TopStart)
-                                    .clip(CircleShape)
-                                    .background(Color.Black.copy(alpha = 0.28f)),
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = Color.White,
                                 )
                             }
 

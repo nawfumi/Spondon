@@ -177,6 +177,12 @@ fun SpondonNavGraph(
                 composable(Routes.Permissions.route) {
                     PermissionsScreen(navController)
                 }
+                composable(Routes.TermsOfService.route) {
+                    TermsOfServiceScreen(navController)
+                }
+                composable(Routes.PrivacyPolicy.route) {
+                    PrivacyPolicyScreen(navController)
+                }
 
                 // ─── New Onboarding Flow ─────────────────────
                 composable(Routes.InitialSetup.route) {
@@ -213,6 +219,13 @@ fun SpondonNavGraph(
 
             composable(Routes.CreateCommunity.route) {
                 CreateCommunityScreen(navController)
+            }
+
+            composable(
+                route = Routes.EditCommunity.route,
+                arguments = listOf(navArgument("communityId") { type = NavType.StringType }),
+            ) {
+                EditCommunityScreen(navController)
             }
 
             composable(

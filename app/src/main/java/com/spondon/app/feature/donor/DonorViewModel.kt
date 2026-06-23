@@ -559,7 +559,7 @@ class DonorViewModel @Inject constructor(
     // Certificate Generation
     // ═══════════════════════════════════════════════════════════
 
-    fun generateCertificate(context: Context) {
+    fun generateCertificate(context: Context, donation: Donation? = null) {
         val state = _historyState.value
         val user = state.user ?: return
 
@@ -568,13 +568,22 @@ class DonorViewModel @Inject constructor(
             return
         }
 
+        val targetDonation = donation ?: state.donations.firstOrNull { it.status == DonationStatus.CONFIRMED }
+
+        if (targetDonation == null) {
+            _historyState.update { it.copy(certificateMessage = "No confirmed donation found to generate certificate.") }
+            return
+        }
+
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val certificateData = com.spondon.app.core.util.CertificateGenerator.CertificateData(
                     donorName = user.name.ifBlank { "Donor" },
-                    bloodGroup = user.bloodGroup.ifBlank { "Unknown" },
+                    bloodGroup = targetDonation.bloodGroup.ifBlank { user.bloodGroup.ifBlank { "Unknown" } },
                     totalDonations = user.totalDonations,
-                    lastDonationDate = user.lastDonationDate,
+                    lastDonationDate = targetDonation.date ?: user.lastDonationDate,
+                    hospitalName = targetDonation.hospital.ifBlank { "Spondon App" },
+                    signatoryName = "Spondon Authority",
                 )
 
                 val result = com.spondon.app.core.util.CertificateGenerator.generateCertificate(

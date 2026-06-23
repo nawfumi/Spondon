@@ -106,22 +106,6 @@ fun DonationHistoryScreen(
                 ),
             )
         },
-        floatingActionButton = {
-            if (state.totalDonations > 0 && !state.isLoading) {
-                ExtendedFloatingActionButton(
-                    onClick = { viewModel.generateCertificate(context) },
-                    containerColor = BloodRed,
-                    contentColor = Color.White,
-                    icon = {
-                        Icon(
-                            Icons.Filled.Download,
-                            contentDescription = "Download Certificate",
-                        )
-                    },
-                    text = { Text("Certificate", fontWeight = FontWeight.SemiBold) },
-                )
-            }
-        },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { data ->
                 Snackbar(
@@ -350,6 +334,7 @@ fun DonationHistoryScreen(
                                 donation = donation,
                                 isFirst = index == 0,
                                 isLast = index == state.donations.lastIndex,
+                                onDownloadCertificate = { viewModel.generateCertificate(context, donation) }
                             )
                         }
                     }
@@ -364,6 +349,7 @@ private fun DonationTimelineItem(
     donation: Donation,
     isFirst: Boolean,
     isLast: Boolean,
+    onDownloadCertificate: () -> Unit,
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val isConfirmed = donation.status == DonationStatus.CONFIRMED
@@ -473,23 +459,40 @@ private fun DonationTimelineItem(
                     }
                 }
 
-                // Status chip
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isConfirmed)
-                        AvailableGreen.copy(alpha = 0.1f)
-                    else
-                        PendingAmber.copy(alpha = 0.1f),
-                ) {
-                    Text(
-                        if (isConfirmed) "Confirmed" else "Pending",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                        ),
-                        color = if (isConfirmed) AvailableGreen else PendingAmber,
-                    )
+                // Status chip and Download Button
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isConfirmed)
+                            AvailableGreen.copy(alpha = 0.1f)
+                        else
+                            PendingAmber.copy(alpha = 0.1f),
+                    ) {
+                        Text(
+                            if (isConfirmed) "Confirmed" else "Pending",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                            ),
+                            color = if (isConfirmed) AvailableGreen else PendingAmber,
+                        )
+                    }
+
+                    if (isConfirmed) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = onDownloadCertificate,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Download,
+                                contentDescription = "Download Certificate",
+                                tint = BloodRed,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
