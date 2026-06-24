@@ -559,45 +559,28 @@ class DonorViewModel @Inject constructor(
     // Certificate Generation
     // ═══════════════════════════════════════════════════════════
 
-    fun generateCertificate(context: Context, donation: Donation? = null) {
-        val state = _historyState.value
-        val user = state.user ?: return
-
-        if (state.totalDonations <= 0) {
-            _historyState.update { it.copy(certificateMessage = "You need at least one donation to get a certificate.") }
-            return
-        }
-
-        val targetDonation = donation ?: state.donations.firstOrNull { it.status == DonationStatus.CONFIRMED }
-
-        if (targetDonation == null) {
-            _historyState.update { it.copy(certificateMessage = "No confirmed donation found to generate certificate.") }
-            return
-        }
-
+    fun saveCertificateBitmap(context: Context, bitmap: android.graphics.Bitmap) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val certificateData = com.spondon.app.core.util.CertificateGenerator.CertificateData(
-                    donorName = user.name.ifBlank { "Donor" },
-                    bloodGroup = targetDonation.bloodGroup.ifBlank { user.bloodGroup.ifBlank { "Unknown" } },
-                    totalDonations = user.totalDonations,
-                    lastDonationDate = targetDonation.date ?: user.lastDonationDate,
-                    hospitalName = targetDonation.hospital.ifBlank { "Spondon App" },
-                    signatoryName = "Spondon Authority",
-                )
-
-                val result = com.spondon.app.core.util.CertificateGenerator.generateCertificate(
-                    context = context,
-                    data = certificateData,
-                )
-
-                if (result != null) {
-                    _historyState.update { it.copy(certificateMessage = "Certificate saved to Downloads!") }
+                val fileName = "Spondon_Certificate_${System.currentTimeMillis()}.png"
+                val resolver = context.contentResolver
+                val contentValues = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES)
+                }
+                
+                val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                if (uri != null) {
+                    resolver.openOutputStream(uri)?.use { outputStream ->
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
+                    }
+                    _historyState.update { it.copy(certificateMessage = "Certificate saved to Gallery!") }
                 } else {
-                    _historyState.update { it.copy(certificateMessage = "Failed to generate certificate.") }
+                    _historyState.update { it.copy(certificateMessage = "Failed to save certificate.") }
                 }
             } catch (e: Exception) {
-                _historyState.update { it.copy(certificateMessage = "Failed to generate certificate: ${e.localizedMessage}") }
+                _historyState.update { it.copy(certificateMessage = "Failed to save certificate: ${e.localizedMessage}") }
             }
         }
     }

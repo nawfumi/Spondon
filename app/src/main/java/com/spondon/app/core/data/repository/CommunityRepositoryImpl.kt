@@ -58,7 +58,6 @@ class CommunityRepositoryImpl @Inject constructor(
             "memberCount" to community.memberCount,
             "donationCount" to community.donationCount,
             "isVerified" to community.isVerified,
-            "isSerialEnabled" to community.isSerialEnabled,
             "createdAt" to Timestamp.now(),
         )
         val result = firestoreService.createCommunity(data)
@@ -177,6 +176,7 @@ class CommunityRepositoryImpl @Inject constructor(
         communityId: String,
         requestId: String,
         userId: String,
+        serialId: String? = null,
     ): Resource<Unit> {
         // Step 1: Update the join request document status
         val statusResult = firestoreService.updateJoinRequestStatus(communityId, requestId, "APPROVED")
@@ -194,6 +194,14 @@ class CommunityRepositoryImpl @Inject constructor(
         val joinResult = firestoreService.joinCommunity(communityId, userId)
         if (joinResult is Resource.Error) {
             return Resource.Error("Failed to add member: ${joinResult.message}")
+        }
+
+        // Step 4: Copy serial ID to memberSerials if provided
+        if (!serialId.isNullOrBlank()) {
+            firestoreService.updateCommunityFields(
+                communityId,
+                mapOf("memberSerials.$userId" to serialId),
+            )
         }
 
         return Resource.Success(Unit)

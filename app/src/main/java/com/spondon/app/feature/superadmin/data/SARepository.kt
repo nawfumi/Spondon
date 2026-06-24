@@ -490,7 +490,12 @@ class SARepository @Inject constructor(
     suspend fun verifyCommunity(communityId: String): Resource<Unit> {
         return try {
             firestore.collection("communities").document(communityId)
-                .update("status", "VERIFIED").await()
+                .update(
+                    mapOf(
+                        "status" to "VERIFIED",
+                        "isVerified" to true,
+                    )
+                ).await()
             auditLogger.log(SAAction.VERIFY_COMMUNITY, targetId = communityId)
             Resource.Success(Unit)
         } catch (e: Exception) {
@@ -502,7 +507,12 @@ class SARepository @Inject constructor(
     suspend fun suspendCommunity(communityId: String): Resource<Unit> {
         return try {
             firestore.collection("communities").document(communityId)
-                .update("status", "SUSPENDED").await()
+                .update(
+                    mapOf(
+                        "status" to "SUSPENDED",
+                        "isVerified" to false,
+                    )
+                ).await()
             auditLogger.log(SAAction.BAN_COMMUNITY, targetId = communityId)
             Resource.Success(Unit)
         } catch (e: Exception) {
@@ -514,7 +524,12 @@ class SARepository @Inject constructor(
     suspend fun unsuspendCommunity(communityId: String): Resource<Unit> {
         return try {
             firestore.collection("communities").document(communityId)
-                .update("status", "ACTIVE").await()
+                .update(
+                    mapOf(
+                        "status" to "ACTIVE",
+                        "isVerified" to true,
+                    )
+                ).await()
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Reactivation failed", e)

@@ -187,7 +187,9 @@ fun CreateCommunityScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -370,6 +372,7 @@ private fun CommunityTypeCard(
 ) {
     Card(
         modifier = modifier
+            .fillMaxHeight()
             .clickable(onClick = onClick)
             .then(
                 if (isSelected) Modifier.border(2.dp, BloodRed, RoundedCornerShape(12.dp))

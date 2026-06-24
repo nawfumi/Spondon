@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.spondon.app.core.domain.model.Donation
@@ -69,6 +70,17 @@ import com.spondon.app.core.ui.theme.PendingAmber
 import com.spondon.app.core.ui.theme.UnavailableGrey
 import java.text.SimpleDateFormat
 import java.util.Locale
+import android.graphics.Picture
+import android.graphics.Bitmap
+import android.graphics.Canvas as AndroidCanvas
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.Canvas as ComposeCanvas
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.drawscope.draw
+import androidx.core.graphics.createBitmap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +91,8 @@ fun DonationHistoryScreen(
     val state by viewModel.historyState.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    val selectedDonationForCertificate = remember { androidx.compose.runtime.mutableStateOf<Donation?>(null) }
 
     LaunchedEffect(Unit) { viewModel.loadDonationHistory() }
 
@@ -116,6 +130,19 @@ fun DonationHistoryScreen(
             }
         },
     ) { padding ->
+        
+        selectedDonationForCertificate.value?.let { donation ->
+            CertificateDialog(
+                donation = donation,
+                userName = state.user?.name ?: "Donor",
+                onDismiss = { selectedDonationForCertificate.value = null },
+                onSave = { bitmap ->
+                    viewModel.saveCertificateBitmap(context, bitmap)
+                    selectedDonationForCertificate.value = null
+                }
+            )
+        }
+
         when {
             state.isLoading -> {
                 Box(
@@ -334,9 +361,88 @@ fun DonationHistoryScreen(
                                 donation = donation,
                                 isFirst = index == 0,
                                 isLast = index == state.donations.lastIndex,
-                                onDownloadCertificate = { viewModel.generateCertificate(context, donation) }
+                                onViewCertificate = { selectedDonationForCertificate.value = donation }
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CertificateDialog(
+    donation: Donation,
+    userName: String,
+    onDismiss: () -> Unit,
+    onSave: (Bitmap) -> Unit
+) {
+    val picture = remember { Picture() }
+    val dateFormat = remember { SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Donation Certificate",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // The certificate wrapped with a capture modifier
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawWithCache {
+                            val width = size.width.toInt()
+                            val height = size.height.toInt()
+                            onDrawWithContent {
+                                val pictureCanvas = ComposeCanvas(picture.beginRecording(width, height))
+                                draw(this, layoutDirection, pictureCanvas, size) {
+                                    this@onDrawWithContent.drawContent()
+                                }
+                                picture.endRecording()
+                                drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPicture(picture) }
+                            }
+                        }
+                ) {
+                    DonationCertificate(
+                        recipientName = userName,
+                        donationDate = donation.date?.let { dateFormat.format(it) } ?: "N/A",
+                        hospitalName = donation.hospital.ifBlank { "Spondon App" },
+                        signatoryName = "Spondon Authority"
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    androidx.compose.material3.TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val bitmap = createBitmap(picture.width, picture.height)
+                            val canvas = AndroidCanvas(bitmap)
+                            canvas.drawColor(android.graphics.Color.WHITE)
+                            canvas.drawPicture(picture)
+                            onSave(bitmap)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BloodRed)
+                    ) {
+                        Text("Save to Gallery")
                     }
                 }
             }
@@ -349,7 +455,7 @@ private fun DonationTimelineItem(
     donation: Donation,
     isFirst: Boolean,
     isLast: Boolean,
-    onDownloadCertificate: () -> Unit,
+    onViewCertificate: () -> Unit,
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val isConfirmed = donation.status == DonationStatus.CONFIRMED
@@ -482,12 +588,12 @@ private fun DonationTimelineItem(
                     if (isConfirmed) {
                         Spacer(modifier = Modifier.width(8.dp))
                         IconButton(
-                            onClick = onDownloadCertificate,
+                            onClick = onViewCertificate,
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 Icons.Filled.Download,
-                                contentDescription = "Download Certificate",
+                                contentDescription = "View Certificate",
                                 tint = BloodRed,
                                 modifier = Modifier.size(20.dp)
                             )

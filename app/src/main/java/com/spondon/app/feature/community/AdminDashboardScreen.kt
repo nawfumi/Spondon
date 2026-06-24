@@ -405,7 +405,7 @@ fun AdminDashboardScreen(
                                             request = request,
                                             onApprove = {
                                                 viewModel.approveJoinRequest(
-                                                    communityId, request.id, request.userId,
+                                                    communityId, request.id, request.userId, request.serialId,
                                                 )
                                             },
                                             onReject = {

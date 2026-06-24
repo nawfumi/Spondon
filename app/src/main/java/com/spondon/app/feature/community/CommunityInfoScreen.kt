@@ -318,14 +318,6 @@ private fun CommunityInfoAboutContent(community: Community) {
                 )
                 Spacer(Modifier.height(10.dp))
                 CommunityInfoAboutRow(
-                    icon = Icons.Outlined.Map,
-                    label = "Upazila",
-                    value = community.upazila.ifEmpty { "—" },
-                    chipColor = MaterialTheme.colorScheme.tertiary,
-                    chipBg = MaterialTheme.colorScheme.tertiaryContainer,
-                )
-                Spacer(Modifier.height(10.dp))
-                CommunityInfoAboutRow(
                     icon = Icons.Outlined.CalendarMonth,
                     label = "Founded",
                     value = community.createdAt?.formatDisplay() ?: "—",

@@ -777,9 +777,9 @@ class CommunityViewModel @Inject constructor(
         }
     }
 
-    fun approveJoinRequest(communityId: String, requestId: String, userId: String) {
+    fun approveJoinRequest(communityId: String, requestId: String, userId: String, serialId: String? = null) {
         viewModelScope.launch {
-            when (val result = communityRepository.approveJoinRequest(communityId, requestId, userId)) {
+            when (val result = communityRepository.approveJoinRequest(communityId, requestId, userId, serialId)) {
                 is Resource.Success -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Member approved!"))
                     loadAdminDashboard(communityId)
