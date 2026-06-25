@@ -61,6 +61,41 @@ class FirestoreService @Inject constructor(
 
     suspend fun deleteUser(userId: String): Resource<Unit> {
         return try {
+            // Fetch user's communityIds before deleting
+            val userDoc = firestore.collection(Constants.USERS_COLLECTION)
+                .document(userId).get().await()
+            val communityIds = (userDoc.data?.get("communityIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+
+            // Remove user from all communities and decrement memberCount
+            for (communityId in communityIds) {
+                val cRef = firestore.collection(Constants.COMMUNITIES_COLLECTION)
+                    .document(communityId)
+                val cDoc = cRef.get().await()
+                val data = cDoc.data ?: continue
+
+                val memberIds = (data["memberIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+                val adminIds = (data["adminIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+                val moderatorIds = (data["moderatorIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+
+                val wasMember = userId in memberIds
+                val wasAdmin = userId in adminIds
+                val wasModerator = userId in moderatorIds
+
+                if (wasMember || wasAdmin || wasModerator) {
+                    val updates = mutableMapOf<String, Any>()
+                    if (wasMember) updates["memberIds"] = FieldValue.arrayRemove(userId)
+                    if (wasAdmin) updates["adminIds"] = FieldValue.arrayRemove(userId)
+                    if (wasModerator) updates["moderatorIds"] = FieldValue.arrayRemove(userId)
+                    updates["memberCount"] = FieldValue.increment(-1)
+                    cRef.update(updates).await()
+                }
+            }
+
+            // Delete user document
             firestore.collection(Constants.USERS_COLLECTION)
                 .document(userId)
                 .delete()
@@ -824,6 +859,49 @@ class FirestoreService @Inject constructor(
 
     suspend fun deleteUserAccount(userId: String): Resource<Unit> {
         return try {
+            // Fetch user's communityIds before deleting
+            val userDoc = firestore.collection(Constants.USERS_COLLECTION)
+                .document(userId).get().await()
+            val communityIds = (userDoc.data?.get("communityIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+
+            // Remove user from all communities and decrement memberCount
+            for (communityId in communityIds) {
+                val cRef = firestore.collection(Constants.COMMUNITIES_COLLECTION)
+                    .document(communityId)
+                val cDoc = cRef.get().await()
+                val data = cDoc.data ?: continue
+
+                val memberIds = (data["memberIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+                val adminIds = (data["adminIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+                val moderatorIds = (data["moderatorIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+
+                val wasMember = userId in memberIds
+                val wasAdmin = userId in adminIds
+                val wasModerator = userId in moderatorIds
+
+                if (wasMember || wasAdmin || wasModerator) {
+                    val updates = mutableMapOf<String, Any>()
+                    if (wasMember) updates["memberIds"] = FieldValue.arrayRemove(userId)
+                    if (wasAdmin) updates["adminIds"] = FieldValue.arrayRemove(userId)
+                    if (wasModerator) updates["moderatorIds"] = FieldValue.arrayRemove(userId)
+                    updates["memberCount"] = FieldValue.increment(-1)
+                    cRef.update(updates).await()
+                }
+            }
+
+            // Delete user's requests
+            val reqSnapshot = firestore.collection(Constants.REQUESTS_COLLECTION)
+                .whereEqualTo("requesterId", userId)
+                .get().await()
+            for (doc in reqSnapshot.documents) {
+                doc.reference.delete().await()
+            }
+
+            // Delete user document
             firestore.collection(Constants.USERS_COLLECTION)
                 .document(userId)
                 .delete()

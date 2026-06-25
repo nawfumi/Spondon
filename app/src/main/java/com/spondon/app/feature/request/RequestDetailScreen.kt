@@ -41,6 +41,7 @@ fun RequestDetailScreen(
 ) {
     val state by viewModel.detailState.collectAsState()
     val context = LocalContext.current
+    var showShareSheet by remember { mutableStateOf(false) }
 
     // Load from savedStateHandle or nav arg
     val requestId = navController.currentBackStackEntry
@@ -48,6 +49,13 @@ fun RequestDetailScreen(
 
     LaunchedEffect(requestId) {
         if (requestId.isNotBlank()) viewModel.loadRequestDetail(requestId)
+    }
+
+    if (showShareSheet && state.request != null) {
+        ShareBottomSheet(
+            request = state.request!!,
+            onDismiss = { showShareSheet = false },
+        )
     }
 
     Scaffold(
@@ -63,14 +71,7 @@ fun RequestDetailScreen(
                 windowInsets = WindowInsets(0.dp),
                 actions = {
                     if (state.request != null) {
-                        IconButton(onClick = {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT,
-                                    "🩸 Urgent blood request: ${state.request?.bloodGroup} needed at ${state.request?.hospital}. Help save a life!")
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share Request"))
-                        }) {
+                        IconButton(onClick = { showShareSheet = true }) {
                             Icon(Icons.Outlined.Share, "Share")
                         }
                     }

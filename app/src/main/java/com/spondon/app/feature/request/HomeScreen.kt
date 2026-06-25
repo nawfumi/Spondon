@@ -3,7 +3,6 @@ package com.spondon.app.feature.request
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -570,6 +569,14 @@ fun RequestCard(
     val timeFormat = remember { java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault()) }
     val donationDateStr = request.donationDateTime?.let { dateFormat.format(it) } ?: "Not set"
     val donationTimeStr = request.donationDateTime?.let { timeFormat.format(it) } ?: "Not set"
+    var showShareSheet by remember { mutableStateOf(false) }
+
+    if (showShareSheet) {
+        ShareBottomSheet(
+            request = request,
+            onDismiss = { showShareSheet = false },
+        )
+    }
 
     Card(
         modifier = modifier
@@ -644,12 +651,7 @@ fun RequestCard(
                             text = { Text("Share") },
                             onClick = {
                                 menuExpanded = false
-                                val shareText = "🩸 ${request.bloodGroup} blood needed at ${request.hospital}. ${request.unitsNeeded} unit(s) required. Help save a life!"
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, shareText)
-                                }
-                                context.startActivity(Intent.createChooser(shareIntent, "Share Request"))
+                                showShareSheet = true
                             },
                             leadingIcon = { Icon(Icons.Outlined.Share, null, modifier = Modifier.size(18.dp)) },
                         )
@@ -657,7 +659,7 @@ fun RequestCard(
                             text = { Text("Copy Info") },
                             onClick = {
                                 menuExpanded = false
-                                val copyText = "Blood Group: ${request.bloodGroup}\nHospital: ${request.hospital}\nUnits: ${request.unitsNeeded}\nUrgency: ${request.urgency.name}\nContact: ${request.contactNumber}"
+                                val copyText = com.spondon.app.core.util.ShareUtils.buildShareText(request)
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("Request Info", copyText))
                             },

@@ -12,56 +12,33 @@ import com.google.firebase.messaging.RemoteMessage
 import com.spondon.app.MainActivity
 import com.spondon.app.R
 import com.spondon.app.core.common.Constants
-import com.spondon.app.core.data.repository.NotificationRepositoryImpl
-import com.spondon.app.core.domain.model.NotificationType
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class SpondonFCMService : FirebaseMessagingService() {
 
-    @Inject lateinit var notificationRepository: NotificationRepositoryImpl
     @Inject lateinit var firestore: FirebaseFirestore
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
         private const val CHANNEL_ID = "spondon_notifications"
         private const val CHANNEL_NAME = "Spondon Notifications"
     }
 
+    /**
+     * Called when an FCM data message arrives (sent by our Cloud Function).
+     *
+     * The notification Firestore document already exists (it triggered the
+     * Cloud Function), so we do NOT create another one here — that would
+     * cause an infinite loop.
+     */
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
-        val title = message.notification?.title ?: message.data["title"] ?: "Spondon"
-        val body = message.notification?.body ?: message.data["body"] ?: ""
-        val typeStr = message.data["type"] ?: "REQUEST"
-        val deepLink = message.data["deepLink"] ?: ""
-
-        val type = try {
-            NotificationType.valueOf(typeStr)
-        } catch (_: Exception) {
-            NotificationType.REQUEST
-        }
-
-        // Save to Firestore via repository
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        if (uid != null) {
-            serviceScope.launch {
-                notificationRepository.createNotification(
-                    userId = uid,
-                    type = type,
-                    title = title,
-                    body = body,
-                    deepLink = deepLink,
-                )
-            }
-        }
+        // Read from data payload (Cloud Function sends data-only messages)
+        val title = message.data["title"] ?: message.notification?.title ?: "Spondon"
+        val body = message.data["body"] ?: message.notification?.body ?: ""
 
         // Show system notification
         showNotification(title, body)
@@ -102,6 +79,7 @@ class SpondonFCMService : FirebaseMessagingService() {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)

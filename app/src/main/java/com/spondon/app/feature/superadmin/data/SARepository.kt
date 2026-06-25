@@ -359,18 +359,28 @@ class SARepository @Inject constructor(
                 doc.reference.delete().await()
             }
 
-            // Remove from communities
+            // Remove from communities and decrement memberCount
             val communitySnapshot = firestore.collection("communities").get().await()
             for (doc in communitySnapshot.documents) {
-                val memberIds = (doc.data?.get("memberIds") as? List<*>)
-                    ?.filterIsInstance<String>() ?: continue
-                if (uid in memberIds) {
-                    doc.reference.update("memberIds", FieldValue.arrayRemove(uid)).await()
-                }
-                val adminIds = (doc.data?.get("adminIds") as? List<*>)
-                    ?.filterIsInstance<String>() ?: continue
-                if (uid in adminIds) {
-                    doc.reference.update("adminIds", FieldValue.arrayRemove(uid)).await()
+                val data = doc.data ?: continue
+                val memberIds = (data["memberIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+                val adminIds = (data["adminIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+                val moderatorIds = (data["moderatorIds"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+
+                val wasMember = uid in memberIds
+                val wasAdmin = uid in adminIds
+                val wasModerator = uid in moderatorIds
+
+                if (wasMember || wasAdmin || wasModerator) {
+                    val updates = mutableMapOf<String, Any>()
+                    if (wasMember) updates["memberIds"] = FieldValue.arrayRemove(uid)
+                    if (wasAdmin) updates["adminIds"] = FieldValue.arrayRemove(uid)
+                    if (wasModerator) updates["moderatorIds"] = FieldValue.arrayRemove(uid)
+                    updates["memberCount"] = FieldValue.increment(-1)
+                    doc.reference.update(updates).await()
                 }
             }
 
@@ -560,6 +570,23 @@ class SARepository @Inject constructor(
                 doc.reference.delete().await()
             }
 
+            // Delete community posts
+            val postsSnapshot = firestore.collection("communityPosts")
+                .whereEqualTo("communityId", communityId)
+                .get().await()
+            for (doc in postsSnapshot.documents) {
+                doc.reference.delete().await()
+            }
+
+            // Delete join requests subcollection
+            val joinReqSnapshot = firestore.collection("communities")
+                .document(communityId)
+                .collection("joinRequests")
+                .get().await()
+            for (doc in joinReqSnapshot.documents) {
+                doc.reference.delete().await()
+            }
+
             // Delete the community itself
             firestore.collection("communities").document(communityId).delete().await()
 
@@ -574,8 +601,31 @@ class SARepository @Inject constructor(
     suspend fun forceRemoveMember(communityId: String, uid: String): Resource<Unit> {
         return try {
             val cRef = firestore.collection("communities").document(communityId)
-            cRef.update("memberIds", FieldValue.arrayRemove(uid)).await()
-            cRef.update("adminIds", FieldValue.arrayRemove(uid)).await()
+
+            // Check if user was in any role before removing
+            val doc = cRef.get().await()
+            val data = doc.data
+            val memberIds = (data?.get("memberIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val adminIds = (data?.get("adminIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val moderatorIds = (data?.get("moderatorIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+
+            val wasMember = uid in memberIds
+            val wasAdmin = uid in adminIds
+            val wasModerator = uid in moderatorIds
+
+            val updates = mutableMapOf<String, Any>()
+            if (wasMember) updates["memberIds"] = FieldValue.arrayRemove(uid)
+            if (wasAdmin) updates["adminIds"] = FieldValue.arrayRemove(uid)
+            if (wasModerator) updates["moderatorIds"] = FieldValue.arrayRemove(uid)
+            if (wasMember || wasAdmin || wasModerator) {
+                updates["memberCount"] = FieldValue.increment(-1)
+            }
+            if (updates.isNotEmpty()) {
+                cRef.update(updates).await()
+            }
 
             // Also remove from user's communityIds
             firestore.collection("users").document(uid)

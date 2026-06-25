@@ -70,7 +70,8 @@ import javax.inject.Inject
 import androidx.compose.material3.AlertDialog
 import com.spondon.app.feature.update.UpdateManager
 import com.spondon.app.feature.update.UpdateViewModel
-import com.spondon.app.feature.notification.NotificationObserver
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import com.spondon.app.core.util.NetworkConnectivityObserver
 
 @AndroidEntryPoint
@@ -85,7 +86,7 @@ class MainActivity : FragmentActivity() {
     private val updateViewModel: UpdateViewModel by viewModels()
 
     private lateinit var updateManager: UpdateManager
-    private lateinit var notificationObserver: NotificationObserver
+
 
     @Inject lateinit var networkObserver: NetworkConnectivityObserver
 
@@ -102,7 +103,7 @@ class MainActivity : FragmentActivity() {
 
         credentialManager = CredentialManager.create(this)
         updateManager = UpdateManager(this)
-        notificationObserver = NotificationObserver(this)
+
 
         updateViewModel.checkForUpdates(BuildConfig.VERSION_NAME)
 
@@ -288,16 +289,16 @@ class MainActivity : FragmentActivity() {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-    }
 
-    override fun onResume() {
-        super.onResume()
-        notificationObserver.startObserving()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        notificationObserver.stopObserving()
+        // Ensure FCM token is saved in Firestore on every launch.
+        // onNewToken() doesn't fire every time, so we proactively fetch
+        // and store the current token so the Cloud Function can reach this device.
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            val uid = firebaseAuth.currentUser?.uid ?: return@addOnSuccessListener
+            FirebaseFirestore.getInstance()
+                .collection("users").document(uid)
+                .update("fcmToken", token)
+        }
     }
 
     // ── Google Sign-In via Credential Manager ──────────────────

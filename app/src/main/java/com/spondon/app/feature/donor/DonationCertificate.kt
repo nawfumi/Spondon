@@ -88,7 +88,11 @@ fun DonationCertificate(
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(bottom = 16.dp)
             ) {
-                CertificateLogo(modifier = Modifier.size(24.dp, 28.dp))
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.spondon.app.R.drawable.logo),
+                    contentDescription = "Spondon Logo",
+                    modifier = Modifier.size(24.dp, 28.dp)
+                )
                 Spacer(modifier = Modifier.width(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -195,7 +199,11 @@ fun DonationCertificate(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Center Medal (above the date/authority text)
-                CertificateMedal(modifier = Modifier.size(60.dp, 80.dp).padding(bottom = 12.dp))
+                CertificateMedal(
+                    modifier = Modifier
+                        .size(60.dp, 80.dp)
+                        .offset(y = 16.dp)
+                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
