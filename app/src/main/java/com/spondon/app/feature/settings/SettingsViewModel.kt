@@ -59,6 +59,12 @@ class SettingsViewModel @Inject constructor(
             val lang = preferencesManager.language.first()
             val biometric = preferencesManager.isBiometricEnabled.first()
 
+            // Load persisted notification preferences
+            val notifyReqs = preferencesManager.notifyNewRequests.first()
+            val notifyJoin = preferencesManager.notifyJoinApprovals.first()
+            val notifyDonation = preferencesManager.notifyDonationReminders.first()
+            val notifyAdmin = preferencesManager.notifyAdminAlerts.first()
+
             val uid = auth.currentUser?.uid ?: ""
             var showPhone = true
             var isDonor = true
@@ -75,6 +81,10 @@ class SettingsViewModel @Inject constructor(
                     isDarkMode = darkMode,
                     language = lang,
                     isBiometricEnabled = biometric,
+                    notifyNewRequests = notifyReqs,
+                    notifyJoinApprovals = notifyJoin,
+                    notifyDonationReminders = notifyDonation,
+                    notifyAdminAlerts = notifyAdmin,
                     showPhoneNumber = showPhone,
                     showInDonorSearch = isDonor,
                     isLoading = false,
@@ -98,10 +108,34 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun toggleNotifyNewRequests() = _state.update { it.copy(notifyNewRequests = !it.notifyNewRequests) }
-    fun toggleNotifyJoinApprovals() = _state.update { it.copy(notifyJoinApprovals = !it.notifyJoinApprovals) }
-    fun toggleNotifyDonationReminders() = _state.update { it.copy(notifyDonationReminders = !it.notifyDonationReminders) }
-    fun toggleNotifyAdminAlerts() = _state.update { it.copy(notifyAdminAlerts = !it.notifyAdminAlerts) }
+    fun toggleNotifyNewRequests() {
+        viewModelScope.launch {
+            val newVal = !_state.value.notifyNewRequests
+            preferencesManager.setNotifyNewRequests(newVal)
+            _state.update { it.copy(notifyNewRequests = newVal) }
+        }
+    }
+    fun toggleNotifyJoinApprovals() {
+        viewModelScope.launch {
+            val newVal = !_state.value.notifyJoinApprovals
+            preferencesManager.setNotifyJoinApprovals(newVal)
+            _state.update { it.copy(notifyJoinApprovals = newVal) }
+        }
+    }
+    fun toggleNotifyDonationReminders() {
+        viewModelScope.launch {
+            val newVal = !_state.value.notifyDonationReminders
+            preferencesManager.setNotifyDonationReminders(newVal)
+            _state.update { it.copy(notifyDonationReminders = newVal) }
+        }
+    }
+    fun toggleNotifyAdminAlerts() {
+        viewModelScope.launch {
+            val newVal = !_state.value.notifyAdminAlerts
+            preferencesManager.setNotifyAdminAlerts(newVal)
+            _state.update { it.copy(notifyAdminAlerts = newVal) }
+        }
+    }
 
     fun togglePhoneVisibility() {
         viewModelScope.launch {
@@ -147,6 +181,8 @@ class SettingsViewModel @Inject constructor(
             if (uid != null) {
                 firestoreService.deleteUserAccount(uid)
             }
+            // Clear all local data before signing out
+            preferencesManager.clearUserData()
             try {
                 auth.currentUser?.delete()
             } catch (_: Exception) {}
@@ -158,8 +194,9 @@ class SettingsViewModel @Inject constructor(
 
     fun logout(onComplete: () -> Unit) {
         viewModelScope.launch {
+            // Clear user-specific prefs (preserves dark mode, language)
+            preferencesManager.clearUserData()
             auth.signOut()
-            preferencesManager.setRememberMe(false)
             onComplete()
         }
     }

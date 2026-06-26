@@ -74,33 +74,12 @@ class NotificationRepositoryImpl @Inject constructor(
     }
 
     override fun observeNotifications(userId: String): Flow<List<AppNotification>> {
-        // First, set up Firestore listener that syncs to local DB
-        syncFirestoreToLocal(userId)
-        // Then observe from local DB (single source of truth)
+        // Observe from local DB — the single source of truth.
+        // Sync happens via getNotifications() called from the ViewModel init,
+        // and from SpondonFCMService / NotificationObserver when new data arrives.
         return notificationDao.observeNotifications(userId).map { entities ->
             entities.map { it.toAppNotification() }
         }
-    }
-
-    /**
-     * Starts a Firestore snapshot listener that syncs incoming notifications
-     * to the local Room database. This ensures notifications are persisted
-     * locally and survive Firebase's 30-day cleanup.
-     */
-    private fun syncFirestoreToLocal(userId: String) {
-        if (userId.isBlank()) return
-        firestoreService.observeNotifications(userId).map { list ->
-            val entities = list.map { data ->
-                val notification = data.toAppNotification()
-                notification.toEntity(userId)
-            }
-            if (entities.isNotEmpty()) {
-                notificationDao.insertAll(entities)
-            }
-        }
-        // The flow collection happens in the caller's coroutine scope
-        // (NotificationViewModel), so we just need to start observing
-        // from Firestore and let the ViewModel's scope handle cancellation.
     }
 
     /**
@@ -110,12 +89,12 @@ class NotificationRepositoryImpl @Inject constructor(
      *
      * Used by [SpondonFCMService] and for in-app trigger events.
      */
-    suspend fun createNotification(
+    override suspend fun createNotification(
         userId: String,
         type: NotificationType,
         title: String,
         body: String,
-        deepLink: String = "",
+        deepLink: String,
     ): Resource<String> {
         return try {
             val now = Timestamp.now()
@@ -235,7 +214,7 @@ class NotificationRepositoryImpl @Inject constructor(
      * Notifications remain in the local Room database so users keep them
      * on device until the app is uninstalled.
      */
-    suspend fun deleteOldNotifications(userId: String) {
+    override suspend fun deleteOldNotifications(userId: String) {
         try {
             val thirtyDaysAgo = Date(System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000)
             val cutoff = Timestamp(thirtyDaysAgo)

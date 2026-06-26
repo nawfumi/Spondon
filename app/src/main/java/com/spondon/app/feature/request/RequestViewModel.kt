@@ -7,19 +7,21 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
+import com.spondon.app.core.data.remote.FirestoreService
 import com.spondon.app.core.data.repository.CommunityRepository
 import com.spondon.app.core.data.repository.DonorRepository
 import com.spondon.app.core.data.repository.NotificationRepository
 import com.spondon.app.core.data.repository.RequestRepository
 import com.spondon.app.core.data.repository.UserRepository
 import com.spondon.app.core.domain.model.*
+import com.spondon.app.core.util.BloodGroupUtils
+import com.spondon.app.core.util.EligibilityUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -90,6 +92,7 @@ class RequestViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val donorRepository: DonorRepository,
     private val notificationRepository: NotificationRepository,
+    private val firestoreService: FirestoreService,
     private val auth: FirebaseAuth,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -341,12 +344,12 @@ class RequestViewModel @Inject constructor(
                     val currentUserResult = userRepository.getUser(currentUserId)
                     val currentUser = (currentUserResult as? Resource.Success)?.data
 
-                    val (canDonate, cooldownDays) = checkEligibility(currentUser)
+                    val (canDonate, cooldownDays) = EligibilityUtils.checkAvailability(currentUser)
 
                     // Check if user's blood group matches the request's blood group
                     val userBloodGroup = currentUser?.bloodGroup ?: ""
                     val requestBloodGroup = request.bloodGroup
-                    val bloodGroupMatches = canBloodGroupDonate(userBloodGroup, requestBloodGroup)
+                    val bloodGroupMatches = BloodGroupUtils.canDonate(userBloodGroup, requestBloodGroup)
 
                     // Check if user is admin/mod for any of the request's communities
                     var isAdminOrMod = false
@@ -480,21 +483,15 @@ class RequestViewModel @Inject constructor(
             // 1. Update each donor's profile and record donation
             for (donorUserId in newDonors) {
                 try {
-                    // Fetch donor and update profile
+                    // Fetch donor and update profile via injected service
                     val donorResult = userRepository.getUser(donorUserId)
                     if (donorResult is Resource.Success && donorResult.data != null) {
                         val donor = donorResult.data
-                        val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                        val updates = mapOf(
-                            "totalDonations" to (donor.totalDonations + 1),
-                            "lastDonationDate" to com.google.firebase.Timestamp(Date()),
-                            "availabilityOverride" to false,
-                            "donationInterval" to 120,
+                        firestoreService.updateMemberDonationStatus(
+                            userId = donorUserId,
+                            lastDonationDate = com.google.firebase.Timestamp(Date()),
+                            totalDonations = donor.totalDonations + 1,
                         )
-                        firestore.collection(Constants.USERS_COLLECTION)
-                            .document(donorUserId)
-                            .update(updates)
-                            .await()
                     }
                 } catch (_: Exception) {
                     // Continue with other donors even if one fails
@@ -625,54 +622,6 @@ class RequestViewModel @Inject constructor(
     // Helpers
     // ═══════════════════════════════════════════════════════════
 
-    private fun checkEligibility(user: User?): Pair<Boolean, Int> {
-        if (user == null) return false to 0
-        if (!user.isDonor) return false to 0
-
-        val lastDonation = user.lastDonationDate ?: return true to 0
-
-        val daysSince = TimeUnit.MILLISECONDS.toDays(
-            Date().time - lastDonation.time,
-        ).toInt()
-
-        val requiredDays = if (user.availabilityOverride) {
-            Constants.MIN_OVERRIDE_DAYS
-        } else {
-            user.donationInterval
-        }
-
-        return if (daysSince >= requiredDays) {
-            true to 0
-        } else {
-            false to (requiredDays - daysSince)
-        }
-    }
-
-    /** Check if a donor blood group can donate to a recipient blood group.
-     *  Delegates to the shared normalizer so all comparisons are consistent. */
-    private fun canBloodGroupDonate(donorGroup: String, recipientGroup: String): Boolean {
-        if (donorGroup.isBlank() || recipientGroup.isBlank()) return false
-        return normalizeBloodGroup(donorGroup) == normalizeBloodGroup(recipientGroup)
-    }
-
-    /**
-     * Normalizes a blood group string so that different representations of the
-     * same group compare equal:
-     *   "A−" (U+2212 MINUS SIGN)  ==  "A-" (U+002D HYPHEN-MINUS)
-     *   "A+" (ASCII)              ==  "A＋" (fullwidth plus)
-     *   leading / trailing spaces, non-breaking spaces, zero-width spaces
-     */
-    private fun normalizeBloodGroup(bg: String): String = bg
-        .trim()
-        .replace("\u00A0", "")   // non-breaking space
-        .replace("\u200B", "")   // zero-width space
-        .replace(" ", "")
-        .replace("\uFF0B", "+")  // fullwidth plus  ＋
-        .replace("\u2212", "-")  // minus sign      −  (U+2212) — THE KEY FIX
-        .replace("\u2013", "-")  // en dash         –
-        .replace("\u2014", "-")  // em dash         —
-        .uppercase()
-
     /**
      * Sends notifications to every community member whose stored blood group
      * matches the requested blood group.
@@ -683,8 +632,8 @@ class RequestViewModel @Inject constructor(
      * ViewModel is destroyed (by navigation) before the coroutine completes.
      *
      * Uses a single batch Firestore read (getUsers) instead of one read per
-     * member, and applies normalizeBloodGroup() so that Unicode minus variants
-     * stored by older app versions are still matched correctly.
+     * member, and applies BloodGroupUtils.normalize() so that Unicode minus
+     * variants stored by older app versions are still matched correctly.
      */
     private suspend fun sendBloodGroupNotifications(
         bloodGroup: String,
@@ -694,7 +643,7 @@ class RequestViewModel @Inject constructor(
     ) {
         try {
             val uid = auth.currentUser?.uid ?: return
-            val normalizedTarget = normalizeBloodGroup(bloodGroup)
+            val normalizedTarget = BloodGroupUtils.normalize(bloodGroup)
 
             // ── Step 1: collect every unique member ID across all selected communities ──
             val allMemberIds = mutableSetOf<String>()
@@ -720,7 +669,7 @@ class RequestViewModel @Inject constructor(
             val matchingIds = members
                 .filter { user ->
                     user.uid.isNotBlank() &&
-                            normalizeBloodGroup(user.bloodGroup) == normalizedTarget
+                            BloodGroupUtils.normalize(user.bloodGroup) == normalizedTarget
                 }
                 .map { it.uid }
 

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
+import com.spondon.app.core.data.remote.FirestoreService
 import com.spondon.app.core.data.repository.CommunityRepository
 import com.spondon.app.core.data.repository.DonorRepository
 import com.spondon.app.core.data.repository.PrivacyConfigRepository
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -95,6 +95,7 @@ class DonorViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val communityRepository: CommunityRepository,
     private val privacyConfigRepository: PrivacyConfigRepository,
+    private val firestoreService: FirestoreService,
     private val auth: FirebaseAuth,
 ) : ViewModel() {
 
@@ -279,11 +280,10 @@ class DonorViewModel @Inject constructor(
             }
             viewModelScope.launch {
                 try {
-                    val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    firestore.collection(com.spondon.app.core.common.Constants.USERS_COLLECTION)
-                        .document(user.uid)
-                        .update("badges", newBadgeIdSet.toList())
-                        .await()
+                    firestoreService.updateUser(
+                        user.uid,
+                        mapOf("badges" to newBadgeIdSet.toList()),
+                    )
                 } catch (_: Exception) { }
             }
         } else {

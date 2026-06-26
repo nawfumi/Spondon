@@ -12,6 +12,7 @@ import com.spondon.app.core.data.repository.NotificationRepository
 import com.spondon.app.core.data.repository.PrivacyConfigRepository
 import com.spondon.app.core.data.repository.RequestRepository
 import com.spondon.app.core.domain.model.*
+import com.spondon.app.core.util.BloodGroupUtils
 import com.spondon.app.core.domain.usecase.community.CreateCommunityUseCase
 import com.spondon.app.core.domain.usecase.community.GetCommunitiesUseCase
 import com.spondon.app.core.domain.usecase.community.ManageMembersUseCase
@@ -224,8 +225,7 @@ class CommunityViewModel @Inject constructor(
             }
 
             // Load All Communities (for Discover)
-            val allResult = getCommunitiesUseCase.getAllCommunities()
-            val allCommunities = when (allResult) {
+            val allCommunities = when (val allResult = getCommunitiesUseCase.getAllCommunities()) {
                 is Resource.Success -> allResult.data
                 is Resource.Error -> {
                     _listState.update { it.copy(error = allResult.message) }
@@ -337,9 +337,9 @@ class CommunityViewModel @Inject constructor(
                                 .sortedWith(
                                     compareByDescending<BloodRequest> { r ->
                                         when (r.urgency) {
-                                            com.spondon.app.core.domain.model.Urgency.CRITICAL -> 2
-                                            com.spondon.app.core.domain.model.Urgency.MODERATE -> 1
-                                            com.spondon.app.core.domain.model.Urgency.NORMAL   -> 0
+                                            Urgency.CRITICAL -> 2
+                                            Urgency.MODERATE -> 1
+                                            Urgency.NORMAL   -> 0
                                         }
                                     }.thenByDescending { r -> r.createdAt }
                                 ),
@@ -380,7 +380,7 @@ class CommunityViewModel @Inject constructor(
             if (community != null && community.bloodGroups.isNotEmpty()) {
                 val currentUserBloodGroup = _listState.value.currentUserBloodGroup.ifBlank { getCurrentUserBloodGroup() }
                 if (currentUserBloodGroup.isNotBlank() &&
-                    !community.bloodGroups.any { normalizeBloodGroup(it) == normalizeBloodGroup(currentUserBloodGroup) }
+                    !community.bloodGroups.any { BloodGroupUtils.normalize(it) == BloodGroupUtils.normalize(currentUserBloodGroup) }
                 ) {
                     _events.emit(CommunityEvent.ShowSnackbar(
                         "Your blood group ($currentUserBloodGroup) is not supported by this community. Supported: ${community.bloodGroups.joinToString(", ")}"
@@ -650,7 +650,7 @@ class CommunityViewModel @Inject constructor(
             if (community != null && community.bloodGroups.isNotEmpty()) {
                 val currentUserBloodGroup = getCurrentUserBloodGroup()
                 if (currentUserBloodGroup.isNotBlank() &&
-                    !community.bloodGroups.any { normalizeBloodGroup(it) == normalizeBloodGroup(currentUserBloodGroup) }
+                    !community.bloodGroups.any { BloodGroupUtils.normalize(it) == BloodGroupUtils.normalize(currentUserBloodGroup) }
                 ) {
                     _joinState.update {
                         it.copy(
@@ -1026,20 +1026,7 @@ class CommunityViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Normalizes a blood group string so that different representations of the
-     * same group compare equal.
-     */
-    private fun normalizeBloodGroup(bg: String): String = bg
-        .trim()
-        .replace("\u00A0", "")
-        .replace("\u200B", "")
-        .replace(" ", "")
-        .replace("\uFF0B", "+")
-        .replace("\u2212", "-")
-        .replace("\u2013", "-")
-        .replace("\u2014", "-")
-        .uppercase()
+
 
     /**
      * Check if the current user's blood group is eligible to join a community.
@@ -1049,7 +1036,7 @@ class CommunityViewModel @Inject constructor(
         if (community.bloodGroups.isEmpty()) return true
         val userBg = _listState.value.currentUserBloodGroup
         if (userBg.isBlank()) return true // can't determine, allow
-        return community.bloodGroups.any { normalizeBloodGroup(it) == normalizeBloodGroup(userBg) }
+        return community.bloodGroups.any { BloodGroupUtils.normalize(it) == BloodGroupUtils.normalize(userBg) }
     }
 
     // ═══════════════════════════════════════════════════════════

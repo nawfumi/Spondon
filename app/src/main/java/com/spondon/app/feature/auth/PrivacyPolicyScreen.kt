@@ -114,7 +114,7 @@ fun PrivacyPolicyScreen(navController: NavController) {
             Section("8. Contact")
             BodyText(
                 "For privacy-related inquiries, email us at privacy@spondon.app or write to " +
-                        "Spondon, 12/B Dhanmondi, Dhaka 1209, Bangladesh."
+                        "Spondon."
             )
 
             Spacer(Modifier.height(32.dp))

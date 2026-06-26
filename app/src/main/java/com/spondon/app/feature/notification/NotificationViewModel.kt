@@ -3,19 +3,14 @@ package com.spondon.app.feature.notification
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
-import com.spondon.app.core.common.Resource
-import com.spondon.app.core.data.local.dao.NotificationDao
 import com.spondon.app.core.data.repository.NotificationRepository
-import com.spondon.app.core.data.repository.NotificationRepositoryImpl
 import com.spondon.app.core.domain.model.AppNotification
-import com.spondon.app.core.domain.model.NotificationType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Date
 import javax.inject.Inject
 
 data class NotificationState(
@@ -28,8 +23,6 @@ data class NotificationState(
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
     private val notificationRepository: NotificationRepository,
-    private val notificationRepositoryImpl: NotificationRepositoryImpl,
-    private val notificationDao: NotificationDao,
     private val auth: FirebaseAuth,
 ) : ViewModel() {
 
@@ -50,7 +43,7 @@ class NotificationViewModel @Inject constructor(
     private fun cleanupOldNotifications() {
         if (currentUserId.isBlank()) return
         viewModelScope.launch {
-            notificationRepositoryImpl.deleteOldNotifications(currentUserId)
+            notificationRepository.deleteOldNotifications(currentUserId)
         }
     }
 
@@ -63,7 +56,7 @@ class NotificationViewModel @Inject constructor(
         if (currentUserId.isBlank()) return
         viewModelScope.launch {
             try {
-                val result = notificationRepository.getNotifications(currentUserId)
+                notificationRepository.getNotifications(currentUserId)
                 // getNotifications already syncs to local DB in the impl
             } catch (_: Exception) {
                 // Best-effort sync
@@ -89,8 +82,6 @@ class NotificationViewModel @Inject constructor(
                 }
         }
     }
-
-    fun loadNotifications() { /* real-time observer via observeNotificationsList handles updates */ }
 
     fun markAsRead(notificationId: String) {
         viewModelScope.launch {

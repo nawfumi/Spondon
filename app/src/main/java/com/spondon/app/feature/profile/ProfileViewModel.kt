@@ -11,6 +11,7 @@ import com.spondon.app.core.data.repository.CommunityRepository
 import com.spondon.app.core.data.repository.UserRepository
 import com.spondon.app.core.domain.model.Community
 import com.spondon.app.core.domain.model.User
+import com.spondon.app.core.util.EligibilityUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,11 +91,12 @@ class ProfileViewModel @Inject constructor(
                             old.badges == new.badges &&
                             old.availabilityOverride == new.availabilityOverride &&
                             old.donationInterval == new.donationInterval &&
+                            old.isDonor == new.isDonor &&
                             old.name == new.name &&
                             old.avatarUrl == new.avatarUrl
                 }
                 .collect { user ->
-                    val (isAvailable, cooldownDays) = checkAvailability(user)
+                    val (isAvailable, cooldownDays) = EligibilityUtils.checkAvailability(user)
                     _profileState.update { state ->
                         state.copy(
                             user = user,
@@ -127,7 +129,7 @@ class ProfileViewModel @Inject constructor(
                 if (comm is Resource.Success) communities.add(comm.data)
             }
 
-            val (isAvailable, cooldownDays) = checkAvailability(user)
+            val (isAvailable, cooldownDays) = EligibilityUtils.checkAvailability(user)
 
             _profileState.update {
                 it.copy(
@@ -247,6 +249,34 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Toggles the user's donor availability (isDonor flag).
+     * When turned off, the user won't appear in donor search and
+     * won't be shown as "available to donate".
+     */
+    fun toggleDonorAvailability() {
+        viewModelScope.launch {
+            val user = _profileState.value.user ?: return@launch
+            val updatedUser = user.copy(isDonor = !user.isDonor)
+            when (userRepository.updateUser(updatedUser)) {
+                is Resource.Success -> {
+                    // The observer will pick up the change automatically,
+                    // but update immediately for snappy UI.
+                    val (isAvailable, cooldownDays) = EligibilityUtils.checkAvailability(updatedUser)
+                    _profileState.update {
+                        it.copy(
+                            user = updatedUser,
+                            isAvailable = isAvailable,
+                            cooldownDaysRemaining = cooldownDays,
+                        )
+                    }
+                }
+                is Resource.Error -> { /* silent — observer will re-sync */ }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
     fun signOut(onComplete: () -> Unit) {
         viewModelScope.launch {
             auth.signOut()
@@ -254,11 +284,4 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    private fun checkAvailability(user: User): Pair<Boolean, Int> {
-        if (!user.isDonor) return false to 0
-        val lastDonation = user.lastDonationDate ?: return true to 0
-        val daysSince = TimeUnit.MILLISECONDS.toDays(Date().time - lastDonation.time).toInt()
-        val requiredDays = if (user.availabilityOverride) Constants.MIN_OVERRIDE_DAYS else user.donationInterval
-        return if (daysSince >= requiredDays) true to 0 else false to (requiredDays - daysSince)
-    }
 }

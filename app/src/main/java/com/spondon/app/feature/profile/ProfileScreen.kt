@@ -192,62 +192,84 @@ fun ProfileScreen(
                         }
                     }
 
-                    // ─── Availability Status (read-only, admin-controlled) ──────────────
+                    // ─── Availability Status (user-controlled toggle) ──────────────
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (state.isAvailable) AvailableGreen.copy(alpha = 0.08f) else UnavailableGrey.copy(alpha = 0.08f),
+                                containerColor = if (user.isDonor && state.isAvailable) AvailableGreen.copy(alpha = 0.08f)
+                                else UnavailableGrey.copy(alpha = 0.08f),
                             ),
                         ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                // Status icon
-                                Icon(
-                                    if (state.isAvailable) Icons.Filled.CheckCircle else Icons.Filled.Lock,
-                                    contentDescription = null,
-                                    tint = if (state.isAvailable) AvailableGreen else UnavailableGrey,
-                                    modifier = Modifier.size(28.dp),
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        if (state.isAvailable) s.availableToDonate else s.unavailable,
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                        color = if (state.isAvailable) AvailableGreen else UnavailableGrey,
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    // Status icon
+                                    Icon(
+                                        if (user.isDonor && state.isAvailable) Icons.Filled.CheckCircle
+                                        else if (!user.isDonor) Icons.Outlined.PauseCircle
+                                        else Icons.Filled.Lock,
+                                        contentDescription = null,
+                                        tint = if (user.isDonor && state.isAvailable) AvailableGreen else UnavailableGrey,
+                                        modifier = Modifier.size(28.dp),
                                     )
-                                    if (!state.isAvailable && state.cooldownDaysRemaining > 0) {
-                                        Spacer(Modifier.height(2.dp))
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            s.availableIn.replace("%d", state.cooldownDaysRemaining.toString()),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = UnavailableGrey.copy(alpha = 0.7f),
+                                            if (!user.isDonor) "Donations Paused"
+                                            else if (state.isAvailable) s.availableToDonate
+                                            else s.unavailable,
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                            color = if (user.isDonor && state.isAvailable) AvailableGreen else UnavailableGrey,
                                         )
-                                        Text(
-                                            "Cooldown resets automatically after 120 days",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = UnavailableGrey.copy(alpha = 0.5f),
-                                        )
-                                    }
-                                    if (state.isAvailable && !user.isDonor.not()) {
-                                        Text(
-                                            "Ready to help others",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = AvailableGreen.copy(alpha = 0.7f),
-                                        )
-                                    }
-                                    if (user.availabilityOverride) {
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = PendingAmber.copy(alpha = 0.15f),
-                                            modifier = Modifier.padding(top = 4.dp),
-                                        ) {
-                                            Text("Admin override (available at 90 days)", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp), color = PendingAmber)
+                                        if (!user.isDonor) {
+                                            Text(
+                                                "You won't appear in donor search",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = UnavailableGrey.copy(alpha = 0.7f),
+                                            )
+                                        } else if (!state.isAvailable && state.cooldownDaysRemaining > 0) {
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                s.availableIn.replace("%d", state.cooldownDaysRemaining.toString()),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = UnavailableGrey.copy(alpha = 0.7f),
+                                            )
+                                            Text(
+                                                "Cooldown resets automatically after 120 days",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = UnavailableGrey.copy(alpha = 0.5f),
+                                            )
+                                        } else if (state.isAvailable) {
+                                            Text(
+                                                "Ready to help others",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = AvailableGreen.copy(alpha = 0.7f),
+                                            )
                                         }
+                                    }
+                                    // Toggle switch
+                                    Switch(
+                                        checked = user.isDonor,
+                                        onCheckedChange = { viewModel.toggleDonorAvailability() },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = AvailableGreen,
+                                            checkedTrackColor = AvailableGreen.copy(alpha = 0.3f),
+                                            uncheckedThumbColor = UnavailableGrey,
+                                            uncheckedTrackColor = UnavailableGrey.copy(alpha = 0.3f),
+                                        ),
+                                    )
+                                }
+                                if (user.availabilityOverride) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = PendingAmber.copy(alpha = 0.15f),
+                                        modifier = Modifier.padding(top = 8.dp),
+                                    ) {
+                                        Text("Admin override (available at 90 days)", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp), color = PendingAmber)
                                     }
                                 }
                             }

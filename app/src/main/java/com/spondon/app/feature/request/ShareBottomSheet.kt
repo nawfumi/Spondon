@@ -2,26 +2,26 @@ package com.spondon.app.feature.request
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.TextSnippet
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -37,21 +37,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spondon.app.core.domain.model.BloodRequest
+import com.spondon.app.core.ui.theme.BloodRed
+import com.spondon.app.core.util.ShareImageGenerator
 import com.spondon.app.core.util.ShareUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-data class SharePlatform(
-    val name: String,
-    val packageName: String,
-    val icon: Int? = null,
-    val backgroundColor: Color,
-)
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,18 +62,6 @@ fun ShareBottomSheet(
     val scope = rememberCoroutineScope()
 
     val shareText = remember(request) { ShareUtils.buildShareText(request) }
-    val shortShareText = remember(request) { ShareUtils.buildShortShareText(request) }
-
-    val platforms = remember {
-        listOf(
-            SharePlatform("Messenger", "com.facebook.orca", backgroundColor = Color(0xFF0084FF)),
-            SharePlatform("Facebook", "com.facebook.katana", backgroundColor = Color(0xFF1877F2)),
-            SharePlatform("WhatsApp", "com.whatsapp", backgroundColor = Color(0xFF25D366)),
-            SharePlatform("Imo", "com.imo.android.imoim", backgroundColor = Color(0xFF2196F3)),
-            SharePlatform("Viber", "com.viber.voip", backgroundColor = Color(0xFF7360DF)),
-            SharePlatform("Telegram", "org.telegram.messenger", backgroundColor = Color(0xFF0088CC)),
-        )
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -119,182 +105,171 @@ fun ShareBottomSheet(
 
             Spacer(Modifier.height(20.dp))
 
-            // Platform grid
+            // ── Share Options ──────────────────────────────────
+
+            val shareOptions = remember {
+                listOf(
+                    ShareOption("Share as Image", Icons.Outlined.Image, BloodRed, ShareType.IMAGE),
+                    ShareOption("Share as Text",
+                        Icons.AutoMirrored.Outlined.TextSnippet, Color(0xFF4CAF50), ShareType.TEXT),
+                    ShareOption("Copy Text", Icons.Outlined.ContentCopy, Color(0xFF2196F3), ShareType.COPY),
+                    ShareOption("More Options", Icons.Outlined.Share, Color(0xFF9C27B0), ShareType.SYSTEM_CHOOSER),
+                )
+            }
+
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                items(platforms) { platform ->
-                    val isInstalled = remember(platform.packageName) {
-                        isPackageInstalled(context, platform.packageName)
-                    }
-
+                items(shareOptions) { option ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .clickable(enabled = isInstalled) {
-                                if (isInstalled) {
-                                    shareToApp(context, platform.packageName, shortShareText)
-                                    scope.launch {
-                                        sheetState.hide()
-                                        onDismiss()
-                                    }
+                            .clickable {
+                                scope.launch {
+                                    handleShare(context, option.type, request, shareText)
+                                    sheetState.hide()
+                                    onDismiss()
                                 }
-                            }
-                            .then(if (!isInstalled) Modifier else Modifier),
+                            },
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(56.dp)
                                 .clip(CircleShape)
-                                .background(
-                                    if (isInstalled) platform.backgroundColor
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                ),
+                                .background(option.color.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                text = platform.name.first().toString(),
-                                color = Color.White,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
+                            Icon(
+                                option.icon,
+                                contentDescription = option.label,
+                                tint = option.color,
+                                modifier = Modifier.size(26.dp),
                             )
                         }
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(6.dp))
                         Text(
-                            text = platform.name,
+                            text = option.label,
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (isInstalled) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            },
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            lineHeight = 13.sp,
                         )
-                        if (!isInstalled) {
-                            Text(
-                                text = "Not installed",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                                textAlign = TextAlign.Center,
-                            )
-                        }
                     }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
             HorizontalDivider()
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // More share options row
-            Row(
+            // Hint text
+            Text(
+                text = "\"Share as Image\" creates a branded card with all request info — great for Facebook, Instagram Stories, and more.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                // Copy to clipboard
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable {
-                            copyToClipboard(context, shareText)
-                            scope.launch {
-                                sheetState.hide()
-                                onDismiss()
-                            }
-                        }
-                        .padding(horizontal = 12.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Outlined.ContentCopy,
-                            contentDescription = "Copy",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "Copy",
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-
-                // More options (system share sheet)
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable {
-                            shareGeneric(context, shareText)
-                            scope.launch {
-                                sheetState.hide()
-                                onDismiss()
-                            }
-                        }
-                        .padding(horizontal = 12.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Outlined.Share,
-                            contentDescription = "More",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "More",
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-            }
+            )
 
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
-private fun isPackageInstalled(context: Context, packageName: String): Boolean {
-    return try {
-        context.packageManager.getPackageInfo(packageName, 0)
-        true
-    } catch (_: PackageManager.NameNotFoundException) {
-        false
+// ─── Models ──────────────────────────────────────────────────
+
+private enum class ShareType { IMAGE, TEXT, COPY, SYSTEM_CHOOSER }
+
+private data class ShareOption(
+    val label: String,
+    val icon: ImageVector,
+    val color: Color,
+    val type: ShareType,
+)
+
+// ─── Share Logic ─────────────────────────────────────────────
+
+private suspend fun handleShare(
+    context: Context,
+    type: ShareType,
+    request: BloodRequest,
+    shareText: String,
+) {
+    when (type) {
+        ShareType.IMAGE -> shareAsImage(context, request, shareText)
+        ShareType.TEXT -> shareAsText(context, shareText)
+        ShareType.COPY -> copyToClipboard(context, shareText)
+        ShareType.SYSTEM_CHOOSER -> shareViaSystemChooser(context, request, shareText)
     }
 }
 
-private fun shareToApp(context: Context, packageName: String, text: String) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
-        `package` = packageName
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+/**
+ * Generates an app-themed card image and shares it via the system share sheet.
+ * The image + text are sent together so apps like Facebook, Messenger,
+ * WhatsApp, Instagram etc. can pick whichever they support.
+ */
+private suspend fun shareAsImage(context: Context, request: BloodRequest, shareText: String) {
+    try {
+        val file = withContext(Dispatchers.IO) {
+            ShareImageGenerator.generate(context, request)
+        }
+        val uri = ShareImageGenerator.getShareUri(context, file)
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            this.type = "image/png"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share Blood Request"))
+    } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Failed to create share image", Toast.LENGTH_SHORT).show()
+        }
     }
-    context.startActivity(intent)
 }
 
-private fun shareGeneric(context: Context, text: String) {
+private fun shareAsText(context: Context, shareText: String) {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
+        putExtra(Intent.EXTRA_TEXT, shareText)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
-    context.startActivity(Intent.createChooser(intent, "Share Request"))
+    context.startActivity(Intent.createChooser(intent, "Share Blood Request"))
+}
+
+/**
+ * System chooser with both image + text so apps that support images get the card,
+ * and text-only apps get the text.
+ */
+private suspend fun shareViaSystemChooser(context: Context, request: BloodRequest, shareText: String) {
+    try {
+        val file = withContext(Dispatchers.IO) {
+            ShareImageGenerator.generate(context, request)
+        }
+        val uri = ShareImageGenerator.getShareUri(context, file)
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "*/*"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share Blood Request"))
+    } catch (_: Exception) {
+        // Fall back to text-only
+        shareAsText(context, shareText)
+    }
 }
 
 private fun copyToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     val clip = android.content.ClipData.newPlainText("Blood Request", text)
     clipboard.setPrimaryClip(clip)
+    Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
 }

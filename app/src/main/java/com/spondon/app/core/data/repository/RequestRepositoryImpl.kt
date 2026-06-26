@@ -1,14 +1,14 @@
 package com.spondon.app.core.data.repository
 
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FieldValue
+
 import com.spondon.app.core.common.Constants
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.remote.FirestoreService
 import com.spondon.app.core.domain.model.BloodRequest
 import com.spondon.app.core.domain.model.RequestStatus
 import com.spondon.app.core.domain.model.Urgency
-import kotlinx.coroutines.tasks.await
+
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.Date
@@ -89,16 +89,7 @@ class RequestRepositoryImpl @Inject constructor(
     }
 
     override suspend fun confirmDonors(requestId: String, donorIds: List<String>): Resource<Unit> {
-        return try {
-            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-            firestore.collection(Constants.REQUESTS_COLLECTION)
-                .document(requestId)
-                .update("confirmedDonors", FieldValue.arrayUnion(*donorIds.toTypedArray()))
-                .await()
-            Resource.Success(Unit)
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to confirm donors")
-        }
+        return firestoreService.confirmDonors(requestId, donorIds)
     }
 
     override suspend fun deleteRequest(requestId: String): Resource<Unit> {

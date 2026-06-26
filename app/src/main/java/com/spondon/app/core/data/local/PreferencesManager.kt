@@ -29,6 +29,12 @@ class PreferencesManager @Inject constructor(
         val LANGUAGE = stringPreferencesKey("language")
         val BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
 
+        // Notification preferences
+        val NOTIFY_NEW_REQUESTS = booleanPreferencesKey("notify_new_requests")
+        val NOTIFY_JOIN_APPROVALS = booleanPreferencesKey("notify_join_approvals")
+        val NOTIFY_DONATION_REMINDERS = booleanPreferencesKey("notify_donation_reminders")
+        val NOTIFY_ADMIN_ALERTS = booleanPreferencesKey("notify_admin_alerts")
+
         // Eligibility
         val ELIGIBILITY_STATUS = stringPreferencesKey("eligibility_status")
         val DEFERRAL_END_DATE = longPreferencesKey("deferral_end_date")
@@ -96,6 +102,40 @@ class PreferencesManager @Inject constructor(
         dataStore.edit { it[BIOMETRIC_ENABLED] = enabled }
     }
 
+    // ─── Notification Preferences ─────────────────────────────
+
+    val notifyNewRequests: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[NOTIFY_NEW_REQUESTS] ?: true }
+
+    val notifyJoinApprovals: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[NOTIFY_JOIN_APPROVALS] ?: true }
+
+    val notifyDonationReminders: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[NOTIFY_DONATION_REMINDERS] ?: true }
+
+    val notifyAdminAlerts: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[NOTIFY_ADMIN_ALERTS] ?: true }
+
+    suspend fun setNotifyNewRequests(enabled: Boolean) {
+        dataStore.edit { it[NOTIFY_NEW_REQUESTS] = enabled }
+    }
+
+    suspend fun setNotifyJoinApprovals(enabled: Boolean) {
+        dataStore.edit { it[NOTIFY_JOIN_APPROVALS] = enabled }
+    }
+
+    suspend fun setNotifyDonationReminders(enabled: Boolean) {
+        dataStore.edit { it[NOTIFY_DONATION_REMINDERS] = enabled }
+    }
+
+    suspend fun setNotifyAdminAlerts(enabled: Boolean) {
+        dataStore.edit { it[NOTIFY_ADMIN_ALERTS] = enabled }
+    }
+
 
 
     // ─── Eligibility ────────────────────────────────────────
@@ -149,5 +189,23 @@ class PreferencesManager @Inject constructor(
 
     suspend fun clearAll() {
         dataStore.edit { it.clear() }
+    }
+
+    /**
+     * Clears user-specific data while preserving device-level preferences
+     * (dark mode, language). Call this on logout or account deletion.
+     */
+    suspend fun clearUserData() {
+        dataStore.edit { prefs ->
+            // Preserve device-level prefs
+            val darkMode = prefs[DARK_MODE]
+            val language = prefs[LANGUAGE]
+
+            prefs.clear()
+
+            // Restore device-level prefs
+            if (darkMode != null) prefs[DARK_MODE] = darkMode
+            if (language != null) prefs[LANGUAGE] = language
+        }
     }
 }

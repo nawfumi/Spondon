@@ -19,4 +19,12 @@ interface NotificationRepository {
         body: String,
         deepLink: String = "",
     ): Resource<Unit>
+    suspend fun createNotification(
+        userId: String,
+        type: NotificationType,
+        title: String,
+        body: String,
+        deepLink: String = "",
+    ): Resource<String>
+    suspend fun deleteOldNotifications(userId: String)
 }

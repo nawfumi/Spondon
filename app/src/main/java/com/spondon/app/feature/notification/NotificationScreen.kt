@@ -40,8 +40,6 @@ fun NotificationScreen(
     val state by viewModel.state.collectAsState()
     val s = S.strings
 
-    LaunchedEffect(Unit) { viewModel.loadNotifications() }
-
     Scaffold(
         topBar = {
             TopAppBar(

@@ -7,7 +7,8 @@ import java.util.Locale
 
 object ShareUtils {
 
-    private val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+    /** Creates a new formatter per call — SimpleDateFormat is NOT thread-safe. */
+    private fun dateFormat() = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
 
     fun buildShareText(request: BloodRequest): String {
         val urgencyLabel = when (request.urgency) {
@@ -16,7 +17,7 @@ object ShareUtils {
             Urgency.NORMAL -> "NORMAL"
         }
 
-        val donationDate = request.donationDateTime?.let { dateFormat.format(it) } ?: "Not set"
+        val donationDate = request.donationDateTime?.let { dateFormat().format(it) } ?: "Not set"
 
         return buildString {
             appendLine("\uD83E\uDE78 BLOOD REQUEST - $urgencyLabel")
@@ -28,7 +29,7 @@ object ShareUtils {
                 appendLine("\uD83D\uDCCD Address: ${request.address}")
             }
             appendLine("\uD83D\uDCC5 Donation Date: $donationDate")
-            if (request.patientName!!.isNotBlank()  ) {
+            if (!request.patientName.isNullOrBlank()) {
                 appendLine("\uD83D\uDC64 Patient: ${request.patientName}")
             }
             if (request.patientCondition.isNotBlank()) {

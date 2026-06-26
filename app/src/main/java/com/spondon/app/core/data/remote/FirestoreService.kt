@@ -59,6 +59,13 @@ class FirestoreService @Inject constructor(
         }
     }
 
+    /**
+     * Removes a user from all their communities and deletes their user document.
+     * Used by [UserRepositoryImpl] for admin-initiated deletion from the SA panel.
+     *
+     * See also [deleteUserAccount] which additionally deletes the user's requests
+     * and is used for self-service account deletion from Settings.
+     */
     suspend fun deleteUser(userId: String): Resource<Unit> {
         return try {
             // Fetch user's communityIds before deleting
@@ -834,11 +841,14 @@ class FirestoreService @Inject constructor(
                 .whereEqualTo("isRead", false)
                 .get()
                 .await()
-            val batch = firestore.batch()
-            docs.documents.forEach { doc ->
-                batch.update(doc.reference, "isRead", true)
+            // Firestore batch supports max 500 writes at a time
+            docs.documents.chunked(500).forEach { chunk ->
+                val batch = firestore.batch()
+                chunk.forEach { doc ->
+                    batch.update(doc.reference, "isRead", true)
+                }
+                batch.commit().await()
             }
-            batch.commit().await()
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to mark all as read", e)
@@ -911,6 +921,22 @@ class FirestoreService @Inject constructor(
             Resource.Error(e.message ?: "Failed to delete account", e)
         }
     }
+
+    /**
+     * Adds donor IDs to the confirmedDonors array field on a request document.
+     */
+    suspend fun confirmDonors(requestId: String, donorIds: List<String>): Resource<Unit> {
+        return try {
+            firestore.collection(Constants.REQUESTS_COLLECTION)
+                .document(requestId)
+                .update("confirmedDonors", FieldValue.arrayUnion(*donorIds.toTypedArray()))
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to confirm donors", e)
+        }
+    }
+
     suspend fun deleteRequest(requestId: String): Resource<Unit> {
         return try {
             firestore.collection(Constants.REQUESTS_COLLECTION)
