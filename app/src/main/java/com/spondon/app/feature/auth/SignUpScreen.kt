@@ -45,6 +45,7 @@ import com.spondon.app.core.ui.components.StepProgressBar
 import com.spondon.app.core.ui.theme.*
 import com.spondon.app.navigation.Routes
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SignUpScreen(
@@ -89,7 +90,7 @@ fun SignUpScreen(
             when (event) {
                 is AuthNavigationEvent.NavigateToProfileSetup -> {
                     overlayState = AuthOverlayState.SUCCESS
-                    delay(800)
+                    delay(800.milliseconds)
                     navController.navigate(Routes.DonorProfileSetup.route) {
                         // DonorProfileSetup is INSIDE auth_flow, so just pop current screen
                         popUpTo(Routes.SignUp.route) { inclusive = true }
@@ -97,7 +98,7 @@ fun SignUpScreen(
                 }
                 is AuthNavigationEvent.NavigateToHome -> {
                     overlayState = AuthOverlayState.SUCCESS
-                    delay(1000)
+                    delay(1000.milliseconds)
                     navController.navigate(Routes.Home.route) {
                         popUpTo("auth_flow") { inclusive = true }
                     }

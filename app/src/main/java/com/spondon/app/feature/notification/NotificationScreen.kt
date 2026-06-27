@@ -199,10 +199,29 @@ private fun NotificationItem(notification: AppNotification, onClick: () -> Unit)
 
 internal fun getNotificationStyle(type: NotificationType): Pair<ImageVector, Color> {
     return when (type) {
-        NotificationType.REQUEST -> Icons.Outlined.Bloodtype to UrgencyCritical
-        NotificationType.JOIN -> Icons.Outlined.GroupAdd to PendingAmber
-        NotificationType.DONATION -> Icons.Outlined.VolunteerActivism to AvailableGreen
-        NotificationType.ADMIN -> Icons.Outlined.AdminPanelSettings to SoftRose
+        NotificationType.REQUEST,
+        NotificationType.BLOOD_REQUEST,
+        -> Icons.Outlined.Bloodtype to UrgencyCritical
+
+        NotificationType.REQUEST_ACCEPTED -> Icons.Outlined.CheckCircle to AvailableGreen
+
+        NotificationType.JOIN,
+        NotificationType.COMMUNITY_JOIN_REQUEST,
+        -> Icons.Outlined.GroupAdd to PendingAmber
+
+        NotificationType.JOIN_REQUEST_ACCEPTED -> Icons.Outlined.HowToReg to AvailableGreen
+        NotificationType.JOIN_REQUEST_REJECTED -> Icons.Outlined.PersonOff to UrgencyCritical
+
+        NotificationType.DONATION,
+        NotificationType.DONATION_CONFIRMED,
+        -> Icons.Outlined.VolunteerActivism to AvailableGreen
+
+        NotificationType.ADMIN,
+        NotificationType.COMMUNITY_BROADCAST,
+        -> Icons.Outlined.AdminPanelSettings to SoftRose
+
+        NotificationType.SUPERADMIN_ANNOUNCEMENT -> Icons.Outlined.Campaign to SoftRose
+
         NotificationType.REMINDER -> Icons.Outlined.Alarm to PendingAmber
     }
 }

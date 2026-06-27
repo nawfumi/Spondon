@@ -5,6 +5,31 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+// ── Channel routing ─────────────────────────────────────────────────
+// Maps notification type → Android notification channel ID.
+// Must match NotificationChannelHelper constants on the client.
+function channelForType(type: string): string {
+  switch (type) {
+    case "REQUEST":
+    case "BLOOD_REQUEST":
+    case "REQUEST_ACCEPTED":
+    case "DONATION":
+    case "DONATION_CONFIRMED":
+      return "blood_requests";
+    case "JOIN":
+    case "COMMUNITY_JOIN_REQUEST":
+    case "JOIN_REQUEST_ACCEPTED":
+    case "JOIN_REQUEST_REJECTED":
+    case "ADMIN":
+    case "COMMUNITY_BROADCAST":
+      return "community";
+    case "SUPERADMIN_ANNOUNCEMENT":
+      return "announcements";
+    default:
+      return "spondon_notifications";
+  }
+}
+
 /**
  * Cloud Function: Send FCM push when a notification document is created.
  *
@@ -47,6 +72,8 @@ export const sendNotificationOnCreate = onDocumentCreated(
       return;
     }
 
+    const channelId = channelForType(type);
+
     // Send a data-only FCM message (no "notification" key).
     // This ensures onMessageReceived() is called on the Android client
     // regardless of whether the app is in foreground or background.
@@ -57,7 +84,12 @@ export const sendNotificationOnCreate = onDocumentCreated(
         body,
         type,
         deepLink,
+        channelId,
         notificationId: event.params.notificationId,
+        // Pass through extra fields for notification actions
+        ...(data.communityId ? { communityId: data.communityId as string } : {}),
+        ...(data.requesterId ? { requesterId: data.requesterId as string } : {}),
+        ...(data.requestId ? { requestId: data.requestId as string } : {}),
       },
       // Android-specific config for high priority delivery
       android: {

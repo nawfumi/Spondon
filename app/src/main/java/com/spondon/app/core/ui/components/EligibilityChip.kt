@@ -20,10 +20,10 @@ import java.util.Locale
 
 @Composable
 fun EligibilityChip(
+    modifier: Modifier = Modifier,
     status: DeferralType,
     language: String = "en",
     deferralEndDate: Long? = null,
-    modifier: Modifier = Modifier,
 ) {
     val (color, icon, label) = when (status) {
         DeferralType.ELIGIBLE -> Triple(

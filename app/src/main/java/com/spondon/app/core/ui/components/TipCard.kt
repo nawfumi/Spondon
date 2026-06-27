@@ -67,11 +67,11 @@ fun tipIconFromName(name: String): ImageVector = when (name) {
 
 @Composable
 fun TipCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     tip: DonationTip,
     language: String,
     compact: Boolean = false,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
 ) {
     val color = tipCategoryColor(tip.category)
     val icon = tipIconFromName(tip.iconName)

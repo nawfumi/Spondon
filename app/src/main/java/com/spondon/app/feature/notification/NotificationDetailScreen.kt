@@ -266,9 +266,17 @@ private fun resolveAction(notification: AppNotification): NotificationAction? {
 /** Human-readable label for each notification type. */
 private val NotificationType.label: String
     get() = when (this) {
-        NotificationType.REQUEST   -> "BLOOD REQUEST"
-        NotificationType.JOIN      -> "COMMUNITY"
-        NotificationType.DONATION  -> "DONATION"
-        NotificationType.ADMIN     -> "ADMIN"
-        NotificationType.REMINDER  -> "REMINDER"
+        NotificationType.REQUEST              -> "BLOOD REQUEST"
+        NotificationType.BLOOD_REQUEST        -> "BLOOD REQUEST"
+        NotificationType.REQUEST_ACCEPTED     -> "REQUEST ACCEPTED"
+        NotificationType.JOIN                 -> "COMMUNITY"
+        NotificationType.COMMUNITY_JOIN_REQUEST -> "JOIN REQUEST"
+        NotificationType.JOIN_REQUEST_ACCEPTED -> "APPROVED"
+        NotificationType.JOIN_REQUEST_REJECTED -> "REJECTED"
+        NotificationType.DONATION             -> "DONATION"
+        NotificationType.DONATION_CONFIRMED   -> "DONATION CONFIRMED"
+        NotificationType.ADMIN                -> "ADMIN"
+        NotificationType.COMMUNITY_BROADCAST  -> "BROADCAST"
+        NotificationType.SUPERADMIN_ANNOUNCEMENT -> "ANNOUNCEMENT"
+        NotificationType.REMINDER             -> "REMINDER"
     }

@@ -37,6 +37,7 @@ import com.spondon.app.core.ui.components.SpondonButton
 import com.spondon.app.core.ui.theme.*
 import com.spondon.app.navigation.Routes
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun OtpScreen(
@@ -66,7 +67,7 @@ fun OtpScreen(
     LaunchedEffect(timerActive) {
         if (timerActive) {
             while (timerSeconds > 0) {
-                delay(1000)
+                delay(1000.milliseconds)
                 timerSeconds--
             }
             timerActive = false
@@ -94,14 +95,14 @@ fun OtpScreen(
             when (event) {
                 is AuthNavigationEvent.NavigateToHome -> {
                     overlayState = AuthOverlayState.SUCCESS
-                    delay(1200)
+                    delay(1200.milliseconds)
                     navController.navigate(Routes.Home.route) {
                         popUpTo("auth_flow") { inclusive = true }
                     }
                 }
                 is AuthNavigationEvent.NavigateToProfileSetup -> {
                     overlayState = AuthOverlayState.SUCCESS
-                    delay(800)
+                    delay(800.milliseconds)
                     navController.navigate(Routes.DonorProfileSetup.route) {
                         // DonorProfileSetup is INSIDE auth_flow, so just pop current screen
                         popUpTo(Routes.Otp.route) { inclusive = true }

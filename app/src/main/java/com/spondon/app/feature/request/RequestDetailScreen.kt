@@ -58,6 +58,16 @@ fun RequestDetailScreen(
         )
     }
 
+    if (state.isEditing && state.request != null) {
+        EditRequestDialog(
+            request = state.request!!,
+            onDismiss = { viewModel.toggleEditing() },
+            onSave = { edited ->
+                viewModel.updateRequest(edited)
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -71,6 +81,11 @@ fun RequestDetailScreen(
                 windowInsets = WindowInsets(0.dp),
                 actions = {
                     if (state.request != null) {
+                        if (state.isEditable) {
+                            IconButton(onClick = { viewModel.toggleEditing() }) {
+                                Icon(Icons.Outlined.Edit, "Edit")
+                            }
+                        }
                         IconButton(onClick = { showShareSheet = true }) {
                             Icon(Icons.Outlined.Share, "Share")
                         }
@@ -379,6 +394,9 @@ fun RequestDetailScreen(
                         val confirmedCount = state.confirmedDonorIds.size
                         val unitsNeeded = request.unitsNeeded
 
+                        // Determine if current user is the requester
+                        val isRequester = state.isCurrentUserRequester
+
                         DetailSection(
                             title = "Respondents (${request.respondents.size})",
                         ) {
@@ -422,8 +440,19 @@ fun RequestDetailScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     request.respondents.forEach { respondentId ->
                                         val profile = state.respondentProfiles[respondentId]
-                                        val donorName = profile?.name?.takeIf { it.isNotBlank() } ?: "Donor"
-                                        val donorPhone = if (profile?.isPhoneVisible == true) profile.phone else ""
+                                        val isCurrentUser = respondentId == viewModel.currentUserId
+
+                                        // Privacy: requester sees all; donors see only their own info
+                                        val donorName = when {
+                                            isRequester || isCurrentUser -> profile?.name?.takeIf { it.isNotBlank() } ?: "Donor"
+                                            else -> "Donor"
+                                        }
+                                        val donorPhone = when {
+                                            isRequester -> if (profile?.isPhoneVisible == true) profile.phone else ""
+                                            isCurrentUser -> profile?.phone ?: ""
+                                            else -> ""
+                                        }
+                                        val showBloodGroup = isRequester || isCurrentUser
                                         val isConfirmed = respondentId in state.confirmedDonorIds
 
                                         Surface(
@@ -472,6 +501,21 @@ fun RequestDetailScreen(
                                                             ),
                                                             color = MaterialTheme.colorScheme.onSurface,
                                                         )
+                                                        if (isCurrentUser && !isRequester) {
+                                                            Spacer(Modifier.width(6.dp))
+                                                            Surface(
+                                                                shape = RoundedCornerShape(4.dp),
+                                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                            ) {
+                                                                Text(
+                                                                    text = "You",
+                                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = MaterialTheme.colorScheme.primary,
+                                                                )
+                                                            }
+                                                        }
                                                         if (isConfirmed) {
                                                             Spacer(Modifier.width(6.dp))
                                                             Surface(
@@ -479,7 +523,7 @@ fun RequestDetailScreen(
                                                                 color = AvailableGreen.copy(alpha = 0.15f),
                                                             ) {
                                                                 Text(
-                                                                    text = "✅ Donated",
+                                                                    text = "\u2705 Donated",
                                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                                                     style = MaterialTheme.typography.labelSmall,
                                                                     fontWeight = FontWeight.Bold,
@@ -496,7 +540,7 @@ fun RequestDetailScreen(
                                                         )
                                                     }
                                                 }
-                                                if (profile?.bloodGroup?.isNotBlank() == true) {
+                                                if (showBloodGroup && profile?.bloodGroup?.isNotBlank() == true) {
                                                     Surface(
                                                         shape = RoundedCornerShape(6.dp),
                                                         color = BloodRed.copy(alpha = 0.1f),
@@ -915,6 +959,135 @@ fun ConfirmDonationsDialog(
                 Text("Cancel")
             }
         },
+    )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Edit Request Dialog
+// ═══════════════════════════════════════════════════════════════
+
+@Composable
+fun EditRequestDialog(
+    request: com.spondon.app.core.domain.model.BloodRequest,
+    onDismiss: () -> Unit,
+    onSave: (com.spondon.app.core.domain.model.BloodRequest) -> Unit,
+) {
+    var unitsNeeded by remember { mutableIntStateOf(request.unitsNeeded) }
+    var patientName by remember { mutableStateOf(request.patientName ?: "") }
+    var hospital by remember { mutableStateOf(request.hospital) }
+    var address by remember { mutableStateOf(request.address) }
+    var contactNumber by remember { mutableStateOf(request.contactNumber) }
+    var condition by remember { mutableStateOf(request.patientCondition) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Request", fontWeight = FontWeight.Bold) },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                item {
+                    Text("Units Needed", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                    ) {
+                        FilledIconButton(
+                            onClick = { if (unitsNeeded > 1) unitsNeeded-- },
+                            enabled = unitsNeeded > 1,
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = BloodRed.copy(alpha = 0.1f)),
+                        ) {
+                            Icon(Icons.Filled.Remove, "Decrease")
+                        }
+                        Text("$unitsNeeded", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
+                        FilledIconButton(
+                            onClick = { if (unitsNeeded < 10) unitsNeeded++ },
+                            enabled = unitsNeeded < 10,
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = BloodRed.copy(alpha = 0.1f)),
+                        ) {
+                            Icon(Icons.Filled.Add, "Increase")
+                        }
+                    }
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = patientName,
+                        onValueChange = { patientName = it },
+                        label = { Text("Patient Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = condition,
+                        onValueChange = { condition = it },
+                        label = { Text("Patient Condition") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = hospital,
+                        onValueChange = { hospital = it },
+                        label = { Text("Hospital Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = { Text("Hospital Area / Address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = contactNumber,
+                        onValueChange = { contactNumber = it },
+                        label = { Text("Contact Number") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        request.copy(
+                            unitsNeeded = unitsNeeded,
+                            patientName = patientName.trim().takeIf { it.isNotBlank() },
+                            hospital = hospital.trim(),
+                            address = address.trim(),
+                            contactNumber = contactNumber.trim(),
+                            patientCondition = condition.trim()
+                        )
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AvailableGreen)
+            ) {
+                Text("Save Changes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
     )
 }
 

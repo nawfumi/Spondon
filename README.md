@@ -27,246 +27,58 @@
 | **Platform** | Android (Jetpack Compose) |
 | **Backend** | Firebase (Firestore, Auth, FCM, Storage) |
 | **Architecture** | MVVM + Clean Architecture |
-| **Total Phases** | 6 |
 | **Min SDK** | API 26 (Android 8.0) |
 | **Target SDK** | API 35 |
 
 ---
 
-## ✨ Features at a Glance
+## ✨ Key Features
 
 - 🔴 **Community-Scoped Blood Requests** — Post and browse urgent/moderate/normal blood requests filtered by your communities
 - 🔍 **Smart Donor Search** — Filter by blood group, location, availability, and community with map view
 - 👥 **Community System** — Public & private communities with role-based access (Super Admin / Community Admin / Moderator / Member)
 - 🔢 **Custom Member Serial IDs** — SuperAdmin enabled serial numbers for private communities
-- 🔔 **Real-time Push Notifications** — FCM alerts for CRITICAL requests, join approvals, donor acceptance
+- 🔔 **Real-time Push Notifications** — FCM alerts for CRITICAL requests, join approvals, donor acceptance (even works when app is closed)
 - 📞 **Direct Call Integration** — One-tap phone dialer for accepted donor↔requester contact
+- 🛡️ **Privacy First** — Donor contact information remains hidden until the donor explicitly accepts a blood request.
 - 🏅 **Donation Badges & History** — Gamified achievement system with a verifiable donation log
-- 🌙 **Dark / Light Mode** — Full adaptive theming with Bangla + English language support
-- 🔒 **Biometric Login** & OTP Phone Verification
+- 🌙 **Adaptive Theming** — Full dark and light mode support with modern UI aesthetics
+- 🔒 **Secure Auth** — Biometric Login & OTP Phone Verification
 - 📄 **PDF Export** — Export Community Member list & Donation Certificates
-- 🗺️ **Offline Caching** with Room for resilience on low connectivity
+- 🗺️ **Offline Caching** — Built with Room for resilience on low connectivity
 
 ---
 
-## 🏗️ Tech Stack
+## 🏗️ Architecture & Tech Stack
+
+Spondon follows the **MVVM + Clean Architecture** principles, ensuring a robust separation of concerns, scalability, and testability.
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| UI | Jetpack Compose | Declarative UI |
-| Architecture | MVVM + Clean | Separation of concerns |
-| DI | Hilt | Dependency injection |
-| Navigation | Compose Navigation | Screen routing |
-| Auth | Firebase Auth | Phone / Email / Google |
-| Database | Cloud Firestore | Real-time sync |
-| Storage | Firebase Storage | Images & files |
-| Push | FCM | Notifications |
-| Async | Kotlin Coroutines + Flow | Reactive data streams |
-| Local DB | Room | Offline caching |
-| Images | Coil | Image loading |
-| Animation | Lottie | Onboarding animations |
-
----
-
-## 📁 Module Structure
-
-```
-app/src/main/java/com/spondon/app/
-│
-├── core/
-│   ├── ui/           → Design system: Theme, Typography, Color, Shape
-│   │   └── components/  → Reusable composables (BloodGroupBadge, UrgencyTag, etc.)
-│   ├── data/         → Repositories, Room DB, Firebase data sources
-│   └── domain/       → Use-cases, domain models (User, Community, BloodRequest, Donation)
-│
-├── feature/
-│   ├── auth/         → Splash, Onboarding, Login, SignUp (3-step), OTP, Forgot Password
-│   ├── community/    → Community List/Detail, Create, Join Request, Admin Dashboard
-│   ├── request/      → Home Dashboard, Create/Detail/Feed Blood Request
-│   ├── donor/        → Find Donor, Donor Profile, Donation History, Achievements
-│   ├── profile/      → My Profile, Edit Profile
-│   ├── notification/ → Notification Center, FCM Service
-│   └── settings/     → Settings (appearance, language, privacy, security, account)
-│
-├── di/               → Hilt modules (AppModule, RepositoryModule)
-└── navigation/       → Routes, SpondonNavGraph
-```
-
----
-
-## 🎨 Design System
-
-**Color Palette:**
-- Primary: Deep Blood Red `#C0152A`
-- Accent: Soft Rose `#E63950`
-- Background (Dark): `#0F0F0F` / `#161616`
-- Background (Light): `#FAFAFA`
-- Surface Cards: `#1E1E1E` (dark) / `#FFFFFF` (light)
-
-**Typography:**
-- Display: Playfair Display (Bengali + English headings)
-- Body: DM Sans (readable, clean)
-- Mono / Labels: JetBrains Mono (codes, routes)
-
----
-
-## 📐 Roadmap
-
-### ✅ Phase 1 — Architecture, Design System & Project Setup
-> Lay the technical foundation before writing any feature code.
-
-- [x] MVVM + Clean Architecture scaffold
-- [x] Hilt dependency injection wiring
-- [x] Compose Navigation graph
-- [x] Design system (Color, Typography, Shape, Theme)
-- [x] Reusable component library (BloodGroupBadge, UrgencyTag, AvailabilityIndicator, RoleBadge, AnimatedBloodDropLoader, SpondonBottomBar, etc.)
-- [x] Domain models (User, Community, BloodRequest, Donation, Enums)
-- [x] Use-cases (Auth, Community, Donor, Request)
-- [x] Hilt modules (AppModule, RepositoryModule)
-
----
-
-### ✅ Phase 2 — Onboarding, Auth & User Registration
-> First-impression flows — animated onboarding, multi-step sign-up, OTP verification, session management.
-
-| Screen | Route | Status |
-|--------|-------|--------|
-| Splash Screen | `SplashScreen` | Completed |
-| Onboarding (3 slides) | `OnboardingScreen` | Completed |
-| Sign Up — Step 1 (Basic Info) | `SignUpScreen` | Completed |
-| Sign Up — Step 2 (Health Profile) | `DonorProfileSetup` | Completed |
-| Sign Up — Step 3 (Location) | `LocationSetupScreen` | Completed |
-| OTP Verification | `OtpScreen` | Completed |
-| Login | `LoginScreen` | Completed |
-| Forgot Password | `ForgotPasswordScreen` | Completed |
-
-**Auth Flow:**
-```
-Splash → Auth Check → Onboarding (first launch) → Sign Up / Login → Profile Setup → Home
-```
-
----
-
-### ✅ Phase 3 — Community System
-> The core differentiator. Public & private communities with admin governance, membership requests, and RBAC.
-
-**User Roles:**
-
-| Role | Capabilities |
-|------|-------------|
-| **Super Admin** | Platform-wide moderation, verify/ban communities, global announcements, enable custom serial numbers |
-| **Community Admin** | Accept/reject joins, remove members, promote, pin requests, override donor availability, assign serial IDs, export member list to PDF |
-| **Moderator** | Accept/reject joins, flag/remove requests |
-| **Member (Donor)** | View feed, post requests, respond, search donors |
-
-| Screen | Route | Status |
-|--------|-------|--------|
-| Community Feed / List | `CommunityListScreen` | Completed |
-| Community Detail | `CommunityDetailScreen` | Completed |
-| Create Community | `CreateCommunityScreen` | Completed |
-| Join Request | `JoinRequestScreen` | Completed |
-| Admin Panel | `AdminDashboardScreen` | Completed |
-
-**Community Firestore Model:**
-```
-communities/{communityId}
-  id, name, description, coverUrl, type (PUBLIC|PRIVATE),
-  adminIds, moderatorIds, memberIds, pendingIds,
-  area (GeoPoint + String), bloodGroups, isSerialEnabled,
-  memberCount, donationCount, isVerified, createdAt
-```
-
----
-
-### ✅ Phase 4 — Home Dashboard & Blood Request System
-> The heart of the app — community-scoped request feed, urgent request creation, donor matching, real-time status.
-
-| Screen | Route | Status |
-|--------|-------|--------|
-| Home Dashboard | `HomeScreen` | Completed |
-| Create Blood Request | `CreateRequestScreen` | Completed |
-| Request Detail | `RequestDetailScreen` | Completed |
-| Request Feed / My Requests | `RequestFeedScreen` / `MyRequestsScreen` | Completed |
-
-**Key Business Logic:**
-- Community-scoped feed (only show requests from joined communities)
-- **120-day donor cooldown** — donor unavailable for 120 days after `lastDonationDate`
-- **Admin override at ≥ 90 days** — admin can manually mark a member available
-- Auto-expire requests after donation time passes
-- Real-time respondent count via Firestore listeners
-- FCM push to all community members on new CRITICAL request
-- **Call intent**: accepted donor → requester taps 📞 to open phone dialer with `tel:` intent
-
-**Blood Request Firestore Model:**
-```
-requests/{requestId}
-  id, communityIds, requesterId, bloodGroup,
-  urgency (CRITICAL|MODERATE|NORMAL), unitsNeeded,
-  patientName?, hospital, hospitalGeo (GeoPoint),
-  donationDateTime, contactNumber, respondents,
-  status (ACTIVE|FULFILLED|EXPIRED|CANCELLED),
-  isPinned, createdAt, expiresAt
-```
-
----
-
-### ✅ Phase 5 — Donor Search, Profile & Donation History
-> Smart, community-scoped donor discovery with advanced filtering, public donor profiles, and a complete donation history log.
-
-| Screen | Route | Status |
-|--------|-------|--------|
-| Find Donor | `FindDonorScreen` | Completed |
-| Donor Public Profile | `DonorProfileScreen` | Completed |
-| My Donation History | `DonationHistoryScreen` | Completed |
-| Donor Badges & Achievements | `AchievementsScreen` | Completed |
-
-**Badges:**
-| Badge | Criteria |
-|-------|---------|
-| 🩸 First Drop | 1st donation |
-| 🧡 Life Saver | 5 donations |
-| ❤️ Hero Donor | 10 donations |
-| 👑 Community Champion | Top donor in a community |
-
-**User / Donor Firestore Model:**
-```
-users/{userId}
-  uid, name, phone, email, avatarUrl, bloodGroup,
-  dob, weight, isDonor, lastDonationDate?,
-  donationInterval (default 120), availabilityOverride,
-  totalDonations, communityIds, location (GeoPoint),
-  district, isPhoneVisible, badges, fcmToken, createdAt
-```
-
----
-
-### ✅ Phase 6 — Profile, Settings & Notification Center
-> Personal profile management, granular notification preferences, privacy controls, and in-app notification inbox.
-
-| Screen | Route | Status |
-|--------|-------|--------|
-| My Profile | `ProfileScreen` | Completed |
-| Edit Profile | `EditProfileScreen` | Completed |
-| Settings | `SettingsScreen` | Completed |
-| Notification Center | `NotificationScreen` | Completed |
-
-**Notification Triggers:**
-
-| Trigger | Recipients |
-|---------|-----------|
-| New CRITICAL blood request | All members of broadcast communities + matching blood group donors |
-| Join request submitted | Community admin(s) |
-| Join approved / rejected | The applicant |
-| Donor accepted your request | The request creator (with call button) |
-| Donation Reminder | 24 hours before committed donation date/time |
-| Cooldown Lifted (120 days) | The donor — "You are now eligible to donate again!" |
-| Admin availability override | The member whose availability was manually changed |
+| **UI** | Jetpack Compose | Declarative UI |
+| **Architecture** | MVVM + Clean | Separation of concerns |
+| **DI** | Hilt | Dependency injection |
+| **Navigation** | Compose Navigation | Screen routing |
+| **Auth** | Firebase Auth | Phone / Email / Google |
+| **Database** | Cloud Firestore | Real-time sync |
+| **Storage** | Firebase Storage | Image compression & saving |
+| **Push** | FCM + Cloud Functions| Background Push Notifications |
+| **Async** | Kotlin Coroutines + Flow | Reactive data streams |
+| **Local DB** | Room | Offline caching |
+| **Images** | Coil | Fast image loading |
+| **Animation** | Lottie | Onboarding animations |
 
 ---
 
 ## 🚀 Getting Started
 
-### Setup
+### Prerequisites
+
+- Android Studio Koala or later
+- JDK 17
+- Minimum SDK 26 (Android 8.0 Oreo)
+
+### Setup Instructions
 
 1. **Clone the repository**
    ```bash
@@ -275,60 +87,43 @@ users/{userId}
    ```
 
 2. **Add Firebase config**  
-   Download `google-services.json` from your Firebase Console and place it in `app/`:
-   ```
+   Download your `google-services.json` from the Firebase Console and place it in the `app/` directory:
+   ```text
    app/google-services.json
    ```
 
-3. **Enable Firebase plugin**  
-   In `app/build.gradle.kts`, uncomment:
+3. **Enable Firebase Plugin**  
+   Ensure the Google Services plugin is applied in `app/build.gradle.kts`:
    ```kotlin
    alias(libs.plugins.google.services)
    ```
 
 4. **Build & Run**
-   ```bash
-   ./gradlew assembleDebug
-   # or open in Android Studio and press Run ▶
-   ```
+   Open the project in Android Studio, sync Gradle, and press **Run ▶**.
 
 ---
 
-## 🚀 Launch Checklist
+## 🔮 Future Roadmap
 
-- [ ] Play Store listing: screenshots (dark + light), description in Bangla + English
-- [ ] Privacy policy page (required for health apps)
-- [ ] Content policy compliance review
-- [ ] App signing with release keystore
-- [ ] ProGuard / R8 minification + obfuscation
-- [ ] Baseline Profiles for startup speed
-- [ ] App Bundle (.aab) upload
-- [ ] Staged rollout: 10% → 50% → 100%
-- [ ] Firestore security rules audit
-- [ ] Firebase App Check enabled
-- [ ] Firebase Crashlytics for production error tracking
-- [ ] Firebase Analytics for user behaviour and funnel analysis
-
----
-
-## 🔮 v1.1 Post-Launch Features
-
-- In-app chat between donor and requester (pre-call messaging)
-- Blood bank directory with real-time stock
-- Emergency SOS broadcast (1-tap to all communities)
-- Leaderboard per community — top donors of the month
-- Hospital partnership integrations
-- iOS version (Kotlin Multiplatform or React Native)
-- Web admin portal for super admins
-- AI-based donor-request auto matching
-- Digital donation certificate with QR code
-- Blood inventory wishlist for rare blood groups
+- 💬 **In-app Chat** — Secure messaging between donor and requester before sharing numbers
+- 🏥 **Blood Bank Directory** — Live inventory updates from partner hospitals
+- 🚨 **Emergency SOS** — 1-tap broadcast to all joined communities
+- 🏆 **Community Leaderboards** — Gamified donor recognition
+- 🤖 **AI Donor Matching** — Intelligent matchmaking algorithms for urgent requests
+- 🍏 **iOS Client** — Rebuilding with Kotlin Multiplatform (KMP)
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+We welcome pull requests! Spondon is an open-source initiative aimed at saving lives. 
+For major changes, please open an issue first to discuss what you would like to change.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
@@ -343,5 +138,5 @@ MIT License — Copyright (c) 2026 ashgorhythm
 <p align="center">
   <em>Spondon · স্পন্দন</em><br/>
   <strong>Every heartbeat counts. Every community matters.</strong><br/>
-  Built with Kotlin · Jetpack Compose · Firebase
+  Built with ❤️ in Kotlin
 </p>

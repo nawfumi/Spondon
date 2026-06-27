@@ -666,6 +666,21 @@ class FirestoreService @Inject constructor(
         }
     }
 
+    /**
+     * Updates editable fields of an existing blood request.
+     */
+    suspend fun updateRequest(requestId: String, data: Map<String, Any?>): Resource<Unit> {
+        return try {
+            firestore.collection(Constants.REQUESTS_COLLECTION)
+                .document(requestId)
+                .update(data.filterValues { it != null } as Map<String, Any>)
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to update request", e)
+        }
+    }
+
     // ─── Notifications ───────────────────────────────────────────
 
     // ─── Donations ───────────────────────────────────────────────

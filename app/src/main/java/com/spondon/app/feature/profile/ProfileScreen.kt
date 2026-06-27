@@ -254,6 +254,7 @@ fun ProfileScreen(
                                     Switch(
                                         checked = user.isDonor,
                                         onCheckedChange = { viewModel.toggleDonorAvailability() },
+                                        enabled = state.cooldownDaysRemaining <= 0,
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = AvailableGreen,
                                             checkedTrackColor = AvailableGreen.copy(alpha = 0.3f),

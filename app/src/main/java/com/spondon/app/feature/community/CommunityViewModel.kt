@@ -670,6 +670,23 @@ class CommunityViewModel @Inject constructor(
                 is Resource.Success -> {
                     _joinState.update { it.copy(isLoading = false, isSubmitted = true, isPending = true) }
                     _events.emit(CommunityEvent.ShowSnackbar("Join request sent!"))
+
+                    // Notify community admins about the new join request
+                    if (community != null) {
+                        try {
+                            notificationRepository.sendNotificationToUsers(
+                                userIds = community.adminIds,
+                                type = NotificationType.COMMUNITY_JOIN_REQUEST,
+                                title = "New Join Request",
+                                body = "Someone wants to join ${community.name}",
+                                deepLink = "community_detail/$communityId",
+                                extraData = mapOf(
+                                    "communityId" to communityId,
+                                    "requesterId" to currentUserId,
+                                ),
+                            )
+                        } catch (_: Exception) { /* non-critical */ }
+                    }
                 }
                 is Resource.Error -> {
                     _joinState.update { it.copy(error = result.message, isLoading = false) }
@@ -783,6 +800,18 @@ class CommunityViewModel @Inject constructor(
                 is Resource.Success -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Member approved!"))
                     loadAdminDashboard(communityId)
+
+                    // Notify the approved user
+                    val communityName = _adminState.value.community?.name ?: "a community"
+                    try {
+                        notificationRepository.sendNotificationToUsers(
+                            userIds = listOf(userId),
+                            type = NotificationType.JOIN_REQUEST_ACCEPTED,
+                            title = "Request Approved!",
+                            body = "You've been added to $communityName.",
+                            deepLink = "community_detail/$communityId",
+                        )
+                    } catch (_: Exception) { /* non-critical */ }
                 }
                 is Resource.Error -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Failed to approve: ${result.message}"))
@@ -798,6 +827,18 @@ class CommunityViewModel @Inject constructor(
                 is Resource.Success -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Request rejected"))
                     loadAdminDashboard(communityId)
+
+                    // Notify the rejected user
+                    val communityName = _adminState.value.community?.name ?: "a community"
+                    try {
+                        notificationRepository.sendNotificationToUsers(
+                            userIds = listOf(userId),
+                            type = NotificationType.JOIN_REQUEST_REJECTED,
+                            title = "Request Rejected",
+                            body = "Your join request for $communityName was not approved.",
+                            deepLink = "community_detail/$communityId",
+                        )
+                    } catch (_: Exception) { /* non-critical */ }
                 }
                 is Resource.Error -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Failed to reject: ${result.message}"))

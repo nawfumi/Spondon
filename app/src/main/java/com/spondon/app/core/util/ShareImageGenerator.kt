@@ -15,6 +15,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withTranslation
 
 /**
  * Generates an app-themed share card as a Bitmap and saves it to cache
@@ -42,7 +44,7 @@ object ShareImageGenerator {
     private const val CORNER = 48f
 
     fun generate(context: Context, request: BloodRequest): File {
-        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(WIDTH, HEIGHT)
         val canvas = Canvas(bitmap)
 
         drawBackground(canvas)
@@ -248,10 +250,9 @@ object ShareImageGenerator {
                 .setAlignment(Layout.Alignment.ALIGN_NORMAL)
                 .setLineSpacing(6f, 1f)
                 .build()
-            canvas.save()
-            canvas.translate(left + 50f, y + 6f)
-            layout.draw(canvas)
-            canvas.restore()
+            canvas.withTranslation(left + 50f, y + 6f) {
+                layout.draw(this)
+            }
             y += (layout.height + 20f).coerceAtLeast(58f)
         }
 

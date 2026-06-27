@@ -13,6 +13,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.core.graphics.toColorInt
 
 /**
  * Sorting options for the PDF member list.
@@ -94,11 +95,11 @@ class CommunityPdfGenerator {
 
             var y: Float
 
-            if (pageIndex == 1) {
+            y = if (pageIndex == 1) {
                 // Draw branded header on first page
-                y = drawHeader(canvas, communityName, members.size, isSerialEnabled, sortOption)
+                drawHeader(canvas, communityName, members.size, isSerialEnabled, sortOption)
             } else {
-                y = MARGIN_TOP
+                MARGIN_TOP
             }
 
             // Draw table header
@@ -221,7 +222,7 @@ class CommunityPdfGenerator {
     // ─── Drawing helpers ─────────────────────────────────────────
 
     private val titlePaint = Paint().apply {
-        color = Color.parseColor("#C62828") // BloodRed
+        color = "#C62828".toColorInt() // BloodRed
         textSize = 18f
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         isAntiAlias = true
@@ -241,23 +242,23 @@ class CommunityPdfGenerator {
     }
 
     private val headerBgPaint = Paint().apply {
-        color = Color.parseColor("#C62828")
+        color = "#C62828".toColorInt()
         style = Paint.Style.FILL
     }
 
     private val cellPaint = Paint().apply {
-        color = Color.parseColor("#212121")
+        color = "#212121".toColorInt()
         textSize = 9f
         isAntiAlias = true
     }
 
     private val stripePaint = Paint().apply {
-        color = Color.parseColor("#FFF3F3")
+        color = "#FFF3F3".toColorInt()
         style = Paint.Style.FILL
     }
 
     private val linePaint = Paint().apply {
-        color = Color.parseColor("#E0E0E0")
+        color = "#E0E0E0".toColorInt()
         strokeWidth = 0.5f
     }
 

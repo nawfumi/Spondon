@@ -18,6 +18,7 @@ interface NotificationRepository {
         title: String,
         body: String,
         deepLink: String = "",
+        extraData: Map<String, String> = emptyMap(),
     ): Resource<Unit>
     suspend fun createNotification(
         userId: String,
@@ -25,6 +26,7 @@ interface NotificationRepository {
         title: String,
         body: String,
         deepLink: String = "",
+        extraData: Map<String, String> = emptyMap(),
     ): Resource<String>
     suspend fun deleteOldNotifications(userId: String)
 }

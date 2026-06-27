@@ -37,7 +37,7 @@ class UserRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateUser(user: User): Resource<Unit> {
-        val data = mapOf<String, Any?>(
+        val data = mapOf(
             "name" to user.name,
             "phone" to user.phone,
             "email" to user.email,

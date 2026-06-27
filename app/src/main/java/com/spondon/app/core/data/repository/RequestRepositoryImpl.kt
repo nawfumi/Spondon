@@ -96,6 +96,21 @@ class RequestRepositoryImpl @Inject constructor(
         return firestoreService.deleteRequest(requestId)
     }
 
+    override suspend fun updateRequest(request: BloodRequest): Resource<Unit> {
+        val data = mapOf<String, Any?>(
+            "bloodGroup" to request.bloodGroup,
+            "urgency" to request.urgency.name,
+            "unitsNeeded" to request.unitsNeeded,
+            "patientName" to request.patientName,
+            "hospital" to request.hospital,
+            "address" to request.address,
+            "donationDateTime" to request.donationDateTime?.let { Timestamp(it) },
+            "contactNumber" to request.contactNumber,
+            "patientCondition" to request.patientCondition,
+        )
+        return firestoreService.updateRequest(request.id, data)
+    }
+
     private fun mapToBloodRequest(data: Map<String, Any>): BloodRequest {
         val donationDt = when (val d = data["donationDateTime"]) {
             is Timestamp -> d.toDate()

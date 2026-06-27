@@ -6,31 +6,76 @@ import android.content.Context
 import android.os.Build
 
 /**
- * Centralises notification channel creation so that
- * [SpondonFCMService] and [NotificationObserver] don't duplicate
- * the same channel setup code.
+ * Centralises notification channel creation.
+ *
+ * Three channels mirror the notification types in the roadmap:
+ *  • blood_requests  — urgent blood donation alerts (high priority, vibration)
+ *  • community       — join requests, broadcasts (default priority)
+ *  • announcements   — SuperAdmin announcements (high priority)
  */
 object NotificationChannelHelper {
 
+    /** Legacy channel ID — kept as the default/fallback. */
     const val CHANNEL_ID = "spondon_notifications"
-    private const val CHANNEL_NAME = "Spondon Notifications"
+
+    const val CHANNEL_BLOOD = "blood_requests"
+    const val CHANNEL_COMMUNITY = "community"
+    const val CHANNEL_ANNOUNCEMENTS = "announcements"
 
     /**
-     * Creates (or updates) the app's default notification channel.
-     * Safe to call repeatedly — Android ignores duplicate channel registrations.
+     * Creates (or updates) all notification channels.
+     * Safe to call repeatedly — Android ignores duplicate registrations.
      */
-    fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channel = NotificationChannel(
+    fun ensureChannels(context: Context) {
+        val manager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channels = listOf(
+            // ── Default / legacy ─────────────────────────────────
+            NotificationChannel(
                 CHANNEL_ID,
-                CHANNEL_NAME,
+                "Spondon Notifications",
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
-                description = "Blood donation alerts and community notifications"
+                description = "General Spondon notifications"
                 enableVibration(true)
-            }
-            manager.createNotificationChannel(channel)
-        }
+            },
+
+            // ── Blood requests ───────────────────────────────────
+            NotificationChannel(
+                CHANNEL_BLOOD,
+                "Blood Requests",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Urgent blood donation requests"
+                enableVibration(true)
+            },
+
+            // ── Community ────────────────────────────────────────
+            NotificationChannel(
+                CHANNEL_COMMUNITY,
+                "Community",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "Community join requests and broadcasts"
+            },
+
+            // ── Announcements ────────────────────────────────────
+            NotificationChannel(
+                CHANNEL_ANNOUNCEMENTS,
+                "Announcements",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "SuperAdmin announcements"
+            },
+        )
+
+        channels.forEach { manager.createNotificationChannel(it) }
     }
+
+    /**
+     * Backward-compatible single-channel convenience.
+     * Delegates to [ensureChannels].
+     */
+    fun ensureChannel(context: Context) = ensureChannels(context)
 }

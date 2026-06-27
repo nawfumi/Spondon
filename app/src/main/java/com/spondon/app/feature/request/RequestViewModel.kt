@@ -74,8 +74,16 @@ data class RequestDetailState(
     val isLoading: Boolean = true,
     val isResponding: Boolean = false,
     val isConfirming: Boolean = false,
+    val isEditing: Boolean = false,
+    val isSaving: Boolean = false,
     val error: String? = null,
-)
+) {
+    /** Editable only when the requester owns it, it's active, and no donors yet. */
+    val isEditable: Boolean
+        get() = isCurrentUserRequester &&
+                request?.status == RequestStatus.ACTIVE &&
+                request.respondents.isEmpty()
+}
 
 data class FeedState(
     val selectedTab: Int = 0, // 0 = Feed, 1 = My Requests
@@ -97,7 +105,7 @@ class RequestViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val currentUserId get() = auth.currentUser?.uid ?: ""
+    val currentUserId get() = auth.currentUser?.uid ?: ""
 
     // ─── Home State ──────────────────────────────────────────
     private val _homeState = MutableStateFlow(HomeState())
@@ -459,6 +467,33 @@ class RequestViewModel @Inject constructor(
         }
     }
 
+    /** Toggle edit mode on the request detail screen. */
+    fun toggleEditing() {
+        _detailState.update { it.copy(isEditing = !it.isEditing) }
+    }
+
+    /** Update editable fields on an existing request (only if no respondents yet). */
+    fun updateRequest(edited: BloodRequest) {
+        viewModelScope.launch {
+            _detailState.update { it.copy(isSaving = true) }
+            when (requestRepository.updateRequest(edited)) {
+                is Resource.Success -> {
+                    _detailState.update {
+                        it.copy(
+                            request = edited,
+                            isEditing = false,
+                            isSaving = false,
+                        )
+                    }
+                }
+                is Resource.Error -> {
+                    _detailState.update { it.copy(isSaving = false, error = "Failed to update request") }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
     /**
      * Confirm that selected respondents have successfully donated.
      * Updates each donor's totalDonations + lastDonationDate, adds them to confirmedDonors,
@@ -485,7 +520,7 @@ class RequestViewModel @Inject constructor(
                 try {
                     // Fetch donor and update profile via injected service
                     val donorResult = userRepository.getUser(donorUserId)
-                    if (donorResult is Resource.Success && donorResult.data != null) {
+                    if (donorResult is Resource.Success) {
                         val donor = donorResult.data
                         firestoreService.updateMemberDonationStatus(
                             userId = donorUserId,
@@ -682,6 +717,7 @@ class RequestViewModel @Inject constructor(
                 title = "\uD83E\uDE78 $bloodGroup Blood Needed!",
                 body = "A $bloodGroup blood request has been posted at $hospital. Your blood group matches — tap to respond!",
                 deepLink = "request_detail/$requestId",
+                extraData = mapOf("requestId" to requestId),
             )
         } catch (_: Exception) {
             // Silently fail — request creation must never be blocked by a

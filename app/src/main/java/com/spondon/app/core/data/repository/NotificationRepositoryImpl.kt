@@ -95,10 +95,11 @@ class NotificationRepositoryImpl @Inject constructor(
         title: String,
         body: String,
         deepLink: String,
+        extraData: Map<String, String>,
     ): Resource<String> {
         return try {
             val now = Timestamp.now()
-            val data = hashMapOf(
+            val data = hashMapOf<String, Any>(
                 "userId" to userId,
                 "type" to type.name,
                 "title" to title,
@@ -107,6 +108,10 @@ class NotificationRepositoryImpl @Inject constructor(
                 "isRead" to false,
                 "createdAt" to now,
             )
+            // Merge extra fields (communityId, requesterId, etc.) so the
+            // Cloud Function can forward them in the FCM payload.
+            data.putAll(extraData)
+
             val docRef = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
                 .add(data)
                 .await()
@@ -142,6 +147,7 @@ class NotificationRepositoryImpl @Inject constructor(
         title: String,
         body: String,
         deepLink: String,
+        extraData: Map<String, String>,
     ): Resource<Unit> {
         return try {
             userIds.forEach { userId ->
@@ -151,6 +157,7 @@ class NotificationRepositoryImpl @Inject constructor(
                     title = title,
                     body = body,
                     deepLink = deepLink,
+                    extraData = extraData,
                 )
             }
             Resource.Success(Unit)
@@ -210,14 +217,14 @@ class NotificationRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Deletes all notifications older than 30 days from Firestore.
+     * Deletes all notifications older than 14 days (2 weeks) from Firestore.
      * Notifications remain in the local Room database so users keep them
      * on device until the app is uninstalled.
      */
     override suspend fun deleteOldNotifications(userId: String) {
         try {
-            val thirtyDaysAgo = Date(System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000)
-            val cutoff = Timestamp(thirtyDaysAgo)
+            val twoWeeksAgo = Date(System.currentTimeMillis() - 14L * 24 * 60 * 60 * 1000)
+            val cutoff = Timestamp(twoWeeksAgo)
 
             val docs = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
                 .whereEqualTo("userId", userId)

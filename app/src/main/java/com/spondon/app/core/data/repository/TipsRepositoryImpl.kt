@@ -16,7 +16,7 @@ class TipsRepositoryImpl @Inject constructor(
 
     private var cachedTips: List<DonationTip>? = null
 
-    private suspend fun ensureLoaded(): List<DonationTip> {
+    private fun ensureLoaded(): List<DonationTip> {
         cachedTips?.let { return it }
         val json = context.assets.open("tips.json").bufferedReader().use { it.readText() }
         val jsonArray = JSONArray(json)
