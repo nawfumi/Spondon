@@ -130,7 +130,7 @@ For major changes, please open an issue first to discuss what you would like to 
 ## 📜 License
 
 ```
-MIT License — Copyright (c) 2026 ashgorhythm
+No License — Copyright (c) 2026 ashgorhythm
 ```
 
 ---
