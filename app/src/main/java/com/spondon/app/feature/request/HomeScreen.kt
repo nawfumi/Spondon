@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -448,6 +449,9 @@ private fun StatCard(
     value: String,
     modifier: Modifier = Modifier,
 ) {
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    val dynamicFontSize = (screenWidth * 10f / 360f).coerceIn(8f, 12f).sp
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
@@ -459,7 +463,7 @@ private fun StatCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .padding(12.dp),
+                .padding(horizontal = 4.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -480,12 +484,10 @@ private fun StatCard(
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = dynamicFontSize),
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -499,6 +501,11 @@ private fun QuickActionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    val dynamicFontSize = (screenWidth * 10f / 360f).coerceIn(8f, 12f).sp
+    val dynamicIconSize = (screenWidth * 22f / 360f).coerceIn(16f, 24f).dp
+    val dynamicBoxSize = (screenWidth * 40f / 360f).coerceIn(28f, 48f).dp
+
     Card(
         modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
@@ -510,32 +517,30 @@ private fun QuickActionCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .padding(12.dp),
+                .padding(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(dynamicBoxSize)
                     .clip(CircleShape)
                     .background(color.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(dynamicIconSize))
             }
             Spacer(Modifier.height(8.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.SemiBold,
-                    lineHeight = 14.sp,
-                    fontSize = 10.sp,
+                    lineHeight = (dynamicFontSize.value * 1.4f).sp,
+                    fontSize = dynamicFontSize,
                 ),
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

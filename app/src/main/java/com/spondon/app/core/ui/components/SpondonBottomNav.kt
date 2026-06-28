@@ -13,7 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spondon.app.core.ui.i18n.S
@@ -56,6 +59,8 @@ fun SpondonBottomNav(
     onNavigate: (String) -> Unit,
 ) {
     val selectedIndex = bottomNavItems.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    val dynamicFontSize = (screenWidth * 10f / 360f).coerceIn(8f, 12f).sp
 
     Surface(
         modifier = Modifier
@@ -108,11 +113,12 @@ fun SpondonBottomNav(
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = 10.sp,
+                            fontSize = dynamicFontSize,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         ),
                         color = if (isSelected) BloodRed
                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
