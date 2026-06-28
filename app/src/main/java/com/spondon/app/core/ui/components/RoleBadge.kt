@@ -16,7 +16,7 @@ import com.spondon.app.core.ui.theme.*
 fun RoleBadge(role: CommunityRole, modifier: Modifier = Modifier) {
     val (bg, label) = when (role) {
         CommunityRole.ADMIN -> BloodRed to "Admin"
-        CommunityRole.MODERATOR -> SoftRose to "Mod"
+        CommunityRole.MODERATOR -> SoftRose to "Moderator"
         CommunityRole.MEMBER -> MaterialTheme.colorScheme.surfaceVariant to "Member"
     }
     Text(

@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,7 +25,6 @@ import com.spondon.app.R
 import com.spondon.app.core.ui.i18n.S
 import com.spondon.app.core.ui.i18n.SpondonStrings
 import com.spondon.app.core.ui.theme.*
-import com.spondon.app.core.util.BiometricHelper
 import com.spondon.app.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,9 +34,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val context = LocalContext.current
     val s = S.strings
-    val biometricAvailable = remember { BiometricHelper.canAuthenticate(context) }
 
     // Snackbar for feedback
     val snackbarHostState = remember { SnackbarHostState() }
@@ -110,11 +106,6 @@ fun SettingsScreen(
                 item {
                     SettingsToggleItem(Icons.Outlined.HowToReg, s.joinApprovals, s.communityJoinUpdates, state.notifyJoinApprovals) {
                         viewModel.toggleNotifyJoinApprovals()
-                    }
-                }
-                item {
-                    SettingsToggleItem(Icons.Outlined.Alarm, s.donationReminders, s.upcomingDonationAlerts, state.notifyDonationReminders) {
-                        viewModel.toggleNotifyDonationReminders()
                     }
                 }
                 item {
