@@ -429,6 +429,7 @@ class CommunityRepositoryImpl @Inject constructor(
             authorAvatarUrl = data["authorAvatarUrl"] as? String ?: "",
             content = data["content"] as? String ?: "",
             imageUrl = data["imageUrl"] as? String,
+            imageUrls = (data["imageUrls"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             createdAt = createdAt,
         )
     }
@@ -484,17 +485,26 @@ class CommunityRepositoryImpl @Inject constructor(
         authorName: String,
         authorAvatarUrl: String,
         content: String,
-        imageUri: Uri?,
+        imageUris: List<Uri>,
     ): Resource<String> {
-        // Upload image first if provided
-        var imageUrl: String? = null
-        if (imageUri != null) {
-            val tempId = System.currentTimeMillis().toString()
-            when (val uploadResult = storageService.uploadPostImage(tempId, imageUri)) {
-                is Resource.Success -> imageUrl = uploadResult.data
-                is Resource.Error -> return Resource.Error("Image upload failed: ${uploadResult.message}")
+        // Upload images first if provided
+        val imageUrls = mutableListOf<String>()
+        var errorOccurred: String? = null
+        
+        for ((index, uri) in imageUris.withIndex()) {
+            val tempId = "${System.currentTimeMillis()}_$index"
+            when (val uploadResult = storageService.uploadPostImage(tempId, uri)) {
+                is Resource.Success -> imageUrls.add(uploadResult.data)
+                is Resource.Error -> {
+                    errorOccurred = uploadResult.message
+                    break
+                }
                 is Resource.Loading -> {}
             }
+        }
+        
+        if (errorOccurred != null) {
+            return Resource.Error("Image upload failed: $errorOccurred")
         }
 
         val data = mapOf<String, Any?>(
@@ -503,7 +513,8 @@ class CommunityRepositoryImpl @Inject constructor(
             "authorName" to authorName,
             "authorAvatarUrl" to authorAvatarUrl,
             "content" to content,
-            "imageUrl" to imageUrl,
+            "imageUrl" to imageUrls.firstOrNull(), // Keep for backward compatibility
+            "imageUrls" to imageUrls,
             "createdAt" to Timestamp.now(),
         )
         return firestoreService.createCommunityPost(data)

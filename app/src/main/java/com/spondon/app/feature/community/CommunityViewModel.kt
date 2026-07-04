@@ -1200,8 +1200,8 @@ class CommunityViewModel @Inject constructor(
         _createPostState.update { it.copy(content = content) }
     }
 
-    fun updatePostImageUri(uri: Uri?) {
-        _createPostState.update { it.copy(imageUri = uri) }
+    fun updatePostImageUris(uris: List<Uri>) {
+        _createPostState.update { it.copy(imageUris = uris) }
     }
 
     fun createPost() {
@@ -1241,13 +1241,25 @@ class CommunityViewModel @Inject constructor(
                 authorName = authorName,
                 authorAvatarUrl = authorAvatarUrl,
                 content = state.content,
-                imageUri = state.imageUri,
+                imageUris = state.imageUris,
             )) {
                 is Resource.Success -> {
                     _createPostState.update {
                         it.copy(isLoading = false, isCreated = true)
                     }
                     _events.emit(CommunityEvent.ShowSnackbar("Post published!"))
+                    
+                    // Notify everyone via topic
+                    try {
+                        notificationRepository.sendNotificationToUsers(
+                            userIds = listOf("topic:global_announcements"),
+                            type = NotificationType.ADMIN,
+                            title = "New Spondon Post",
+                            body = state.content.take(50) + if (state.content.length > 50) "..." else "",
+                            deepLink = "community_detail/$spondonId",
+                        )
+                    } catch (_: Exception) { /* non-critical */ }
+                    
                     // Refresh posts
                     loadSpondonPosts(spondonId)
                 }
@@ -1339,7 +1351,7 @@ data class SpondonCommunityState(
 
 data class CreatePostState(
     val content: String = "",
-    val imageUri: Uri? = null,
+    val imageUris: List<Uri> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val isCreated: Boolean = false,

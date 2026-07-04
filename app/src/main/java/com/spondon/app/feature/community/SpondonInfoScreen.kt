@@ -462,12 +462,13 @@ private fun SpondonInfoMemberRow(
 
     val isSelf = user.uid == viewModel.fetchCurrentUserId()
     var showMenu by remember { mutableStateOf(false) }
+    val isSuperAdmin = user.role == UserRole.SUPER_ADMIN
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable(onClick = onProfileClick),
+            .clickable(enabled = !isSuperAdmin, onClick = onProfileClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -512,7 +513,7 @@ private fun SpondonInfoMemberRow(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = user.name.ifEmpty { "Unknown" },
+                        text = if (isSuperAdmin) "Platform Admin 🛡️" else user.name.ifEmpty { "Unknown" },
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -540,7 +541,7 @@ private fun SpondonInfoMemberRow(
             }
 
             // Admin actions menu or simple chevron
-            if (isAdmin && !isSelf) {
+            if (isAdmin && !isSelf && !isSuperAdmin) {
                 Box {
                     IconButton(
                         onClick = { showMenu = true },

@@ -43,13 +43,8 @@ class PrivacyConfigRepository @Inject constructor(
         }
     }
 
-    /**
-     * Returns true if the given [targetUserId] is in the protected list.
-     * Uses the cached list; call [loadProtectedUserIds] first.
-     */
-    fun isUserProtected(targetUserId: String): Boolean {
-        return targetUserId in cachedProtectedIds
-    }
+
+
 
     /**
      * Returns true if the current user is authorized to see private data.
@@ -78,29 +73,4 @@ class PrivacyConfigRepository @Inject constructor(
             false
         }
     }
-
-    /**
-     * Determines if sensitive data should be hidden for a specific [targetUserId].
-     * Returns true if the target is protected AND the current user is NOT authorized.
-     */
-    suspend fun shouldHideSensitiveDataForUser(targetUserId: String): Boolean {
-        if (!isUserProtected(targetUserId)) return false
-        return !isCurrentUserAuthorized()
-    }
-
-    /**
-     * Backward-compatible: returns true if there are ANY protected users
-     * and the viewer is NOT authorized to view them. Used for global UI
-     * elements like "Available Now" toggle.
-     */
-    suspend fun shouldHideSensitiveData(): Boolean {
-        if (cachedProtectedIds.isEmpty()) {
-            loadProtectedUserIds()
-        }
-        if (cachedProtectedIds.isEmpty()) return false
-        return !isCurrentUserAuthorized()
-    }
-
-    /** Returns the cached set of protected user IDs. */
-    fun getProtectedUserIds(): Set<String> = cachedProtectedIds
 }

@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -55,12 +58,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,6 +75,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.spondon.app.core.common.formatDisplay
 import com.spondon.app.core.domain.model.CommunityPost
 import com.spondon.app.core.domain.model.CommunityRole
@@ -479,6 +491,9 @@ fun PostCard(
     modifier: Modifier = Modifier,
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showImageViewer by remember { mutableStateOf(false) }
+    var selectedImageIndex by remember { mutableStateOf(0) }
+    var selectedImages by remember { mutableStateOf<List<String>>(emptyList()) }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -546,8 +561,10 @@ fun PostCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        val isSuperAdmin = post.authorName == "SuperAdmin"
+                        val displayName = if (isSuperAdmin) "Platform Admin 🛡️" else post.authorName.ifEmpty { "Admin" }
                         Text(
-                            text = post.authorName.ifEmpty { "Admin" },
+                            text = displayName,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -603,21 +620,283 @@ fun PostCard(
                 )
             }
 
-            // Post image
-            if (!post.imageUrl.isNullOrEmpty()) {
+            // Post images
+            val displayImages = if (post.imageUrls.isNotEmpty()) post.imageUrls else listOfNotNull(post.imageUrl)
+            
+            if (displayImages.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
-                AsyncImage(
-                    model = post.imageUrl,
-                    contentDescription = "Post image",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.FillWidth,
+                PostImageCollage(
+                    images = displayImages,
+                    onImageClick = { index ->
+                        // Would typically open full screen viewer here
+                        // For now we'll pass state to a parent or handle it locally
+                        selectedImageIndex = index
+                        selectedImages = displayImages
+                        showImageViewer = true
+                    }
                 )
             }
         }
     }
+    
+    // Full screen viewer overlay
+    if (showImageViewer && selectedImages.isNotEmpty()) {
+        Dialog(
+            onDismissRequest = { showImageViewer = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        ) {
+            FullScreenImageViewer(
+                images = selectedImages,
+                initialIndex = selectedImageIndex,
+                onDismiss = { showImageViewer = false }
+            )
+        }
+    }
 }
+
+// ─── Image Collage ────────────────────────────────────────────────────────
+
+@Composable
+fun PostImageCollage(
+    images: List<String>,
+    onImageClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (images.isEmpty()) return
+
+    val roundedCornerShape = RoundedCornerShape(12.dp)
+
+    when (images.size) {
+        1 -> {
+            AsyncImage(
+                model = images[0],
+                contentDescription = "Post image",
+                modifier = modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+                    .clip(roundedCornerShape)
+                    .clickable { onImageClick(0) },
+                contentScale = ContentScale.Crop,
+            )
+        }
+        2 -> {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(250.dp)
+                    .clip(roundedCornerShape),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                AsyncImage(
+                    model = images[0],
+                    contentDescription = "Post image 1",
+                    modifier = Modifier.weight(1f).fillMaxHeight().clickable { onImageClick(0) },
+                    contentScale = ContentScale.Crop,
+                )
+                AsyncImage(
+                    model = images[1],
+                    contentDescription = "Post image 2",
+                    modifier = Modifier.weight(1f).fillMaxHeight().clickable { onImageClick(1) },
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        3 -> {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(250.dp)
+                    .clip(roundedCornerShape),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                AsyncImage(
+                    model = images[0],
+                    contentDescription = "Post image 1",
+                    modifier = Modifier.weight(1.5f).fillMaxHeight().clickable { onImageClick(0) },
+                    contentScale = ContentScale.Crop,
+                )
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    AsyncImage(
+                        model = images[1],
+                        contentDescription = "Post image 2",
+                        modifier = Modifier.weight(1f).fillMaxWidth().clickable { onImageClick(1) },
+                        contentScale = ContentScale.Crop,
+                    )
+                    AsyncImage(
+                        model = images[2],
+                        contentDescription = "Post image 3",
+                        modifier = Modifier.weight(1f).fillMaxWidth().clickable { onImageClick(2) },
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            }
+        }
+        else -> { // 4 or more
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .clip(roundedCornerShape),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.weight(1.5f).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    AsyncImage(
+                        model = images[0],
+                        contentDescription = "Post image 1",
+                        modifier = Modifier.weight(1f).fillMaxHeight().clickable { onImageClick(0) },
+                        contentScale = ContentScale.Crop,
+                    )
+                    AsyncImage(
+                        model = images[1],
+                        contentDescription = "Post image 2",
+                        modifier = Modifier.weight(1f).fillMaxHeight().clickable { onImageClick(1) },
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                Row(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    AsyncImage(
+                        model = images[2],
+                        contentDescription = "Post image 3",
+                        modifier = Modifier.weight(1f).fillMaxHeight().clickable { onImageClick(2) },
+                        contentScale = ContentScale.Crop,
+                    )
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight().clickable { onImageClick(3) }
+                    ) {
+                        AsyncImage(
+                            model = images[3],
+                            contentDescription = "Post image 4",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                        if (images.size > 4) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "+${images.size - 4}",
+                                    color = Color.White,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─── Full Screen Viewer ────────────────────────────────────────────────────
+
+@Composable
+fun FullScreenImageViewer(
+    images: List<String>,
+    initialIndex: Int,
+    onDismiss: () -> Unit
+) {
+    var currentPage by remember { mutableIntStateOf(initialIndex) }
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        @OptIn(ExperimentalFoundationApi::class)
+        val pagerState = rememberPagerState(
+            initialPage = initialIndex,
+            pageCount = { images.size }
+        )
+
+        @OptIn(ExperimentalFoundationApi::class)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            
+            var scale by remember { mutableStateOf(1f) }
+            var offsetX by remember { mutableStateOf(0f) }
+            var offsetY by remember { mutableStateOf(0f) }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                            if (scale > 1f) {
+                                offsetX += pan.x
+                                offsetY += pan.y
+                            } else {
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = images[page],
+                    contentDescription = "Full screen image",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offsetX,
+                            translationY = offsetY
+                        ),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+
+        // Top Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 40.dp, start = 16.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.5f))
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+            }
+
+            if (images.size > 1) {
+                @OptIn(ExperimentalFoundationApi::class)
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.Black.copy(alpha = 0.5f)
+                ) {
+                    Text(
+                        "${pagerState.currentPage + 1} / ${images.size}",
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }}
 
 // ─── Shimmer Loading Placeholder ─────────────────────────────────
 

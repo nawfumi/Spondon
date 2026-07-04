@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.remote.StorageService
+import com.spondon.app.core.data.repository.NotificationRepository
+import com.spondon.app.core.domain.model.NotificationType
 import com.spondon.app.feature.superadmin.data.SARepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,7 @@ data class SASpondonPost(
     val authorAvatarUrl: String = "",
     val content: String = "",
     val imageUrl: String? = null,
+    val imageUrls: List<String> = emptyList(),
     val createdAt: Date? = null,
 )
 
@@ -48,7 +51,7 @@ data class SASpondonState(
     // Create post
     val showCreateDialog: Boolean = false,
     val createPostContent: String = "",
-    val createPostImageUri: Uri? = null,
+    val createPostImageUris: List<Uri> = emptyList(),
     val isCreatingPost: Boolean = false,
 
     // Delete post
@@ -67,6 +70,7 @@ data class SASpondonState(
 class SASpondonViewModel @Inject constructor(
     private val saRepository: SARepository,
     private val storageService: StorageService,
+    private val notificationRepository: NotificationRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SASpondonState())
@@ -115,14 +119,17 @@ class SASpondonViewModel @Inject constructor(
 
     fun showCreateDialog() = _state.update { it.copy(showCreateDialog = true) }
     fun hideCreateDialog() = _state.update {
-        it.copy(showCreateDialog = false, createPostContent = "", createPostImageUri = null)
+        it.copy(showCreateDialog = false, createPostContent = "", createPostImageUris = emptyList())
     }
 
     fun updateCreatePostContent(content: String) =
         _state.update { it.copy(createPostContent = content) }
 
-    fun updateCreatePostImageUri(uri: Uri?) =
-        _state.update { it.copy(createPostImageUri = uri) }
+    fun addCreatePostImageUris(uris: List<Uri>) =
+        _state.update { it.copy(createPostImageUris = it.createPostImageUris + uris) }
+
+    fun removeCreatePostImageUri(uri: Uri) =
+        _state.update { it.copy(createPostImageUris = it.createPostImageUris - uri) }
 
     fun createPost() {
         val communityId = _state.value.communityId ?: return
@@ -134,7 +141,7 @@ class SASpondonViewModel @Inject constructor(
             when (saRepository.createSpondonPost(
                 communityId = communityId,
                 content = content,
-                imageUri = _state.value.createPostImageUri,
+                imageUris = _state.value.createPostImageUris,
                 storageService = storageService,
             )) {
                 is Resource.Success -> {
@@ -143,11 +150,23 @@ class SASpondonViewModel @Inject constructor(
                             isCreatingPost = false,
                             showCreateDialog = false,
                             createPostContent = "",
-                            createPostImageUri = null,
+                            createPostImageUris = emptyList(),
                             actionMessage = "Post published!",
                         )
                     }
                     refreshPosts()
+
+                    // Send notification via FCM topic — 1 Firestore doc triggers
+                    // the Cloud Function which fans out to all subscribers
+                    try {
+                        notificationRepository.createNotification(
+                            userId = "topic:global_announcements",
+                            type = NotificationType.ADMIN,
+                            title = "\uD83D\uDCE2 New Spondon Post",
+                            body = content.take(50) + if (content.length > 50) "..." else "",
+                            deepLink = "spondon_community",
+                        )
+                    } catch (_: Exception) { /* non-critical */ }
                 }
                 is Resource.Error -> {
                     _state.update {

@@ -2,12 +2,16 @@ package com.spondon.app.feature.community
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -44,11 +48,15 @@ fun CreateSpondonPostScreen(
         }
     }
 
-    // Image picker
+    // Image picker (multiple)
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-    ) { uri: Uri? ->
-        viewModel.updatePostImageUri(uri)
+        contract = ActivityResultContracts.PickMultipleVisualMedia(),
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            val currentUris = state.imageUris.toMutableList()
+            currentUris.addAll(uris)
+            viewModel.updatePostImageUris(currentUris)
+        }
     }
 
     Scaffold(
@@ -140,36 +148,85 @@ fun CreateSpondonPostScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            if (state.imageUri != null) {
-                // Image preview
-                Box(
+            if (state.imageUris.isNotEmpty()) {
+                // Image preview row
+                LazyRow(
                     modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    AsyncImage(
-                        model = state.imageUri,
-                        contentDescription = "Selected image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 300.dp)
-                            .clip(RoundedCornerShape(16.dp)),
-                        contentScale = ContentScale.FillWidth,
-                    )
-                    // Remove image button
-                    IconButton(
-                        onClick = { viewModel.updatePostImageUri(null) },
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp),
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = Color.Black.copy(alpha = 0.5f),
-                        ),
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Remove image",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp),
-                        )
+                    items(state.imageUris) { uri ->
+                        Box(
+                            modifier = Modifier
+                                .width(200.dp)
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                        ) {
+                            AsyncImage(
+                                model = uri,
+                                contentDescription = "Selected image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                            )
+                            // Remove image button
+                            IconButton(
+                                onClick = { 
+                                    val current = state.imageUris.toMutableList()
+                                    current.remove(uri)
+                                    viewModel.updatePostImageUris(current)
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(4.dp)
+                                    .size(32.dp),
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = Color.Black.copy(alpha = 0.5f),
+                                ),
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove image",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Add more button
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .border(
+                                    width = 2.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(16.dp),
+                                )
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                .clickable(enabled = !state.isLoading) {
+                                    imagePickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.AddPhotoAlternate,
+                                    contentDescription = "Add more",
+                                    modifier = Modifier.size(32.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "Add More",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                )
+                            }
+                        }
                     }
                 }
             } else {
@@ -186,7 +243,9 @@ fun CreateSpondonPostScreen(
                         )
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                         .clickable(enabled = !state.isLoading) {
-                            imagePickerLauncher.launch("image/*")
+                            imagePickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
                         },
                     contentAlignment = Alignment.Center,
                 ) {

@@ -15,5 +15,6 @@ data class CommunityPost(
     val authorAvatarUrl: String = "",
     val content: String = "",
     val imageUrl: String? = null,
+    val imageUrls: List<String> = emptyList(),
     val createdAt: Date? = null,
 )

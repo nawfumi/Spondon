@@ -666,6 +666,21 @@ class SARepository @Inject constructor(
                 "status" to "SENT",
             )
             firestore.collection("broadcasts").add(broadcast).await()
+            
+            // Send actual FCM push by creating a notification document directed to the topic
+            if (target == "All Users") {
+                val notification = hashMapOf(
+                    "userId" to "topic:global_announcements",
+                    "title" to title,
+                    "body" to body,
+                    "type" to "SUPERADMIN_ANNOUNCEMENT",
+                    "deepLink" to "",
+                    "isRead" to false,
+                    "createdAt" to FieldValue.serverTimestamp(),
+                )
+                firestore.collection("notifications").add(notification).await()
+            }
+            
             auditLogger.log(
                 SAAction.BROADCAST,
                 metadata = mapOf("title" to title, "target" to target, "targetValue" to targetValue, "type" to type),
@@ -1106,6 +1121,7 @@ class SARepository @Inject constructor(
                     authorAvatarUrl = data["authorAvatarUrl"] as? String ?: "",
                     content = data["content"] as? String ?: "",
                     imageUrl = data["imageUrl"] as? String,
+                    imageUrls = (data["imageUrls"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                     createdAt = createdAt,
                 )
             }.sortedByDescending { it.createdAt }
@@ -1115,20 +1131,20 @@ class SARepository @Inject constructor(
         }
     }
 
-    /** Create a post as super admin with optional image upload. */
+    /** Create a post as super admin with optional multi-image upload. */
     suspend fun createSpondonPost(
         communityId: String,
         content: String,
-        imageUri: android.net.Uri?,
+        imageUris: List<android.net.Uri>,
         storageService: com.spondon.app.core.data.remote.StorageService,
     ): Resource<Unit> {
         return try {
-            // Upload image if provided
-            var imageUrl: String? = null
-            if (imageUri != null) {
-                val tempId = System.currentTimeMillis().toString()
-                when (val uploadResult = storageService.uploadPostImage(tempId, imageUri)) {
-                    is Resource.Success -> imageUrl = uploadResult.data
+            // Upload images if provided
+            val imageUrls = mutableListOf<String>()
+            for ((index, uri) in imageUris.withIndex()) {
+                val tempId = "${System.currentTimeMillis()}_$index"
+                when (val uploadResult = storageService.uploadPostImage(tempId, uri)) {
+                    is Resource.Success -> imageUrls.add(uploadResult.data)
                     is Resource.Error -> return Resource.Error("Image upload failed: ${uploadResult.message}")
                     is Resource.Loading -> {}
                 }
@@ -1140,7 +1156,8 @@ class SARepository @Inject constructor(
                 "authorName" to "SuperAdmin",
                 "authorAvatarUrl" to "",
                 "content" to content,
-                "imageUrl" to imageUrl,
+                "imageUrl" to imageUrls.firstOrNull(), // backward compatibility
+                "imageUrls" to imageUrls,
                 "createdAt" to Timestamp.now(),
             )
             firestore.collection("communityPosts").add(data).await()

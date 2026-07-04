@@ -2,8 +2,10 @@ package com.spondon.app.feature.superadmin.community
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -244,7 +248,8 @@ fun SASpondonCommunityScreen(
         SACreatePostDialog(
             state = state,
             onContentChange = viewModel::updateCreatePostContent,
-            onImageChange = viewModel::updateCreatePostImageUri,
+            onImagesAdd = viewModel::addCreatePostImageUris,
+            onImageRemove = viewModel::removeCreatePostImageUri,
             onConfirm = viewModel::createPost,
             onDismiss = viewModel::hideCreateDialog,
         )
@@ -475,17 +480,158 @@ private fun SASpondonPostCard(
                 )
             }
 
-            // Post image
-            if (!post.imageUrl.isNullOrEmpty()) {
+            // Post images
+            val displayImages = if (post.imageUrls.isNotEmpty()) post.imageUrls else listOfNotNull(post.imageUrl)
+
+            if (displayImages.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                AsyncImage(
-                    model = post.imageUrl,
-                    contentDescription = "Post image",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp)),
-                    contentScale = ContentScale.FillWidth,
+                SAPostImageCollage(
+                    images = displayImages,
                 )
+            }
+        }
+    }
+}
+
+// ─── SA Post Image Collage ────────────────────────────────────────────
+
+@Composable
+private fun SAPostImageCollage(
+    images: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    if (images.isEmpty()) return
+
+    val roundedCornerShape = RoundedCornerShape(10.dp)
+
+    when (images.size) {
+        1 -> {
+            AsyncImage(
+                model = images[0],
+                contentDescription = "Post image",
+                modifier = modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 300.dp)
+                    .clip(roundedCornerShape),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        2 -> {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(roundedCornerShape),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                AsyncImage(
+                    model = images[0],
+                    contentDescription = "Post image 1",
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    contentScale = ContentScale.Crop,
+                )
+                AsyncImage(
+                    model = images[1],
+                    contentDescription = "Post image 2",
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        3 -> {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(roundedCornerShape),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                AsyncImage(
+                    model = images[0],
+                    contentDescription = "Post image 1",
+                    modifier = Modifier.weight(1.5f).fillMaxHeight(),
+                    contentScale = ContentScale.Crop,
+                )
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    AsyncImage(
+                        model = images[1],
+                        contentDescription = "Post image 2",
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        contentScale = ContentScale.Crop,
+                    )
+                    AsyncImage(
+                        model = images[2],
+                        contentDescription = "Post image 3",
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            }
+        }
+        else -> {
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(250.dp)
+                    .clip(roundedCornerShape),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Row(
+                    modifier = Modifier.weight(1.5f).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    AsyncImage(
+                        model = images[0],
+                        contentDescription = "Post image 1",
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        contentScale = ContentScale.Crop,
+                    )
+                    AsyncImage(
+                        model = images[1],
+                        contentDescription = "Post image 2",
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                Row(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    AsyncImage(
+                        model = images[2],
+                        contentDescription = "Post image 3",
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    ) {
+                        AsyncImage(
+                            model = images[3],
+                            contentDescription = "Post image 4",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                        if (images.size > 4) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "+${images.size - 4}",
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -688,14 +834,17 @@ private fun SASpondonMemberCard(
 private fun SACreatePostDialog(
     state: SASpondonState,
     onContentChange: (String) -> Unit,
-    onImageChange: (Uri?) -> Unit,
+    onImagesAdd: (List<Uri>) -> Unit,
+    onImageRemove: (Uri) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-    ) { uri: Uri? ->
-        onImageChange(uri)
+        contract = ActivityResultContracts.PickMultipleVisualMedia(),
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            onImagesAdd(uris)
+        }
     }
 
     AlertDialog(
@@ -734,40 +883,81 @@ private fun SACreatePostDialog(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Image section
-                if (state.createPostImageUri != null) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        AsyncImage(
-                            model = state.createPostImageUri,
-                            contentDescription = "Selected image",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp)
-                                .clip(RoundedCornerShape(10.dp)),
-                            contentScale = ContentScale.FillWidth,
-                        )
-                        IconButton(
-                            onClick = { onImageChange(null) },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(4.dp)
-                                .size(28.dp),
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = Color.Black.copy(alpha = 0.6f),
-                            ),
-                        ) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Remove",
-                                tint = Color.White,
-                                modifier = Modifier.size(14.dp),
-                            )
+                // Image section — multi-image
+                if (state.createPostImageUris.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(state.createPostImageUris) { uri ->
+                            Box(
+                                modifier = Modifier
+                                    .size(120.dp)
+                                    .clip(RoundedCornerShape(10.dp)),
+                            ) {
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = "Selected image",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                )
+                                IconButton(
+                                    onClick = { onImageRemove(uri) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(2.dp)
+                                        .size(24.dp),
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = Color.Black.copy(alpha = 0.6f),
+                                    ),
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Remove",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
+                            }
+                        }
+                        // Add more button
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .size(120.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color.White.copy(alpha = 0.05f))
+                                    .clickable(enabled = !state.isCreatingPost) {
+                                        imagePickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        Icons.Outlined.AddPhotoAlternate,
+                                        null,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = SAGold.copy(alpha = 0.5f),
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Add More",
+                                        color = Color.White.copy(alpha = 0.4f),
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
+                            }
                         }
                     }
                 } else {
                     // Add image button
                     OutlinedButton(
-                        onClick = { imagePickerLauncher.launch("image/*") },
+                        onClick = {
+                            imagePickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         enabled = !state.isCreatingPost,
@@ -785,7 +975,7 @@ private fun SACreatePostDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Attach Image",
+                            "Attach Images",
                             color = Color.White.copy(alpha = 0.5f),
                             style = MaterialTheme.typography.bodySmall,
                         )

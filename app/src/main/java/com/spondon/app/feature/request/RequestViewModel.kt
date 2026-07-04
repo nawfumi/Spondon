@@ -701,10 +701,25 @@ class RequestViewModel @Inject constructor(
             val members = (usersResult as? Resource.Success)?.data ?: return
 
             // ── Step 3: keep only users whose blood group matches (normalized) ──────
+            // Exclude users in cooldown period (recent donation), but DO notify paused users
             val matchingIds = members
                 .filter { user ->
-                    user.uid.isNotBlank() &&
-                            BloodGroupUtils.normalize(user.bloodGroup) == normalizedTarget
+                    if (user.uid.isBlank() || BloodGroupUtils.normalize(user.bloodGroup) != normalizedTarget) {
+                        return@filter false
+                    }
+                    
+                    // Check cooldown explicitly (ignoring user.isDonor flag for notifications)
+                    val lastDonation = user.lastDonationDate
+                    if (lastDonation != null) {
+                        val daysSince = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(
+                            java.util.Date().time - lastDonation.time
+                        ).toInt()
+                        val requiredDays = if (user.availabilityOverride) com.spondon.app.core.common.Constants.MIN_OVERRIDE_DAYS else user.donationInterval
+                        if (daysSince < requiredDays) {
+                            return@filter false // User is in cooldown period
+                        }
+                    }
+                    true
                 }
                 .map { it.uid }
 

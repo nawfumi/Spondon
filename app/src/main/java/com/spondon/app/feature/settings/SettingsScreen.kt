@@ -109,9 +109,10 @@ fun SettingsScreen(
                     }
                 }
                 item {
-                    SettingsToggleItem(Icons.Outlined.AdminPanelSettings, s.adminAlerts, s.adminActionNotifications, state.notifyAdminAlerts) {
-                        viewModel.toggleNotifyAdminAlerts()
-                    }
+                    SettingsMandatoryItem(Icons.Outlined.AdminPanelSettings, s.adminAlerts, s.adminActionNotifications)
+                }
+                item {
+                    SettingsMandatoryItem(Icons.Outlined.Campaign, "Spondon posts", "Platform announcements and community posts")
                 }
 
                 // ─── Privacy ─────────────────────
@@ -265,6 +266,30 @@ private fun SettingsDisabledItem(icon: ImageVector, title: String, subtitle: Str
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f))
             }
             Switch(checked = false, onCheckedChange = null, enabled = false)
+        }
+    }
+}
+
+@Composable
+private fun SettingsMandatoryItem(icon: ImageVector, title: String, subtitle: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+            }
+            Switch(
+                checked = true, 
+                onCheckedChange = null, 
+                enabled = false,
+            )
         }
     }
 }

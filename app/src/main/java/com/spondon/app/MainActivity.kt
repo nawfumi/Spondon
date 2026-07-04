@@ -299,6 +299,9 @@ class MainActivity : FragmentActivity() {
                 .collection("users").document(uid)
                 .update("fcmToken", token)
         }
+        
+        // Subscribe to global announcements topic for Spondon posts & SuperAdmin broadcasts
+        FirebaseMessaging.getInstance().subscribeToTopic("global_announcements")
     }
 
     // ── Google Sign-In via Credential Manager ──────────────────

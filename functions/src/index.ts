@@ -59,26 +59,29 @@ export const sendNotificationOnCreate = onDocumentCreated(
       return;
     }
 
-    // Look up the target user's FCM token
-    const userDoc = await db.collection("users").doc(userId).get();
-    if (!userDoc.exists) {
-      console.warn(`User ${userId} not found, skipping FCM push.`);
-      return;
-    }
+    // Check if this is a topic broadcast
+    const isTopic = userId.startsWith("topic:");
+    let fcmToken: string | undefined;
 
-    const fcmToken = userDoc.data()?.fcmToken as string | undefined;
-    if (!fcmToken) {
-      console.warn(`User ${userId} has no FCM token, skipping push.`);
-      return;
+    if (!isTopic) {
+      // Look up the target user's FCM token
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (!userDoc.exists) {
+        console.warn(`User ${userId} not found, skipping FCM push.`);
+        return;
+      }
+
+      fcmToken = userDoc.data()?.fcmToken as string | undefined;
+      if (!fcmToken) {
+        console.warn(`User ${userId} has no FCM token, skipping push.`);
+        return;
+      }
     }
 
     const channelId = channelForType(type);
 
     // Send a data-only FCM message (no "notification" key).
-    // This ensures onMessageReceived() is called on the Android client
-    // regardless of whether the app is in foreground or background.
-    const message: admin.messaging.Message = {
-      token: fcmToken,
+    const messagePayload = {
       data: {
         title,
         body,
@@ -91,15 +94,28 @@ export const sendNotificationOnCreate = onDocumentCreated(
         ...(data.requesterId ? { requesterId: data.requesterId as string } : {}),
         ...(data.requestId ? { requestId: data.requestId as string } : {}),
       },
-      // Android-specific config for high priority delivery
       android: {
-        priority: "high",
+        priority: "high" as const,
       },
     };
 
+    const message: admin.messaging.Message = isTopic 
+      ? { ...messagePayload, topic: userId.replace("topic:", "") }
+      : { ...messagePayload, token: fcmToken! };
+
     try {
       await admin.messaging().send(message);
-      console.log(`FCM push sent to user ${userId} (token: ${fcmToken.substring(0, 10)}...)`);
+      if (isTopic) {
+        console.log(`FCM push sent to topic ${userId}`);
+      } else {
+        console.log(`FCM push sent to user ${userId} (token: ${fcmToken!.substring(0, 10)}...)`);
+      }
+
+      // Delete non-admin notifications immediately after sending FCM
+      if (type !== "ADMIN" && type !== "SUPERADMIN_ANNOUNCEMENT") {
+        await snapshot.ref.delete();
+        console.log(`Deleted non-admin notification document: ${event.params.notificationId}`);
+      }
     } catch (error: unknown) {
       // If the token is invalid/expired, clean it up
       if (

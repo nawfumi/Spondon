@@ -217,14 +217,14 @@ class NotificationRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Deletes all notifications older than 14 days (2 weeks) from Firestore.
+     * Deletes all notifications older than 7 days (1 week) from Firestore.
      * Notifications remain in the local Room database so users keep them
      * on device until the app is uninstalled.
      */
     override suspend fun deleteOldNotifications(userId: String) {
         try {
-            val twoWeeksAgo = Date(System.currentTimeMillis() - 14L * 24 * 60 * 60 * 1000)
-            val cutoff = Timestamp(twoWeeksAgo)
+            val oneWeekAgo = Date(System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000)
+            val cutoff = Timestamp(oneWeekAgo)
 
             val docs = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
                 .whereEqualTo("userId", userId)

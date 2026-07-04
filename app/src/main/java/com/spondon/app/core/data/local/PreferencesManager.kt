@@ -44,21 +44,11 @@ class PreferencesManager @Inject constructor(
         val LAST_QUIZ_DATE = longPreferencesKey("last_quiz_date")
     }
 
-    val isInitialSetupComplete: Flow<Boolean> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { it[INITIAL_SETUP_COMPLETE] ?: false }
 
     val isOnboardingComplete: Flow<Boolean> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[ONBOARDING_COMPLETE] ?: false }
 
-    val rememberMe: Flow<Boolean> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { it[REMEMBER_ME] ?: false }
-
-    val savedEmail: Flow<String> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { it[SAVED_EMAIL] ?: "" }
 
     val isDarkMode: Flow<Boolean> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
@@ -187,9 +177,6 @@ class PreferencesManager @Inject constructor(
         dataStore.edit { it[LAST_QUIZ_DATE] = date }
     }
 
-    suspend fun clearAll() {
-        dataStore.edit { it.clear() }
-    }
 
     /**
      * Clears user-specific data while preserving device-level preferences
