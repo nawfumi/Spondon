@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Spondon · স্পন্দন — রক্ত দিন, জীবন বাঁচান</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --red: #C0392B;
+            --red-bright: #E74C3C;
+            --red-deep: #96281B;
+            --red-glow: rgba(192, 57, 43, 0.15);
+            --red-tint: #FFF5F5;
+            --green: #27AE60;
+            --ink: #1A1A1A;
+            --ink-muted: #5A5A5A;
+            --ink-faint: #9A9A9A;
+            --surface: #FAFAF8;
+            --card: #FFFFFF;
+            --border: rgba(0, 0, 0, 0.07);
+            --font-bn: 'Hind Siliguri', sans-serif;
+            --font-en: 'Inter', sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-en);
+            background: var(--surface);
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            background: rgba(250, 250, 248, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-drop {
+            width: 28px;
+            height: 28px;
+            background: var(--red);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-drop svg {
+            width: 14px;
+            fill: white;
+        }
+
+        .nav-title {
+            font-family: var(--font-bn);
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--red);
+            letter-spacing: -0.3px;
+        }
+
+        .nav-cta {
+            background: var(--red);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 7px 16px;
+            font-family: var(--font-en);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+
+        .nav-cta:active {
+            background: var(--red-deep);
+        }
+
+        /* ── HERO ── */
+        .hero {
+            padding: 48px 24px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 340px;
+            height: 340px;
+            background: radial-gradient(circle, rgba(192, 57, 43, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-eyebrow {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--red);
+            margin-bottom: 14px;
+            opacity: 0.8;
+        }
+
+        .hero-bn {
+            font-family: var(--font-bn);
+            font-size: 38px;
+            font-weight: 700;
+            color: var(--red);
+            line-height: 1.2;
+            margin-bottom: 10px;
+            animation: fadeUp 0.7s ease both;
+        }
+
+        .hero-en {
+            font-size: 15px;
+            color: var(--ink-muted);
+            font-weight: 400;
+            line-height: 1.6;
+            margin-bottom: 32px;
+            animation: fadeUp 0.7s 0.1s ease both;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 44px;
+            animation: fadeUp 0.7s 0.2s ease both;
+        }
+
+        .btn-primary {
+            background: var(--red);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            padding: 13px 24px;
+            font-family: var(--font-en);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            box-shadow: 0 4px 16px rgba(192, 57, 43, 0.3);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 8px rgba(192, 57, 43, 0.25);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--red);
+            border: 1.5px solid var(--red);
+            border-radius: 24px;
+            padding: 13px 20px;
+            font-family: var(--font-en);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* ── PHONE MOCKUP ── */
+        .mockup-wrap {
+            position: relative;
+            width: 220px;
+            margin: 0 auto 0;
+            animation: floatUp 0.9s 0.3s ease both;
+        }
+
+        .mockup-phone {
+            width: 220px;
+            background: #1A1A1A;
+            border-radius: 36px;
+            padding: 10px;
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.08),
+                0 24px 60px rgba(0, 0, 0, 0.25),
+                0 8px 20px rgba(192, 57, 43, 0.15);
+        }
+
+        .mockup-screen {
+            border-radius: 28px;
+            overflow: hidden;
+            aspect-ratio: 9/19.5;
+            position: relative;
+            background: #f5f0f0;
+        }
+
+        .mockup-screen img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top;
+            display: block;
+            transition: opacity 0.4s ease;
+        }
+
+        .mockup-screen img.fade {
+            opacity: 0;
+        }
+
+        .mockup-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 16px;
+            margin-bottom: 40px;
+        }
+
+        .mockup-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .mockup-dot.active {
+            width: 20px;
+            background: var(--red);
+        }
+
+        /* ── STATS STRIP ── */
+        .stats-strip {
+            display: flex;
+            background: var(--red);
+            padding: 20px 0;
+            text-align: center;
+        }
+
+        .stat-item {
+            flex: 1;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-item:last-child {
+            border-right: none;
+        }
+
+        .stat-num {
+            font-size: 22px;
+            font-weight: 700;
+            color: white;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.75);
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        /* ── SECTION ── */
+        section {
+            padding: 48px 24px;
+        }
+
+        .section-eyebrow {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--red);
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1.25;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .section-body {
+            font-size: 15px;
+            color: var(--ink-muted);
+            line-height: 1.7;
+        }
+
+        /* ── FEATURES ── */
+        .features {
+            background: white;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 18px 16px;
+            border: 1px solid var(--border);
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            font-size: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            line-height: 1.3;
+        }
+
+        .feature-card p {
+            font-size: 12px;
+            color: var(--ink-muted);
+            line-height: 1.5;
+        }
+
+        .icon-red {
+            background: var(--red-tint);
+        }
+
+        .icon-green {
+            background: #F0FBF4;
+        }
+
+        .icon-blue {
+            background: #F0F5FF;
+        }
+
+        .icon-yellow {
+            background: #FFFBF0;
+        }
+
+        /* ── SCREENS SECTION ── */
+        .screens-section {
+            background: #F7F2F2;
+            padding: 48px 0 48px 24px;
+        }
+
+        .screens-head {
+            padding-right: 24px;
+            margin-bottom: 24px;
+        }
+
+        .screens-scroll {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-right: 24px;
+            padding-bottom: 4px;
+        }
+
+        .screens-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .screen-item {
+            flex-shrink: 0;
+            scroll-snap-align: start;
+            width: 145px;
+        }
+
+        .screen-phone {
+            background: #1A1A1A;
+            border-radius: 22px;
+            padding: 6px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            margin-bottom: 10px;
+        }
+
+        .screen-img {
+            border-radius: 17px;
+            overflow: hidden;
+            aspect-ratio: 9/19;
+            background: #f5f0f0;
+        }
+
+        .screen-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top;
+            display: block;
+        }
+
+        .screen-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-align: center;
+        }
+
+        /* ── HOW IT WORKS ── */
+        .how {
+            background: white;
+        }
+
+        .steps {
+            margin-top: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .step {
+            display: flex;
+            gap: 16px;
+            position: relative;
+        }
+
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 19px;
+            top: 44px;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--red-glow), transparent);
+        }
+
+        .step-num {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--red-tint);
+            border: 2px solid var(--red);
+            color: var(--red);
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-content {
+            padding-bottom: 28px;
+        }
+
+        .step-content h3 {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            margin-top: 8px;
+        }
+
+        .step-content p {
+            font-size: 13px;
+            color: var(--ink-muted);
+            line-height: 1.6;
+        }
+
+        /* ── COMMUNITY ── */
+        .community-section {
+            background: var(--surface);
+        }
+
+        .community-cards {
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .community-card {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .community-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--red-tint);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .community-info h3 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .community-info p {
+            font-size: 12px;
+            color: var(--ink-muted);
+        }
+
+        .community-badge {
+            margin-left: auto;
+            background: var(--red-tint);
+            color: var(--red);
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 10px;
+            padding: 4px 10px;
+        }
+
+        /* ── TESTIMONIAL ── */
+        .testimonial-section {
+            background: var(--red);
+            padding: 48px 24px;
+            text-align: center;
+        }
+
+        .quote-mark {
+            font-size: 56px;
+            color: rgba(255, 255, 255, 0.2);
+            font-family: Georgia, serif;
+            line-height: 1;
+            margin-bottom: -10px;
+        }
+
+        .quote-text {
+            font-family: var(--font-bn);
+            font-size: 20px;
+            color: white;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .quote-author {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+
+        /* ── CTA BANNER ── */
+        .cta-banner {
+            padding: 48px 24px;
+            text-align: center;
+            background: white;
+        }
+
+        .cta-banner .drop-big {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(145deg, var(--red-bright), var(--red-deep));
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 24px rgba(192, 57, 43, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cta-banner .drop-big svg {
+            width: 32px;
+            fill: white;
+        }
+
+        .cta-banner h2 {
+            font-family: var(--font-bn);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--red);
+            margin-bottom: 10px;
+            line-height: 1.25;
+        }
+
+        .cta-banner p {
+            font-size: 14px;
+            color: var(--ink-muted);
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--ink);
+            color: white;
+            border-radius: 14px;
+            padding: 14px 20px;
+            text-decoration: none;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .download-btn:active {
+            background: #333;
+        }
+
+        .download-btn-icon {
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .download-btn-text {
+            text-align: left;
+        }
+
+        .download-btn-text span {
+            display: block;
+        }
+
+        .download-btn-text .sub {
+            font-size: 10px;
+            font-weight: 400;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .download-btn-text .main {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            background: var(--ink);
+            padding: 32px 24px 40px;
+            text-align: center;
+        }
+
+        .footer-brand {
+            font-family: var(--font-bn);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--red-bright);
+            margin-bottom: 4px;
+        }
+
+        .footer-tagline {
+            font-family: var(--font-bn);
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 20px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+        }
+
+        .footer-copyright {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes floatUp {
+            from {
+                opacity: 0;
+                transform: translateY(28px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
+        }
+
+        .mockup-wrap {
+            animation: floatUp 0.9s 0.3s ease both, float 4s 1.2s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .mockup-wrap {
+                animation: floatUp 0.9s 0.3s ease both;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <div class="nav-brand">
+            <div class="nav-drop">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2C12 2 5 10 5 15a7 7 0 0014 0C19 10 12 2 12 2z" />
+                </svg>
+            </div>
+            <span class="nav-title">স্পন্দন</span>
+        </div>
+        <a href="#download" class="nav-cta">Download</a>
+    </nav>
+
+    <!-- HERO -->
+    <div class="hero">
+        <p class="hero-eyebrow">Blood Donation · Community</p>
+        <h1 class="hero-bn">রক্ত দিন,<br>জীবন বাঁচান</h1>
+        <p class="hero-en">Give blood, save a life.<br>Bangladesh's first community-driven<br>blood donation platform.
+        </p>
+        <div class="hero-actions">
+            <a href="#download" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L12 16M6 10l6 6 6-6" />
+                    <path d="M4 20h16" />
+                </svg>
+                Download APK
+            </a>
+            <a href="#features" class="btn-secondary">Learn more</a>
+        </div>
+
+        <!-- Phone Mockup with auto-cycling screenshots -->
+        <div class="mockup-wrap">
+            <div class="mockup-phone">
+                <div class="mockup-screen">
+                    <img id="hero-img"
+                        src="https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/001.jpeg"
+                        alt="Spondon app screenshot"
+                        onerror="this.src='https://placehold.co/220x440/C0392B/white?text=Spondon'">
+                </div>
+            </div>
+        </div>
+        <div class="mockup-dots">
+            <div class="mockup-dot active" onclick="goSlide(0)"></div>
+            <div class="mockup-dot" onclick="goSlide(1)"></div>
+            <div class="mockup-dot" onclick="goSlide(2)"></div>
+            <div class="mockup-dot" onclick="goSlide(3)"></div>
+            <div class="mockup-dot" onclick="goSlide(4)"></div>
+            <div class="mockup-dot" onclick="goSlide(5)"></div>
+        </div>
+    </div>
+
+    <!-- FEATURES -->
+    <section class="features" id="features">
+        <p class="section-eyebrow">What Spondon Does</p>
+        <h2 class="section-title">Everything you need to donate or find blood</h2>
+        <p class="section-body">A full platform built for Bangladesh — communities, real-time donor search, and blood
+            requests in one app.</p>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon icon-red">🩸</div>
+                <h3>Blood Requests</h3>
+                <p>Create urgent requests that notify nearby donors instantly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon icon-green">🔍</div>
+                <h3>Find Donors</h3>
+                <p>Search by blood group, location, and availability status.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon icon-blue">🏘️</div>
+                <h3>Communities</h3>
+                <p>Join or create clubs like AFMC Spondon with private membership.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon icon-yellow">📜</div>
+                <h3>Certificates</h3>
+                <p>Export donation certificates as PDF after each successful donation.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon icon-red">🔔</div>
+                <h3>FCM Alerts</h3>
+                <p>Instant push notifications for matches, requests &amp; updates.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon icon-green">🛡️</div>
+                <h3>Privacy Mode</h3>
+                <p>Control who sees your profile details while staying available.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SCROLLABLE SCREENS -->
+    <div class="screens-section">
+        <div class="screens-head">
+            <p class="section-eyebrow">App Screens</p>
+            <h2 class="section-title" style="font-size:22px">Designed for real people</h2>
+        </div>
+        <div class="screens-scroll">
+            <div class="screen-item">
+                <div class="screen-phone">
+                    <div class="screen-img">
+                        <img src="https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/006.jpeg"
+                            alt="Splash" onerror="this.style.background='#C0392B'">
+                    </div>
+                </div>
+                <p class="screen-label">Splash</p>
+            </div>
+            <div class="screen-item">
+                <div class="screen-phone">
+                    <div class="screen-img">
+                        <img src="https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/005.jpeg"
+                            alt="Home" onerror="this.style.background='#C0392B'">
+                    </div>
+                </div>
+                <p class="screen-label">Home</p>
+            </div>
+            <div class="screen-item">
+                <div class="screen-phone">
+                    <div class="screen-img">
+                        <img src="https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/004.jpeg"
+                            alt="Community" onerror="this.style.background='#C0392B'">
+                    </div>
+                </div>
+                <p class="screen-label">Community</p>
+            </div>
+            <div class="screen-item">
+                <div class="screen-phone">
+                    <div class="screen-img">
+                        <img src="https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/003.jpeg"
+                            alt="Request" onerror="this.style.background='#C0392B'">
+                    </div>
+                </div>
+                <p class="screen-label">Request</p>
+            </div>
+            <div class="screen-item">
+                <div class="screen-phone">
+                    <div class="screen-img">
+                        <img src="https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/002.jpeg"
+                            alt="Find Donor" onerror="this.style.background='#C0392B'">
+                    </div>
+                </div>
+                <p class="screen-label">Find Donor</p>
+            </div>
+            <div class="screen-item">
+                <div class="screen-phone">
+                    <div class="screen-img">
+                        <img src="https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/001.jpeg"
+                            alt="Profile" onerror="this.style.background='#C0392B'">
+                    </div>
+                </div>
+                <p class="screen-label">Profile</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <section class="how">
+        <p class="section-eyebrow">How It Works</p>
+        <h2 class="section-title">From signup to saving a life</h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <h3>Create your profile</h3>
+                    <p>Register with your blood group and location. Set your availability so donors can find you.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <h3>Join a community</h3>
+                    <p>Join Spondon's public platform or a private club like AFMC Spondon with your organization.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <h3>Respond to requests</h3>
+                    <p>Get instant alerts when someone nearby needs your blood type. Accept and coordinate with one tap.
+                    </p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">4</div>
+                <div class="step-content">
+                    <h3>Earn your certificate</h3>
+                    <p>After each donation, get a verified PDF certificate you can download and share.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- COMMUNITY -->
+    <section class="community-section">
+        <p class="section-eyebrow">Active Communities</p>
+        <h2 class="section-title">Find your circle</h2>
+        <p class="section-body">Join organized groups that coordinate donations, manage members, and broadcast urgent
+            requests.</p>
+        <div class="community-cards">
+            <div class="community-card">
+                <div class="community-logo">🩸</div>
+                <div class="community-info">
+                    <h3>Spondon · স্পন্দন</h3>
+                    <p>Official Platform Community · 15 members</p>
+                </div>
+                <span class="community-badge">Open</span>
+            </div>
+            <div class="community-card">
+                <div class="community-logo">🏥</div>
+                <div class="community-info">
+                    <h3>AFMC Spondon</h3>
+                    <p>Armed Forces Medical College · Dhaka</p>
+                </div>
+                <span class="community-badge" style="background:#FFF8E7;color:#D4A017;">Private</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- DOWNLOAD CTA -->
+    <section class="cta-banner" id="download">
+        <div class="drop-big">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2C12 2 5 10 5 15a7 7 0 0014 0C19 10 12 2 12 2z" />
+            </svg>
+        </div>
+        <h2>আজই যোগ দিন</h2>
+        <p>Download Spondon for Android and become part of Bangladesh's growing blood donor community.</p>
+        <a href="https://github.com/nawfumi/Spondon/releases/latest" class="download-btn">
+            <span class="download-btn-icon">⬇</span>
+            <span class="download-btn-text">
+                <span class="sub">Download for Android</span>
+                <span class="main">Get Spondon APK</span>
+            </span>
+        </a>
+        <p style="margin-top:12px; font-size:11px; color:var(--ink-faint);">Android 8.0+ · Free forever · No Play Store
+            needed</p>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-brand">স্পন্দন · Spondon</div>
+        <div class="footer-tagline">রক্ত দিন, জীবন বাঁচান</div>
+        <div class="footer-links">
+            <a href="https://nawfumi.github.io/autoreview-privacy-policy/">Privacy Policy</a>
+            <a href="https://github.com/nawfumi/Spondon">GitHub</a>
+            <a href="mailto:contact@spondon.app">Contact</a>
+        </div>
+        <div class="footer-copyright">© 2026 Spondon. Made with ❤️ in Bangladesh.</div>
+    </footer>
+
+    <script>
+        const screenshots = [
+            'https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/001.jpeg',
+            'https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/002.jpeg',
+            'https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/003.jpeg',
+            'https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/004.jpeg',
+            'https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/005.jpeg',
+            'https://raw.githubusercontent.com/nawfumi/Spondon/main/app/screenshots/006.jpeg',
+        ];
+        let current = 0;
+        const heroImg = document.getElementById('hero-img');
+        const dots = document.querySelectorAll('.mockup-dot');
+
+        function goSlide(n) {
+            heroImg.classList.add('fade');
+            setTimeout(() => {
+                heroImg.src = screenshots[n];
+                heroImg.classList.remove('fade');
+                dots.forEach((d, i) => d.classList.toggle('active', i === n));
+                current = n;
+            }, 300);
+        }
+
+        let autoTimer = setInterval(() => {
+            goSlide((current + 1) % screenshots.length);
+        }, 3000);
+
+        dots.forEach((d, i) => d.addEventListener('click', () => {
+            clearInterval(autoTimer);
+            goSlide(i);
+            autoTimer = setInterval(() => goSlide((current + 1) % screenshots.length), 3000);
+        }));
+    </script>
+</body>
+
+</html>
