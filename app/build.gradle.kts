@@ -25,8 +25,8 @@ android {
         applicationId = "com.spondon.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 31
-        versionName = "1.0.30"
+        versionCode = 32
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GITHUB_TOKEN", "\"${githubToken}\"")
     }

@@ -711,10 +711,10 @@ class RequestViewModel @Inject constructor(
                     // Check cooldown explicitly (ignoring user.isDonor flag for notifications)
                     val lastDonation = user.lastDonationDate
                     if (lastDonation != null) {
-                        val daysSince = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(
-                            java.util.Date().time - lastDonation.time
+                        val daysSince = TimeUnit.MILLISECONDS.toDays(
+                            Date().time - lastDonation.time
                         ).toInt()
-                        val requiredDays = if (user.availabilityOverride) com.spondon.app.core.common.Constants.MIN_OVERRIDE_DAYS else user.donationInterval
+                        val requiredDays = if (user.availabilityOverride) Constants.MIN_OVERRIDE_DAYS else user.donationInterval
                         if (daysSince < requiredDays) {
                             return@filter false // User is in cooldown period
                         }
