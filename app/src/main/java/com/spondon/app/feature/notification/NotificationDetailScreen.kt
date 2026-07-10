@@ -259,6 +259,11 @@ private fun resolveAction(notification: AppNotification): NotificationAction? {
             deepLink = link,
             icon = Icons.Outlined.Groups,
         )
+        link == "spondon_community" -> NotificationAction(
+            label = "View Spondon",
+            deepLink = link,
+            icon = Icons.Outlined.Favorite,
+        )
         else -> null                          // unrecognised deep link — no button
     }
 }

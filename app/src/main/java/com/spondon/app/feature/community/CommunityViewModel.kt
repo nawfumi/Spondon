@@ -1255,8 +1255,8 @@ class CommunityViewModel @Inject constructor(
                             userIds = listOf("topic:global_announcements"),
                             type = NotificationType.ADMIN,
                             title = "New Spondon Post",
-                            body = state.content.take(50) + if (state.content.length > 50) "..." else "",
-                            deepLink = "community_detail/$spondonId",
+                            body = "$authorName posted in Spondon",
+                            deepLink = "spondon_community",
                         )
                     } catch (_: Exception) { /* non-critical */ }
                     
@@ -1283,6 +1283,10 @@ class CommunityViewModel @Inject constructor(
                 is Resource.Success -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Post deleted"))
                     _spondonState.value.community?.id?.let { loadSpondonPosts(it) }
+                    // Clean up notifications for spondon posts (best-effort)
+                    try {
+                        notificationRepository.deleteNotificationsByDeepLink("spondon_community")
+                    } catch (_: Exception) { /* non-critical */ }
                 }
                 is Resource.Error -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Failed to delete post"))

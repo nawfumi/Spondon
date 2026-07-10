@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Resource
+import com.spondon.app.core.data.local.PreferencesManager
 import com.spondon.app.feature.superadmin.data.SARepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -50,6 +52,7 @@ data class SAAuthState(
 class SuperAdminAuthViewModel @Inject constructor(
     private val saRepository: SARepository,
     private val auth: FirebaseAuth,
+    private val preferencesManager: PreferencesManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SAAuthState())
@@ -66,6 +69,7 @@ class SuperAdminAuthViewModel @Inject constructor(
 
     init {
         checkRegistrationStatus()
+        checkPersistentLogin()
     }
 
     private fun checkRegistrationStatus() {
@@ -73,6 +77,27 @@ class SuperAdminAuthViewModel @Inject constructor(
             val registered = saRepository.isSuperAdminRegistered()
             _state.update {
                 it.copy(isRegistered = registered, isInitialized = true)
+            }
+        }
+    }
+
+    /**
+     * Checks if the SA was previously logged in (persistent session).
+     * If yes, verifies the Firebase Auth session is still valid and
+     * auto-navigates to the dashboard.
+     */
+    private fun checkPersistentLogin() {
+        viewModelScope.launch {
+            val wasLoggedIn = preferencesManager.isSALoggedIn.first()
+            if (wasLoggedIn && saRepository.isCurrentUserSuperAdmin()) {
+                _state.update {
+                    it.copy(
+                        isLoginComplete = true,
+                        isSuperAdmin = true,
+                        isInitialized = true,
+                        isRegistered = true,
+                    )
+                }
             }
         }
     }
@@ -175,6 +200,7 @@ class SuperAdminAuthViewModel @Inject constructor(
                 is Resource.Success -> {
                     // Verify this user is actually the SA
                     if (saRepository.isCurrentUserSuperAdmin()) {
+                        preferencesManager.setSALoggedIn(true)
                         _state.update {
                             it.copy(
                                 isLoading = false,
@@ -225,6 +251,7 @@ class SuperAdminAuthViewModel @Inject constructor(
             SAAuthState(isRegistered = it.isRegistered, isInitialized = true)
         }
         viewModelScope.launch {
+            preferencesManager.setSALoggedIn(false)
             restoreOriginalUser()
         }
     }

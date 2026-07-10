@@ -31,6 +31,9 @@ interface NotificationDao {
     @Query("DELETE FROM notifications WHERE id = :notificationId")
     suspend fun delete(notificationId: String)
 
+    @Query("DELETE FROM notifications WHERE deepLink = :deepLink")
+    suspend fun deleteByDeepLink(deepLink: String)
+
     @Query("SELECT * FROM notifications WHERE userId = :userId ORDER BY createdAt DESC")
     suspend fun getAllForUser(userId: String): List<NotificationEntity>
 }

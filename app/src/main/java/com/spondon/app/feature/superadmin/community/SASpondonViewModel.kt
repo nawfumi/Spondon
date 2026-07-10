@@ -162,8 +162,8 @@ class SASpondonViewModel @Inject constructor(
                         notificationRepository.createNotification(
                             userId = "topic:global_announcements",
                             type = NotificationType.ADMIN,
-                            title = "\uD83D\uDCE2 New Spondon Post",
-                            body = content.take(50) + if (content.length > 50) "..." else "",
+                            title = "📢 New Spondon Post",
+                            body = "Admin posted in Spondon",
                             deepLink = "spondon_community",
                         )
                     } catch (_: Exception) { /* non-critical */ }
@@ -201,6 +201,10 @@ class SASpondonViewModel @Inject constructor(
                             actionMessage = "Post deleted",
                         )
                     }
+                    // Clean up notifications for spondon posts (best-effort)
+                    try {
+                        notificationRepository.deleteNotificationsByDeepLink("spondon_community")
+                    } catch (_: Exception) { /* non-critical */ }
                 }
                 is Resource.Error -> {
                     _state.update {

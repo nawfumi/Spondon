@@ -127,7 +127,7 @@ fun CreateSpondonPostScreen(
                 onValueChange = { viewModel.updatePostContent(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 160.dp),
+                    .heightIn(min = 160.dp, max = 400.dp),
                 placeholder = {
                     Text(
                         "What's on your mind? Share an announcement, update, or anything with the community...",

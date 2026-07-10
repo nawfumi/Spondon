@@ -225,9 +225,10 @@ fun SpondonInfoScreen(
                                 // Member count header
                                 item(key = "member_count") {
                                     val filteredCount = state.members.count { member ->
-                                        state.memberSearchQuery.isBlank() ||
+                                        member.role != UserRole.SUPER_ADMIN &&
+                                        (state.memberSearchQuery.isBlank() ||
                                                 member.name.contains(state.memberSearchQuery, ignoreCase = true) ||
-                                                member.bloodGroup.contains(state.memberSearchQuery, ignoreCase = true)
+                                                member.bloodGroup.contains(state.memberSearchQuery, ignoreCase = true))
                                     }
                                     Text(
                                         "$filteredCount members",
@@ -238,9 +239,10 @@ fun SpondonInfoScreen(
                                 }
 
                                 val filteredMembers = state.members.filter { member ->
-                                    state.memberSearchQuery.isBlank() ||
+                                    member.role != UserRole.SUPER_ADMIN &&
+                                    (state.memberSearchQuery.isBlank() ||
                                             member.name.contains(state.memberSearchQuery, ignoreCase = true) ||
-                                            member.bloodGroup.contains(state.memberSearchQuery, ignoreCase = true)
+                                            member.bloodGroup.contains(state.memberSearchQuery, ignoreCase = true))
                                 }
 
                                 if (filteredMembers.isEmpty()) {

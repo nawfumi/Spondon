@@ -246,4 +246,35 @@ class NotificationRepositoryImpl @Inject constructor(
             // Silently fail — cleanup is best-effort
         }
     }
+    /**
+     * Deletes all notifications matching the given deepLink from both Firestore
+     * and the local Room DB. Used when a Spondon post is deleted so its
+     * notification is cleaned up everywhere.
+     */
+    override suspend fun deleteNotificationsByDeepLink(deepLink: String) {
+        try {
+            // Delete from Firestore
+            val docs = firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
+                .whereEqualTo("deepLink", deepLink)
+                .get()
+                .await()
+
+            if (!docs.isEmpty) {
+                docs.documents.chunked(500).forEach { chunk ->
+                    val batch = firestore.batch()
+                    chunk.forEach { doc -> batch.delete(doc.reference) }
+                    batch.commit().await()
+                }
+            }
+        } catch (_: Exception) {
+            // Best-effort cleanup
+        }
+
+        try {
+            // Delete from local Room DB
+            notificationDao.deleteByDeepLink(deepLink)
+        } catch (_: Exception) {
+            // Best-effort cleanup
+        }
+    }
 }

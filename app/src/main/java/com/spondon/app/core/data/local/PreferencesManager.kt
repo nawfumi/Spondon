@@ -35,6 +35,9 @@ class PreferencesManager @Inject constructor(
         val NOTIFY_DONATION_REMINDERS = booleanPreferencesKey("notify_donation_reminders")
         val NOTIFY_ADMIN_ALERTS = booleanPreferencesKey("notify_admin_alerts")
 
+        // SuperAdmin
+        val SA_LOGGED_IN = booleanPreferencesKey("sa_logged_in")
+
         // Eligibility
         val ELIGIBILITY_STATUS = stringPreferencesKey("eligibility_status")
         val DEFERRAL_END_DATE = longPreferencesKey("deferral_end_date")
@@ -127,6 +130,16 @@ class PreferencesManager @Inject constructor(
     }
 
 
+
+    // ─── SuperAdmin ──────────────────────────────────────────
+
+    val isSALoggedIn: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[SA_LOGGED_IN] ?: false }
+
+    suspend fun setSALoggedIn(loggedIn: Boolean) {
+        dataStore.edit { it[SA_LOGGED_IN] = loggedIn }
+    }
 
     // ─── Eligibility ────────────────────────────────────────
     val eligibilityStatus: Flow<String> = dataStore.data

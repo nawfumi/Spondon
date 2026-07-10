@@ -29,4 +29,5 @@ interface NotificationRepository {
         extraData: Map<String, String> = emptyMap(),
     ): Resource<String>
     suspend fun deleteOldNotifications(userId: String)
+    suspend fun deleteNotificationsByDeepLink(deepLink: String)
 }
