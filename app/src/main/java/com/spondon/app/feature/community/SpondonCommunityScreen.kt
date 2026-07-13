@@ -83,8 +83,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.spondon.app.core.common.formatDisplay
+import com.spondon.app.core.domain.model.BloodRequest
 import com.spondon.app.core.domain.model.CommunityPost
 import com.spondon.app.core.domain.model.CommunityRole
+import com.spondon.app.core.domain.model.Urgency
 import com.spondon.app.core.domain.model.User
 import com.spondon.app.core.domain.model.UserRole
 import com.spondon.app.core.ui.theme.AvailableGreen
@@ -121,6 +123,8 @@ fun SpondonCommunityScreen(
     // isCommunityAdmin: admin or SUPER_ADMIN can delete any post & manage members
     val isCommunityAdmin = state.currentUserRole == CommunityRole.ADMIN ||
             state.currentUserPlatformRole == UserRole.SUPER_ADMIN
+    // isSuperAdmin: only SUPER_ADMIN can pin/unpin posts
+    val isSuperAdmin = state.currentUserPlatformRole == UserRole.SUPER_ADMIN
     val currentUserId = viewModel.fetchCurrentUserId()
 
     // Pull to refresh state
@@ -392,7 +396,10 @@ fun SpondonCommunityScreen(
                                 PostCard(
                                     post = post,
                                     isAdmin = canDelete,
+                                    isSuperAdmin = isSuperAdmin,
                                     onDelete = { viewModel.deletePost(post.id) },
+                                    onPin = { viewModel.pinPost(post.id) },
+                                    onUnpin = { viewModel.unpinPost(post.id) },
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 )
                             }
@@ -487,13 +494,17 @@ private fun WritePostBar(
 fun PostCard(
     post: CommunityPost,
     isAdmin: Boolean,
+    isSuperAdmin: Boolean = false,
     onDelete: () -> Unit,
+    onPin: () -> Unit = {},
+    onUnpin: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showImageViewer by remember { mutableStateOf(false) }
     var selectedImageIndex by remember { mutableStateOf(0) }
     var selectedImages by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showMenu by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -525,6 +536,30 @@ fun PostCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Pinned indicator
+            if (post.isPinned) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = "Pinned",
+                        modifier = Modifier.size(14.dp),
+                        tint = BloodRed,
+                    )
+                    Text(
+                        "Pinned Post",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = BloodRed,
+                    )
+                }
+            }
+
             // Author row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -561,8 +596,8 @@ fun PostCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val isSuperAdmin = post.authorName == "SuperAdmin"
-                        val displayName = if (isSuperAdmin) "Platform Admin 🛡️" else post.authorName.ifEmpty { "Admin" }
+                        val isSuperAdminAuthor = post.authorName == "SuperAdmin"
+                        val displayName = if (isSuperAdminAuthor) "Platform Admin 🛡️" else post.authorName.ifEmpty { "Admin" }
                         Text(
                             text = displayName,
                             style = MaterialTheme.typography.titleSmall,
@@ -592,18 +627,79 @@ fun PostCard(
                     )
                 }
 
-                // Delete button for admin
-                if (isAdmin) {
-                    IconButton(
-                        onClick = { showDeleteDialog = true },
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "Options",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                        )
+                // Options menu for admin/superadmin
+                if (isAdmin || isSuperAdmin) {
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "Options",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                            )
+                        }
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                        ) {
+                            // Pin/Unpin (superadmin only)
+                            if (isSuperAdmin) {
+                                if (post.isPinned) {
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Unpin Post") },
+                                        onClick = {
+                                            showMenu = false
+                                            onUnpin()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.PushPin,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp),
+                                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                            )
+                                        },
+                                    )
+                                } else {
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Pin Post") },
+                                        onClick = {
+                                            showMenu = false
+                                            onPin()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.PushPin,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp),
+                                                tint = BloodRed,
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+                            // Delete (admin)
+                            if (isAdmin) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Delete Post", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteDialog = true
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }

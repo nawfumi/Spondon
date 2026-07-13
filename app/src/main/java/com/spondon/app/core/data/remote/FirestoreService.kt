@@ -1089,4 +1089,21 @@ class FirestoreService @Inject constructor(
             Resource.Error(e.message ?: "Failed to delete post", e)
         }
     }
+
+    /**
+     * Updates fields on a community post document.
+     * Used for pin/unpin functionality.
+     */
+    suspend fun updateCommunityPost(postId: String, data: Map<String, Any?>): Resource<Unit> {
+        return try {
+            firestore.collection(Constants.COMMUNITY_POSTS_COLLECTION)
+                .document(postId)
+                .update(data.filterValues { it != null } as Map<String, Any>)
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to update post", e)
+        }
+    }
 }
+

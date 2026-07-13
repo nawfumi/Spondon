@@ -671,20 +671,22 @@ class CommunityViewModel @Inject constructor(
                     _joinState.update { it.copy(isLoading = false, isSubmitted = true, isPending = true) }
                     _events.emit(CommunityEvent.ShowSnackbar("Join request sent!"))
 
-                    // Notify community admins about the new join request
+                    // In-app notification only for community admins (no external push)
                     if (community != null) {
                         try {
-                            notificationRepository.sendNotificationToUsers(
-                                userIds = community.adminIds,
-                                type = NotificationType.COMMUNITY_JOIN_REQUEST,
-                                title = "New Join Request",
-                                body = "Someone wants to join ${community.name}",
-                                deepLink = "community_detail/$communityId",
-                                extraData = mapOf(
-                                    "communityId" to communityId,
-                                    "requesterId" to currentUserId,
-                                ),
-                            )
+                            for (adminId in community.adminIds) {
+                                notificationRepository.createNotification(
+                                    userId = adminId,
+                                    type = NotificationType.COMMUNITY_JOIN_REQUEST,
+                                    title = "New Join Request",
+                                    body = "Someone wants to join ${community.name}",
+                                    deepLink = "community_detail/$communityId",
+                                    extraData = mapOf(
+                                        "communityId" to communityId,
+                                        "requesterId" to currentUserId,
+                                    ),
+                                )
+                            }
                         } catch (_: Exception) { /* non-critical */ }
                     }
                 }
@@ -1162,8 +1164,13 @@ class CommunityViewModel @Inject constructor(
             _spondonState.update { it.copy(isPostsLoading = true) }
             when (val result = communityRepository.getCommunityPosts(communityId)) {
                 is Resource.Success -> {
+                    // Sort: pinned posts first (by pinnedAt desc), then regular by createdAt desc
+                    val sorted = result.data.sortedWith(
+                        compareByDescending<CommunityPost> { it.isPinned }
+                            .thenByDescending { if (it.isPinned) it.pinnedAt else it.createdAt }
+                    )
                     _spondonState.update {
-                        it.copy(posts = result.data, isPostsLoading = false)
+                        it.copy(posts = sorted, isPostsLoading = false)
                     }
                 }
                 is Resource.Error -> {
@@ -1249,16 +1256,8 @@ class CommunityViewModel @Inject constructor(
                     }
                     _events.emit(CommunityEvent.ShowSnackbar("Post published!"))
                     
-                    // Notify everyone via topic
-                    try {
-                        notificationRepository.sendNotificationToUsers(
-                            userIds = listOf("topic:global_announcements"),
-                            type = NotificationType.ADMIN,
-                            title = "New Spondon Post",
-                            body = "$authorName posted in Spondon",
-                            deepLink = "spondon_community",
-                        )
-                    } catch (_: Exception) { /* non-critical */ }
+                    // In-app notification only — no external push notification
+                    // Users will see the post when they open the Spondon community feed
                     
                     // Refresh posts
                     loadSpondonPosts(spondonId)
@@ -1290,6 +1289,42 @@ class CommunityViewModel @Inject constructor(
                 }
                 is Resource.Error -> {
                     _events.emit(CommunityEvent.ShowSnackbar("Failed to delete post"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    /**
+     * Pins a Spondon community post. Only SUPER_ADMIN can pin.
+     */
+    fun pinPost(postId: String) {
+        viewModelScope.launch {
+            when (communityRepository.pinPost(postId)) {
+                is Resource.Success -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Post pinned"))
+                    _spondonState.value.community?.id?.let { loadSpondonPosts(it) }
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to pin post"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    /**
+     * Unpins a Spondon community post. Only SUPER_ADMIN can unpin.
+     */
+    fun unpinPost(postId: String) {
+        viewModelScope.launch {
+            when (communityRepository.unpinPost(postId)) {
+                is Resource.Success -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Post unpinned"))
+                    _spondonState.value.community?.id?.let { loadSpondonPosts(it) }
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to unpin post"))
                 }
                 is Resource.Loading -> {}
             }

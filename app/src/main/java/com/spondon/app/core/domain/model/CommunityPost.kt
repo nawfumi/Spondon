@@ -16,5 +16,7 @@ data class CommunityPost(
     val content: String = "",
     val imageUrl: String? = null,
     val imageUrls: List<String> = emptyList(),
+    val isPinned: Boolean = false,
+    val pinnedAt: Date? = null,
     val createdAt: Date? = null,
 )

@@ -421,6 +421,11 @@ class CommunityRepositoryImpl @Inject constructor(
             is Date -> ts
             else -> null
         }
+        val pinnedAt = when (val ts = data["pinnedAt"]) {
+            is Timestamp -> ts.toDate()
+            is Date -> ts
+            else -> null
+        }
         return CommunityPost(
             id = data["id"] as? String ?: "",
             communityId = data["communityId"] as? String ?: "",
@@ -430,6 +435,8 @@ class CommunityRepositoryImpl @Inject constructor(
             content = data["content"] as? String ?: "",
             imageUrl = data["imageUrl"] as? String,
             imageUrls = (data["imageUrls"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            isPinned = data["isPinned"] as? Boolean ?: false,
+            pinnedAt = pinnedAt,
             createdAt = createdAt,
         )
     }
@@ -537,5 +544,30 @@ class CommunityRepositoryImpl @Inject constructor(
     suspend fun deleteCommunityPost(postId: String): Resource<Unit> {
         return firestoreService.deleteCommunityPost(postId)
     }
-}
 
+    /**
+     * Pins a community post (superadmin only).
+     */
+    suspend fun pinPost(postId: String): Resource<Unit> {
+        return firestoreService.updateCommunityPost(
+            postId,
+            mapOf(
+                "isPinned" to true,
+                "pinnedAt" to Timestamp.now(),
+            ),
+        )
+    }
+
+    /**
+     * Unpins a community post (superadmin only).
+     */
+    suspend fun unpinPost(postId: String): Resource<Unit> {
+        return firestoreService.updateCommunityPost(
+            postId,
+            mapOf(
+                "isPinned" to false,
+                "pinnedAt" to null,
+            ),
+        )
+    }
+}
