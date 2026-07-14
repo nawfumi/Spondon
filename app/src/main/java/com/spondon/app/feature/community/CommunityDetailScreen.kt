@@ -276,7 +276,7 @@ fun CommunityDetailScreen(
 
                                 // Inline stats
                                 Text(
-                                    text = "${community.memberCount} Members  •  ${community.donationCount} Donations  •  ${state.requests.size} Requests",
+                                    text = "${community.memberIds.size} Members  •  ${community.donationCount} Donations  •  ${state.requests.size} Requests",
                                     color = Color.White.copy(alpha = 0.65f),
                                     fontSize = 13.sp,
                                 )

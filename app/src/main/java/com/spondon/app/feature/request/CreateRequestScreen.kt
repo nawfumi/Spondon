@@ -332,7 +332,7 @@ fun CreateRequestScreen(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                     Text(
-                                        text = "${community.memberCount} members",
+                                        text = "${community.memberIds.size} members",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                                     )

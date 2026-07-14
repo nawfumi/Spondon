@@ -40,7 +40,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.spondon.app.core.domain.model.BloodRequest
 import com.spondon.app.core.domain.model.RequestStatus
+import com.spondon.app.core.domain.model.Urgency
 import com.spondon.app.core.ui.i18n.S
 import com.spondon.app.core.ui.theme.BloodRed
 
@@ -124,11 +126,20 @@ fun RequestFeedScreen(
                     if (state.feedRequests.isEmpty()) {
                         EmptyFeedMessage("No blood requests from your communities yet")
                     } else {
+                        // Sort critical requests (within 6 hours) to the top
+                        val sixHoursMs = 6L * 60 * 60 * 1000
+                        val now = System.currentTimeMillis()
+                        val sortedFeed = state.feedRequests.sortedWith(
+                            compareByDescending<BloodRequest> {
+                                it.urgency == Urgency.CRITICAL &&
+                                (it.createdAt?.time ?: 0L) > (now - sixHoursMs)
+                            }.thenByDescending { it.createdAt }
+                        )
                         LazyColumn(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            items(state.feedRequests, key = { it.id }) { request ->
+                            items(sortedFeed, key = { it.id }) { request ->
                                 RequestCard(
                                     request = request,
                                     currentUserId = currentUserId,

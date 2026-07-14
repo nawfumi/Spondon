@@ -310,7 +310,7 @@ fun SpondonCommunityScreen(
 
                                     // Inline stats
                                     Text(
-                                        text = "${community.memberCount} members  •  ${state.posts.size} posts  •  ${community.donationCount} donations",
+                                        text = "${community.memberIds.size} members  •  ${state.posts.size} posts  •  ${community.donationCount} donations",
                                         color = Color.White.copy(alpha = 0.65f),
                                         fontSize = 13.sp,
                                     )

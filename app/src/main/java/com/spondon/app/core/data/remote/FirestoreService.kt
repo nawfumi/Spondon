@@ -283,10 +283,23 @@ class FirestoreService @Inject constructor(
 
     /**
      * Adds a user to a public community.
+     * Checks if the user is already a member to avoid incrementing
+     * memberCount when arrayUnion would be a no-op (preventing count drift).
      */
     suspend fun joinCommunity(communityId: String, userId: String): Resource<Unit> {
         return try {
             val ref = firestore.collection(Constants.COMMUNITIES_COLLECTION).document(communityId)
+
+            // Check if user is already a member to avoid counter drift
+            val doc = ref.get().await()
+            val currentMembers = (doc.data?.get("memberIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+
+            if (currentMembers.contains(userId)) {
+                // User is already a member, skip — no counter increment
+                return Resource.Success(Unit)
+            }
+
             ref.update(
                 mapOf(
                     "memberIds" to FieldValue.arrayUnion(userId),
@@ -305,18 +318,29 @@ class FirestoreService @Inject constructor(
 
     /**
      * Removes a user from a community.
+     * Checks membership first to avoid decrementing memberCount
+     * when the user isn't actually in the array (preventing counter drift).
      */
     suspend fun leaveCommunity(communityId: String, userId: String): Resource<Unit> {
         return try {
             val ref = firestore.collection(Constants.COMMUNITIES_COLLECTION).document(communityId)
-            ref.update(
-                mapOf(
-                    "memberIds" to FieldValue.arrayRemove(userId),
-                    "adminIds" to FieldValue.arrayRemove(userId),
-                    "moderatorIds" to FieldValue.arrayRemove(userId),
-                    "memberCount" to FieldValue.increment(-1),
-                )
-            ).await()
+
+            // Check if user is actually a member before decrementing
+            val doc = ref.get().await()
+            val currentMembers = (doc.data?.get("memberIds") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            val isMember = currentMembers.contains(userId)
+
+            val updates = mutableMapOf<String, Any>(
+                "memberIds" to FieldValue.arrayRemove(userId),
+                "adminIds" to FieldValue.arrayRemove(userId),
+                "moderatorIds" to FieldValue.arrayRemove(userId),
+            )
+            if (isMember) {
+                updates["memberCount"] = FieldValue.increment(-1)
+            }
+
+            ref.update(updates).await()
             firestore.collection(Constants.USERS_COLLECTION).document(userId)
                 .update("communityIds", FieldValue.arrayRemove(communityId))
                 .await()

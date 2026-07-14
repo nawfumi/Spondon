@@ -398,7 +398,7 @@ private fun SpondonPinnedCard(
                     }
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Official Platform Community · ${community.memberCount} members",
+                        text = "Official Platform Community · ${community.memberIds.size} members",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -567,7 +567,7 @@ private fun CommunityCard(
                 CommunityInfoChip(
                     icon = Icons.Default.People,
                     label = "Members",
-                    value = "${community.memberCount}",
+                    value = "${community.memberIds.size}",
                     chipColor = MaterialTheme.colorScheme.primary,
                     chipBg = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.weight(1f),

@@ -3,7 +3,14 @@ package com.spondon.app.feature.request
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -418,7 +425,17 @@ fun HomeScreen(
                 }
             }
         } else {
-            items(state.urgentRequests.take(10), key = { it.id }) { request ->
+            // Sort: critical requests created within 6 hours first
+            val sixHoursMs = 6L * 60 * 60 * 1000
+            val now = System.currentTimeMillis()
+            val sortedRequests = state.urgentRequests.sortedWith(
+                compareByDescending<BloodRequest> {
+                    it.urgency == Urgency.CRITICAL &&
+                    (it.createdAt?.time ?: 0L) > (now - sixHoursMs)
+                }.thenByDescending { it.createdAt }
+            )
+
+            items(sortedRequests.take(10), key = { it.id }) { request ->
                 RequestCard(
                     request = request,
                     currentUserId = state.user?.uid,
@@ -583,13 +600,54 @@ fun RequestCard(
         )
     }
 
-    Card(
+    // ── Critical blinking overlay logic ────────────────────────
+    val isCritical = request.urgency == Urgency.CRITICAL
+    val isWithin6Hours = remember(request.createdAt) {
+        val createdAt = request.createdAt?.time ?: 0L
+        val sixHoursMs = 6L * 60 * 60 * 1000
+        System.currentTimeMillis() - createdAt < sixHoursMs && createdAt > 0L
+    }
+    val showCriticalOverlay = isCritical && isWithin6Hours
+
+    // Blinking animation
+    val blinkAlpha = if (showCriticalOverlay) {
+        val transition = rememberInfiniteTransition(label = "critical_blink")
+        transition.animateFloat(
+            initialValue = 0.15f,
+            targetValue = 0.55f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 800, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "critical_alpha",
+        ).value
+    } else {
+        0f
+    }
+
+    Box(
         modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (showCriticalOverlay) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = Color.Red.copy(alpha = blinkAlpha),
+                        shape = RoundedCornerShape(16.dp),
+                    )
+                } else Modifier
+            ),
+    ) {
+    Card(
+        modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = if (showCriticalOverlay)
+                MaterialTheme.colorScheme.surface
+            else
+                MaterialTheme.colorScheme.surface,
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
@@ -792,6 +850,17 @@ fun RequestCard(
             }
         }
     }
+
+    // ── Critical request blinking overlay ──────────────────────
+    if (showCriticalOverlay) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Red.copy(alpha = blinkAlpha * 0.15f)),
+        )
+    }
+    } // end Box wrapper
 }
 
 @Composable

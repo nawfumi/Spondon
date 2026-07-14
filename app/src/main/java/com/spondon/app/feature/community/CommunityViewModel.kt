@@ -671,22 +671,20 @@ class CommunityViewModel @Inject constructor(
                     _joinState.update { it.copy(isLoading = false, isSubmitted = true, isPending = true) }
                     _events.emit(CommunityEvent.ShowSnackbar("Join request sent!"))
 
-                    // In-app notification only for community admins (no external push)
+                    // Notify community admins — triggers system push via FCM
                     if (community != null) {
                         try {
-                            for (adminId in community.adminIds) {
-                                notificationRepository.createNotification(
-                                    userId = adminId,
-                                    type = NotificationType.COMMUNITY_JOIN_REQUEST,
-                                    title = "New Join Request",
-                                    body = "Someone wants to join ${community.name}",
-                                    deepLink = "community_detail/$communityId",
-                                    extraData = mapOf(
-                                        "communityId" to communityId,
-                                        "requesterId" to currentUserId,
-                                    ),
-                                )
-                            }
+                            notificationRepository.sendNotificationToUsers(
+                                userIds = community.adminIds,
+                                type = NotificationType.COMMUNITY_JOIN_REQUEST,
+                                title = "New Join Request",
+                                body = "Someone wants to join ${community.name}",
+                                deepLink = "community_detail/$communityId",
+                                extraData = mapOf(
+                                    "communityId" to communityId,
+                                    "requesterId" to currentUserId,
+                                ),
+                            )
                         } catch (_: Exception) { /* non-critical */ }
                     }
                 }
@@ -729,7 +727,7 @@ class CommunityViewModel @Inject constructor(
                     _adminState.update {
                         it.copy(
                             community = community,
-                            activeMembers = community.memberCount,
+                            activeMembers = community.memberIds.size,
                             monthlyDonations = community.donationCount,
                         )
                     }
@@ -780,12 +778,11 @@ class CommunityViewModel @Inject constructor(
             when (val result = communityRepository.getCommunityMembers(memberIds)) {
                 is Resource.Success -> {
                     val members = result.data
-                    val activeCount = members.count { isUserAvailable(it) }
                     val totalDonations = members.sumOf { it.totalDonations }
                     _adminState.update {
                         it.copy(
                             members = members,
-                            activeMembers = activeCount,
+                            activeMembers = members.size,
                             monthlyDonations = totalDonations,
                         )
                     }
@@ -1255,9 +1252,16 @@ class CommunityViewModel @Inject constructor(
                         it.copy(isLoading = false, isCreated = true)
                     }
                     _events.emit(CommunityEvent.ShowSnackbar("Post published!"))
-                    
-                    // In-app notification only — no external push notification
-                    // Users will see the post when they open the Spondon community feed
+                    // Notify everyone via topic
+                    try {
+                        notificationRepository.sendNotificationToUsers(
+                            userIds = listOf("topic:global_announcements"),
+                            type = NotificationType.ADMIN,
+                            title = "New Spondon Post",
+                            body = "$authorName posted in Spondon",
+                            deepLink = "spondon_community",
+                        )
+                    } catch (_: Exception) { /* non-critical */ }
                     
                     // Refresh posts
                     loadSpondonPosts(spondonId)
