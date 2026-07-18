@@ -375,6 +375,8 @@ private fun SASpondonPostsTab(
                 SASpondonPostCard(
                     post = post,
                     onDelete = { viewModel.showDeleteDialog(post) },
+                    onPin = { viewModel.pinPost(post.id) },
+                    onUnpin = { viewModel.unpinPost(post.id) },
                 )
             }
             item { Spacer(Modifier.height(72.dp)) } // FAB clearance
@@ -543,7 +545,7 @@ private fun SASpondonPostCard(
             }
 
             // Post images
-            val displayImages = if (post.imageUrls.isNotEmpty()) post.imageUrls else listOfNotNull(post.imageUrl)
+            val displayImages = post.imageUrls.ifEmpty { listOfNotNull(post.imageUrl) }
 
             if (displayImages.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))

@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.*
@@ -263,7 +264,7 @@ fun SADeveloperInfoScreen(
                             value = state.whatsapp,
                             onValueChange = viewModel::updateWhatsapp,
                             label = "WhatsApp (number or URL)",
-                            icon = Icons.Outlined.Chat,
+                            icon = Icons.AutoMirrored.Outlined.Chat,
                             iconTint = Color(0xFF25D366),
                         )
 
