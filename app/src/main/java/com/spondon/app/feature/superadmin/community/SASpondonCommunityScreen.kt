@@ -386,7 +386,11 @@ private fun SASpondonPostsTab(
 private fun SASpondonPostCard(
     post: SASpondonPost,
     onDelete: () -> Unit,
+    onPin: () -> Unit,
+    onUnpin: () -> Unit,
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -448,6 +452,23 @@ private fun SASpondonPostCard(
                                 color = SAGold,
                             )
                         }
+                        // Pinned badge
+                        if (post.isPinned) {
+                            Spacer(Modifier.width(4.dp))
+                            Card(
+                                shape = RoundedCornerShape(4.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = SABlue.copy(alpha = 0.15f),
+                                ),
+                            ) {
+                                Text(
+                                    "📌 PINNED",
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                                    color = SABlue,
+                                )
+                            }
+                        }
                     }
                     Text(
                         post.createdAt?.formatDisplay() ?: "",
@@ -456,17 +477,56 @@ private fun SASpondonPostCard(
                     )
                 }
 
-                // Delete button
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Delete,
-                        contentDescription = "Delete",
-                        modifier = Modifier.size(16.dp),
-                        tint = SARed.copy(alpha = 0.5f),
-                    )
+                // 3-dot menu with Pin/Unpin + Delete
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.MoreVert,
+                            contentDescription = "Post options",
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.White.copy(alpha = 0.5f),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                    ) {
+                        // Pin / Unpin
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (post.isPinned) "Unpin Post" else "Pin Post")
+                            },
+                            onClick = {
+                                showMenu = false
+                                if (post.isPinned) onUnpin() else onPin()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    tint = if (post.isPinned) SAOrange else SABlue,
+                                )
+                            },
+                        )
+                        // Delete
+                        DropdownMenuItem(
+                            text = { Text("Delete Post", color = SARed) },
+                            onClick = {
+                                showMenu = false
+                                onDelete()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Outlined.Delete,
+                                    contentDescription = null,
+                                    tint = SARed,
+                                )
+                            },
+                        )
+                    }
                 }
             }
 

@@ -1114,6 +1114,11 @@ class SARepository @Inject constructor(
                     is Date -> d
                     else -> null
                 }
+                val pinnedAt = when (val d = data["pinnedAt"]) {
+                    is Timestamp -> d.toDate()
+                    is Date -> d
+                    else -> null
+                }
                 SASpondonPost(
                     id = doc.id,
                     authorId = data["authorId"] as? String ?: "",
@@ -1123,8 +1128,13 @@ class SARepository @Inject constructor(
                     imageUrl = data["imageUrl"] as? String,
                     imageUrls = (data["imageUrls"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                     createdAt = createdAt,
+                    isPinned = data["isPinned"] as? Boolean ?: false,
+                    pinnedAt = pinnedAt,
                 )
-            }.sortedByDescending { it.createdAt }
+            }.sortedWith(
+                compareByDescending<SASpondonPost> { it.isPinned }
+                    .thenByDescending { it.createdAt }
+            )
             Resource.Success(posts)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to load posts", e)
@@ -1176,6 +1186,36 @@ class SARepository @Inject constructor(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to delete post", e)
+        }
+    }
+
+    /** Pin a Spondon post so it stays at the top of the feed. */
+    suspend fun pinSpondonPost(postId: String): Resource<Unit> {
+        return try {
+            firestore.collection("communityPosts").document(postId).update(
+                mapOf(
+                    "isPinned" to true,
+                    "pinnedAt" to FieldValue.serverTimestamp(),
+                )
+            ).await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to pin post", e)
+        }
+    }
+
+    /** Unpin a Spondon post. */
+    suspend fun unpinSpondonPost(postId: String): Resource<Unit> {
+        return try {
+            firestore.collection("communityPosts").document(postId).update(
+                mapOf(
+                    "isPinned" to false,
+                    "pinnedAt" to FieldValue.delete(),
+                )
+            ).await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to unpin post", e)
         }
     }
 
@@ -1474,6 +1514,83 @@ class SARepository @Inject constructor(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to revoke access", e)
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // Developer Info (Support Screen)
+    // ════════════════════════════════════════════════════════════
+
+    /** Data class for developer info displayed on the Support screen. */
+    data class DeveloperInfo(
+        val name: String = "",
+        val subtitle: String = "",
+        val profilePhotoUrl: String = "",
+        val supportUrl: String = "",
+        val facebook: String = "",
+        val whatsapp: String = "",
+        val instagram: String = "",
+        val linkedin: String = "",
+        val github: String = "",
+        val twitter: String = "",
+    )
+
+    /** Fetch developer info from Firestore. */
+    suspend fun getDeveloperInfo(): Resource<DeveloperInfo> {
+        return try {
+            val doc = firestore.document("config/developer_info").get().await()
+            val data = doc.data
+            if (data == null) {
+                Resource.Success(DeveloperInfo())
+            } else {
+                @Suppress("UNCHECKED_CAST")
+                val social = data["socialLinks"] as? Map<String, Any?> ?: emptyMap()
+                Resource.Success(
+                    DeveloperInfo(
+                        name = data["name"] as? String ?: "",
+                        subtitle = data["subtitle"] as? String ?: "",
+                        profilePhotoUrl = data["profilePhotoUrl"] as? String ?: "",
+                        supportUrl = data["supportUrl"] as? String ?: "",
+                        facebook = social["facebook"] as? String ?: "",
+                        whatsapp = social["whatsapp"] as? String ?: "",
+                        instagram = social["instagram"] as? String ?: "",
+                        linkedin = social["linkedin"] as? String ?: "",
+                        github = social["github"] as? String ?: "",
+                        twitter = social["twitter"] as? String ?: "",
+                    ),
+                )
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to load developer info", e)
+        }
+    }
+
+    /** Save developer info to Firestore. */
+    suspend fun saveDeveloperInfo(info: DeveloperInfo): Resource<Unit> {
+        return try {
+            val data = hashMapOf(
+                "name" to info.name,
+                "subtitle" to info.subtitle,
+                "profilePhotoUrl" to info.profilePhotoUrl,
+                "supportUrl" to info.supportUrl,
+                "socialLinks" to hashMapOf(
+                    "facebook" to info.facebook,
+                    "whatsapp" to info.whatsapp,
+                    "instagram" to info.instagram,
+                    "linkedin" to info.linkedin,
+                    "github" to info.github,
+                    "twitter" to info.twitter,
+                ),
+                "updatedAt" to FieldValue.serverTimestamp(),
+            )
+            firestore.document("config/developer_info").set(data).await()
+            auditLogger.log(
+                SAAction.UPDATE_DEVELOPER_INFO,
+                metadata = mapOf("name" to info.name),
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to save developer info", e)
         }
     }
 

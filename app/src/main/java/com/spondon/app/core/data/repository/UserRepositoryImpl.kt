@@ -4,6 +4,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.spondon.app.core.common.Resource
 import com.spondon.app.core.data.remote.FirestoreService
 import com.spondon.app.core.domain.model.User
+import com.spondon.app.core.domain.model.UserRole
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.Date
@@ -117,11 +118,10 @@ class UserRepositoryImpl @Inject constructor(
             communityIds = (data["communityIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             badges = (data["badges"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             role = try {
-                com.spondon.app.core.domain.model.UserRole.valueOf(
-                    data["role"] as? String ?: "USER"
-                )
+                val roleStr = (data["role"] as? String)?.uppercase()?.trim() ?: "USER"
+                UserRole.valueOf(roleStr)
             } catch (_: Exception) {
-                com.spondon.app.core.domain.model.UserRole.USER
+                UserRole.USER
             },
             isBanned = data["isBanned"] as? Boolean ?: false,
             banReason = data["banReason"] as? String,

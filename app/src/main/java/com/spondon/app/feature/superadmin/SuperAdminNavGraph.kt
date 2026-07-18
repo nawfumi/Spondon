@@ -18,6 +18,7 @@ import com.spondon.app.feature.superadmin.maintenance.SAMaintenanceScreen
 import com.spondon.app.feature.superadmin.users.SAUserDetailScreen
 import com.spondon.app.feature.superadmin.users.SAUserListScreen
 import com.spondon.app.feature.superadmin.analytics.SAAnalyticsScreen
+import com.spondon.app.feature.superadmin.developerinfo.SADeveloperInfoScreen
 import com.spondon.app.feature.superadmin.privacy.SAPrivacyScreen
 
 /**
@@ -106,5 +107,10 @@ fun NavGraphBuilder.superAdminGraph(
     // ─── Privacy Control ─────────────────────────────────────
     composable("sa_privacy") {
         SAPrivacyScreen(navController)
+    }
+
+    // ─── Developer Info Management ───────────────────────────
+    composable("sa_developer_info") {
+        SADeveloperInfoScreen(navController)
     }
 }

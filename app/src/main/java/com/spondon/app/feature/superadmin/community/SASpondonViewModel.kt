@@ -28,6 +28,8 @@ data class SASpondonPost(
     val imageUrl: String? = null,
     val imageUrls: List<String> = emptyList(),
     val createdAt: Date? = null,
+    val isPinned: Boolean = false,
+    val pinnedAt: Date? = null,
 )
 
 data class SASpondonMember(
@@ -210,6 +212,40 @@ class SASpondonViewModel @Inject constructor(
                     _state.update {
                         it.copy(showDeleteDialog = false, actionMessage = "Failed to delete post")
                     }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Pin / Unpin Post
+    // ═══════════════════════════════════════════════════════════
+
+    fun pinPost(postId: String) {
+        viewModelScope.launch {
+            when (saRepository.pinSpondonPost(postId)) {
+                is Resource.Success -> {
+                    _state.update { it.copy(actionMessage = "Post pinned") }
+                    refreshPosts()
+                }
+                is Resource.Error -> {
+                    _state.update { it.copy(actionMessage = "Failed to pin post") }
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun unpinPost(postId: String) {
+        viewModelScope.launch {
+            when (saRepository.unpinSpondonPost(postId)) {
+                is Resource.Success -> {
+                    _state.update { it.copy(actionMessage = "Post unpinned") }
+                    refreshPosts()
+                }
+                is Resource.Error -> {
+                    _state.update { it.copy(actionMessage = "Failed to unpin post") }
                 }
                 is Resource.Loading -> {}
             }

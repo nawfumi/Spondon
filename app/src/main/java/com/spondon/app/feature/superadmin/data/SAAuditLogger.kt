@@ -26,6 +26,7 @@ enum class SAAction {
     TOGGLE_PRIVACY,
     PRIVACY_ACCESS_GRANT,
     PRIVACY_ACCESS_REVOKE,
+    UPDATE_DEVELOPER_INFO,
 }
 
 /** Immutable audit trail for all superadmin actions. */

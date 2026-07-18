@@ -321,8 +321,12 @@ fun SADashboardScreen(
                             modifier = Modifier.weight(1f),
                             onClick = { navController.navigate("sa_privacy") },
                         )
-                        // Placeholder for future actions
-                        Spacer(modifier = Modifier.weight(1f))
+                        SAQuickAction(
+                            icon = Icons.Outlined.PersonPin,
+                            label = "Dev Info",
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate("sa_developer_info") },
+                        )
                     }
                 }
 

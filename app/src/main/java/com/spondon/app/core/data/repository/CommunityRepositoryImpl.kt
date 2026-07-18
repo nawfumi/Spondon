@@ -408,7 +408,8 @@ class CommunityRepositoryImpl @Inject constructor(
             communityIds = (data["communityIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             badges = (data["badges"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             role = try {
-                UserRole.valueOf(data["role"] as? String ?: "USER")
+                val roleStr = (data["role"] as? String)?.uppercase()?.trim() ?: "USER"
+                UserRole.valueOf(roleStr)
             } catch (_: Exception) {
                 UserRole.USER
             },

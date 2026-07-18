@@ -77,6 +77,8 @@ import com.spondon.app.core.ui.i18n.S
 import com.spondon.app.core.ui.theme.AvailableGreen
 import com.spondon.app.core.ui.theme.BloodRed
 import com.spondon.app.core.ui.theme.UnavailableGrey
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -410,12 +412,23 @@ private fun DonorCard(
                         .background(BloodRed.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        Icons.Filled.Person,
-                        null,
-                        tint = BloodRed.copy(alpha = 0.6f),
-                        modifier = Modifier.size(26.dp),
-                    )
+                    if (donor.avatarUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = donor.avatarUrl,
+                            contentDescription = donor.name,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Filled.Person,
+                            null,
+                            tint = BloodRed.copy(alpha = 0.6f),
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
