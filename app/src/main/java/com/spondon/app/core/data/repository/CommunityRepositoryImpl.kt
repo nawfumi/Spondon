@@ -439,6 +439,26 @@ class CommunityRepositoryImpl @Inject constructor(
             isPinned = data["isPinned"] as? Boolean ?: false,
             pinnedAt = pinnedAt,
             createdAt = createdAt,
+            likedByIds = (data["likedByIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            likeCount = (data["likeCount"] as? Number)?.toInt() ?: 0,
+            commentCount = (data["commentCount"] as? Number)?.toInt() ?: 0,
+        )
+    }
+
+    private fun mapToPostComment(data: Map<String, Any>): PostComment {
+        val createdAt = when (val ts = data["createdAt"]) {
+            is Timestamp -> ts.toDate()
+            is Date -> ts
+            else -> null
+        }
+        return PostComment(
+            id = data["id"] as? String ?: "",
+            postId = data["postId"] as? String ?: "",
+            authorId = data["authorId"] as? String ?: "",
+            authorName = data["authorName"] as? String ?: "",
+            authorAvatarUrl = data["authorAvatarUrl"] as? String ?: "",
+            content = data["content"] as? String ?: "",
+            createdAt = createdAt,
         )
     }
 
@@ -570,5 +590,56 @@ class CommunityRepositoryImpl @Inject constructor(
                 "pinnedAt" to null,
             ),
         )
+    }
+
+    // ─── Post Love / Like ──────────────────────────────────────────
+
+    /**
+     * Toggles the love/like on a post for the given user.
+     * @return true if now liked, false if now unliked.
+     */
+    suspend fun togglePostLove(postId: String, userId: String, currentlyLiked: Boolean): Resource<Boolean> {
+        return firestoreService.togglePostLove(postId, userId, currentlyLiked)
+    }
+
+    // ─── Post Comments ─────────────────────────────────────────────
+
+    /**
+     * Creates a comment on a post.
+     */
+    suspend fun createPostComment(
+        postId: String,
+        authorId: String,
+        authorName: String,
+        authorAvatarUrl: String,
+        content: String,
+    ): Resource<String> {
+        val data = mapOf<String, Any?>(
+            "postId" to postId,
+            "authorId" to authorId,
+            "authorName" to authorName,
+            "authorAvatarUrl" to authorAvatarUrl,
+            "content" to content,
+            "createdAt" to Timestamp.now(),
+        )
+        return firestoreService.createPostComment(data)
+    }
+
+    /**
+     * Fetches all comments for a post.
+     */
+    suspend fun getPostComments(postId: String): Resource<List<PostComment>> {
+        return when (val result = firestoreService.getPostComments(postId)) {
+            is Resource.Success -> Resource.Success(result.data.map { mapToPostComment(it) })
+            is Resource.Error -> Resource.Error(result.message)
+            is Resource.Loading -> Resource.Loading
+        }
+    }
+
+    /**
+     * Deletes a comment.
+     */
+    suspend fun deletePostComment(commentId: String, postId: String): Resource<Unit> {
+        return firestoreService.deletePostComment(commentId, postId)
     }
 }

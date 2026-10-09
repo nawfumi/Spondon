@@ -19,4 +19,20 @@ data class CommunityPost(
     val isPinned: Boolean = false,
     val pinnedAt: Date? = null,
     val createdAt: Date? = null,
+    val likedByIds: List<String> = emptyList(),
+    val likeCount: Int = 0,
+    val commentCount: Int = 0,
+)
+
+/**
+ * A comment on a [CommunityPost].
+ */
+data class PostComment(
+    val id: String = "",
+    val postId: String = "",
+    val authorId: String = "",
+    val authorName: String = "",
+    val authorAvatarUrl: String = "",
+    val content: String = "",
+    val createdAt: Date? = null,
 )

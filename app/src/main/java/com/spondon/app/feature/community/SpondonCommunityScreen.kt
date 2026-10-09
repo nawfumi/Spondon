@@ -32,13 +32,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -86,6 +91,7 @@ import coil.compose.AsyncImage
 import com.spondon.app.core.common.formatDisplay
 import com.spondon.app.core.domain.model.CommunityPost
 import com.spondon.app.core.domain.model.CommunityRole
+import com.spondon.app.core.domain.model.PostComment
 import com.spondon.app.core.domain.model.User
 import com.spondon.app.core.domain.model.UserRole
 import com.spondon.app.core.ui.theme.AvailableGreen
@@ -392,13 +398,22 @@ fun SpondonCommunityScreen(
                             items(state.posts, key = { it.id }) { post ->
                                 val canDelete = isCommunityAdmin ||
                                         (canPost && post.authorId == currentUserId)
+                                val comments by viewModel.postComments.collectAsState()
+                                val commentsLoadingSet by viewModel.commentsLoading.collectAsState()
                                 PostCard(
                                     post = post,
                                     isAdmin = canDelete,
                                     isSuperAdmin = isSuperAdmin,
+                                    currentUserId = currentUserId,
+                                    comments = comments[post.id] ?: emptyList(),
+                                    isCommentsLoading = post.id in commentsLoadingSet,
                                     onDelete = { viewModel.deletePost(post.id) },
                                     onPin = { viewModel.pinPost(post.id) },
                                     onUnpin = { viewModel.unpinPost(post.id) },
+                                    onLoveToggle = { viewModel.togglePostLove(post.id) },
+                                    onLoadComments = { viewModel.loadComments(post.id) },
+                                    onAddComment = { content -> viewModel.addComment(post.id, content) },
+                                    onDeleteComment = { commentId -> viewModel.deleteComment(commentId, post.id) },
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 )
                             }
@@ -495,15 +510,37 @@ fun PostCard(
     post: CommunityPost,
     isAdmin: Boolean,
     isSuperAdmin: Boolean = false,
+    currentUserId: String = "",
+    comments: List<PostComment> = emptyList(),
+    isCommentsLoading: Boolean = false,
     onDelete: () -> Unit,
     onPin: () -> Unit = {},
     onUnpin: () -> Unit = {},
+    onLoveToggle: () -> Unit = {},
+    onLoadComments: () -> Unit = {},
+    onAddComment: (String) -> Unit = {},
+    onDeleteComment: (String) -> Unit = {},
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showImageViewer by remember { mutableStateOf(false) }
     var selectedImageIndex by remember { mutableStateOf(0) }
     var selectedImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var showMenu by remember { mutableStateOf(false) }
+    var showComments by remember { mutableStateOf(false) }
+    var commentText by remember { mutableStateOf("") }
+    var showDeleteCommentDialog by remember { mutableStateOf<String?>(null) }
+
+    val isLiked = post.likedByIds.contains(currentUserId)
+
+    // Animate the love icon scale on toggle
+    val loveScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isLiked) 1.0f else 1.0f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = 0.4f,
+            stiffness = 400f,
+        ),
+        label = "loveScale",
+    )
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -520,6 +557,28 @@ fun PostCard(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    // Delete comment confirmation
+    showDeleteCommentDialog?.let { commentId ->
+        AlertDialog(
+            onDismissRequest = { showDeleteCommentDialog = null },
+            title = { Text("Delete Comment") },
+            text = { Text("Are you sure you want to delete this comment?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteCommentDialog = null
+                    onDeleteComment(commentId)
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteCommentDialog = null }) {
                     Text("Cancel")
                 }
             },
@@ -723,13 +782,191 @@ fun PostCard(
                 PostImageCollage(
                     images = displayImages,
                     onImageClick = { index ->
-                        // Would typically open full screen viewer here
-                        // For now we'll pass state to a parent or handle it locally
                         selectedImageIndex = index
                         selectedImages = displayImages
                         showImageViewer = true
                     }
                 )
+            }
+
+            // ─── Love & Comment Action Bar ───────────────────────────
+            Spacer(Modifier.height(12.dp))
+
+            // Divider
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Love button
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable { onLoveToggle() }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (isLiked) "Unlike" else "Love",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer(scaleX = loveScale, scaleY = loveScale),
+                        tint = if (isLiked) BloodRed else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
+                    if (post.likeCount > 0) {
+                        Text(
+                            text = "${post.likeCount}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isLiked) BloodRed else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(8.dp))
+
+                // Comment button
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable {
+                            showComments = !showComments
+                            if (showComments) {
+                                onLoadComments()
+                            }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = if (showComments) Icons.Filled.ChatBubble else Icons.Outlined.ChatBubbleOutline,
+                        contentDescription = "Comments",
+                        modifier = Modifier.size(18.dp),
+                        tint = if (showComments) BloodRed else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
+                    if (post.commentCount > 0) {
+                        Text(
+                            text = "${post.commentCount}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (showComments) BloodRed else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        )
+                    }
+                }
+            }
+
+            // ─── Comments Section ────────────────────────────────────
+            if (showComments) {
+                Spacer(Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                // Comment input
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        placeholder = {
+                            Text(
+                                "Write a comment…",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        singleLine = true,
+                        shape = RoundedCornerShape(24.dp),
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = BloodRed.copy(alpha = 0.5f),
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                        ),
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = {
+                            if (commentText.isNotBlank()) {
+                                onAddComment(commentText)
+                                commentText = ""
+                            }
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (commentText.isNotBlank()) BloodRed
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                            ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            modifier = Modifier.size(16.dp),
+                            tint = if (commentText.isNotBlank()) Color.White
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // Loading indicator
+                if (isCommentsLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = BloodRed,
+                        )
+                    }
+                }
+
+                // Comment list
+                if (comments.isEmpty() && !isCommentsLoading) {
+                    Text(
+                        text = "No comments yet. Be the first to comment!",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        comments.forEach { comment ->
+                            CommentItem(
+                                comment = comment,
+                                canDelete = isAdmin || comment.authorId == currentUserId,
+                                onDelete = { showDeleteCommentDialog = comment.id },
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -745,6 +982,105 @@ fun PostCard(
                 initialIndex = selectedImageIndex,
                 onDismiss = { showImageViewer = false }
             )
+        }
+    }
+}
+
+// ─── Comment Item ──────────────────────────────────────────────────
+
+@Composable
+private fun CommentItem(
+    comment: PostComment,
+    canDelete: Boolean,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+    ) {
+        // Comment author avatar
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(BloodRed.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (comment.authorAvatarUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = comment.authorAvatarUrl,
+                    contentDescription = comment.authorName,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Text(
+                    text = comment.authorName.firstOrNull()?.uppercase() ?: "U",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = BloodRed,
+                    fontSize = 10.sp,
+                )
+            }
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            // Comment bubble
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        text = comment.authorName.ifEmpty { "User" },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 11.sp,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = comment.content,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                        lineHeight = 18.sp,
+                    )
+                }
+            }
+
+            // Comment timestamp
+            Row(
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = comment.createdAt?.formatDisplay() ?: "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                    fontSize = 10.sp,
+                )
+            }
+        }
+
+        // Delete button for own comments or admin
+        if (canDelete) {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(24.dp),
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Delete comment",
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                )
+            }
         }
     }
 }

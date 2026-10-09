@@ -1374,6 +1374,145 @@ class CommunityViewModel @Inject constructor(
             }
         }
     }
+
+    // ─── Post Love / Like ─────────────────────────────────────────
+
+    /**
+     * Toggles the love/like on a post for the current user.
+     * Uses optimistic UI update for instant feedback.
+     */
+    fun togglePostLove(postId: String) {
+        viewModelScope.launch {
+            val posts = _spondonState.value.posts
+            val post = posts.find { it.id == postId } ?: return@launch
+            val isCurrentlyLiked = post.likedByIds.contains(currentUserId)
+
+            // Optimistic update
+            val updatedPosts = posts.map { p ->
+                if (p.id == postId) {
+                    if (isCurrentlyLiked) {
+                        p.copy(
+                            likedByIds = p.likedByIds - currentUserId,
+                            likeCount = (p.likeCount - 1).coerceAtLeast(0),
+                        )
+                    } else {
+                        p.copy(
+                            likedByIds = p.likedByIds + currentUserId,
+                            likeCount = p.likeCount + 1,
+                        )
+                    }
+                } else p
+            }
+            _spondonState.update { it.copy(posts = updatedPosts) }
+
+            // Server call
+            when (communityRepository.togglePostLove(postId, currentUserId, isCurrentlyLiked)) {
+                is Resource.Error -> {
+                    // Revert optimistic update on failure
+                    _spondonState.update { it.copy(posts = posts) }
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to update love"))
+                }
+                else -> { /* success — optimistic state is already correct */ }
+            }
+        }
+    }
+
+    // ─── Post Comments ────────────────────────────────────────────
+
+    /** Per-post comment state map (postId → list of comments). */
+    private val _postComments = MutableStateFlow<Map<String, List<PostComment>>>(emptyMap())
+    val postComments: StateFlow<Map<String, List<PostComment>>> = _postComments.asStateFlow()
+
+    /** Loading state for comments per post. */
+    private val _commentsLoading = MutableStateFlow<Set<String>>(emptySet())
+    val commentsLoading: StateFlow<Set<String>> = _commentsLoading.asStateFlow()
+
+    /**
+     * Loads comments for a specific post.
+     */
+    fun loadComments(postId: String) {
+        viewModelScope.launch {
+            _commentsLoading.update { it + postId }
+            when (val result = communityRepository.getPostComments(postId)) {
+                is Resource.Success -> {
+                    _postComments.update { it + (postId to result.data) }
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to load comments"))
+                }
+                is Resource.Loading -> {}
+            }
+            _commentsLoading.update { it - postId }
+        }
+    }
+
+    /**
+     * Adds a comment to a post.
+     */
+    fun addComment(postId: String, content: String) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            // Fetch author info
+            val authorName: String
+            val authorAvatarUrl: String
+            val userResult = communityRepository.getCommunityMembers(listOf(currentUserId))
+            if (userResult is Resource.Success && userResult.data.isNotEmpty()) {
+                val user = userResult.data.first()
+                authorName = user.name
+                authorAvatarUrl = user.avatarUrl
+            } else {
+                authorName = "User"
+                authorAvatarUrl = ""
+            }
+
+            when (communityRepository.createPostComment(
+                postId = postId,
+                authorId = currentUserId,
+                authorName = authorName,
+                authorAvatarUrl = authorAvatarUrl,
+                content = content,
+            )) {
+                is Resource.Success -> {
+                    // Refresh comments for this post
+                    loadComments(postId)
+                    // Update comment count in the post list optimistically
+                    _spondonState.update { state ->
+                        state.copy(posts = state.posts.map { p ->
+                            if (p.id == postId) p.copy(commentCount = p.commentCount + 1) else p
+                        })
+                    }
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to add comment"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    /**
+     * Deletes a comment (by the comment author or post admin).
+     */
+    fun deleteComment(commentId: String, postId: String) {
+        viewModelScope.launch {
+            when (communityRepository.deletePostComment(commentId, postId)) {
+                is Resource.Success -> {
+                    // Refresh comments
+                    loadComments(postId)
+                    // Update comment count in the post list
+                    _spondonState.update { state ->
+                        state.copy(posts = state.posts.map { p ->
+                            if (p.id == postId) p.copy(commentCount = (p.commentCount - 1).coerceAtLeast(0)) else p
+                        })
+                    }
+                }
+                is Resource.Error -> {
+                    _events.emit(CommunityEvent.ShowSnackbar("Failed to delete comment"))
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
 }
 
 // ─── Spondon UI State ─────────────────────────────────────────────
@@ -1399,3 +1538,4 @@ data class CreatePostState(
     val error: String? = null,
     val isCreated: Boolean = false,
 )
+

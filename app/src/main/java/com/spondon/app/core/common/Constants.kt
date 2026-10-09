@@ -18,6 +18,7 @@ object Constants {
 
     // Spondon global community
     const val COMMUNITY_POSTS_COLLECTION = "communityPosts"
+    const val POST_COMMENTS_COLLECTION = "postComments"
     const val SPONDON_COMMUNITY_NAME = "Spondon · স্পন্দন"
     const val SPONDON_CONFIG_DOC = "config/spondon_community"
 }

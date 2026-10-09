@@ -1129,5 +1129,109 @@ class FirestoreService @Inject constructor(
             Resource.Error(e.message ?: "Failed to update post", e)
         }
     }
+
+    // ─── Post Love / Like ──────────────────────────────────────────
+
+    /**
+     * Toggles a love (like) on a community post.
+     * Uses FieldValue.arrayUnion / arrayRemove to add/remove the userId,
+     * and FieldValue.increment to keep the likeCount in sync.
+     *
+     * @return `true` if the user now likes the post, `false` if unliked.
+     */
+    suspend fun togglePostLove(postId: String, userId: String, currentlyLiked: Boolean): Resource<Boolean> {
+        return try {
+            val postRef = firestore.collection(Constants.COMMUNITY_POSTS_COLLECTION).document(postId)
+            if (currentlyLiked) {
+                // Unlike
+                postRef.update(
+                    mapOf(
+                        "likedByIds" to FieldValue.arrayRemove(userId),
+                        "likeCount" to FieldValue.increment(-1),
+                    )
+                ).await()
+                Resource.Success(false)
+            } else {
+                // Like
+                postRef.update(
+                    mapOf(
+                        "likedByIds" to FieldValue.arrayUnion(userId),
+                        "likeCount" to FieldValue.increment(1),
+                    )
+                ).await()
+                Resource.Success(true)
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to toggle love", e)
+        }
+    }
+
+    // ─── Post Comments ─────────────────────────────────────────────
+
+    /**
+     * Creates a comment on a community post.
+     * Also increments the post's commentCount.
+     */
+    suspend fun createPostComment(data: Map<String, Any?>): Resource<String> {
+        return try {
+            val docRef = firestore.collection(Constants.POST_COMMENTS_COLLECTION)
+                .add(data)
+                .await()
+
+            // Increment comment count on the post
+            val postId = data["postId"] as? String
+            if (postId != null) {
+                firestore.collection(Constants.COMMUNITY_POSTS_COLLECTION)
+                    .document(postId)
+                    .update("commentCount", FieldValue.increment(1))
+                    .await()
+            }
+
+            Resource.Success(docRef.id)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to create comment", e)
+        }
+    }
+
+    /**
+     * Fetches all comments for a post, sorted by createdAt ascending (oldest first).
+     */
+    suspend fun getPostComments(postId: String): Resource<List<Map<String, Any>>> {
+        return try {
+            val docs = firestore.collection(Constants.POST_COMMENTS_COLLECTION)
+                .whereEqualTo("postId", postId)
+                .orderBy("createdAt", Query.Direction.ASCENDING)
+                .get()
+                .await()
+            val list = docs.documents.mapNotNull { doc ->
+                if (doc.exists()) (doc.data ?: emptyMap()) + ("id" to doc.id) else null
+            }
+            Resource.Success(list)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to get comments", e)
+        }
+    }
+
+    /**
+     * Deletes a single comment and decrements the post's commentCount.
+     */
+    suspend fun deletePostComment(commentId: String, postId: String): Resource<Unit> {
+        return try {
+            firestore.collection(Constants.POST_COMMENTS_COLLECTION)
+                .document(commentId)
+                .delete()
+                .await()
+
+            // Decrement comment count
+            firestore.collection(Constants.COMMUNITY_POSTS_COLLECTION)
+                .document(postId)
+                .update("commentCount", FieldValue.increment(-1))
+                .await()
+
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to delete comment", e)
+        }
+    }
 }
 
